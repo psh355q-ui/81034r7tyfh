@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News API Tester</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid #dee2e6;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .badge.success {
+            background: #28a745;
+            color: white;
+        }
+        .badge.warning {
+            background: #ffc107;
+            color: #000;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.active {
+            display: block;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .meta-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .meta-info strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 News API Tester</h1>
+        <p class="subtitle">Enhanced News Crawler with 4-way Filter</p>
+
+        <div class="btn-group">
+            <button onclick="testHealth()">Health Check</button>
+            <button onclick="testLatest()">Latest News (24h)</button>
+            <button onclick="testRaw()">Raw News (No Filter)</button>
+            <button onclick="testTicker('NVDA')">NVDA News</button>
+            <button onclick="openDocs()">📚 API Docs</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="meta" class="meta-info" style="display:none;"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+        
+        <pre id="result" style="display:none;"></pre>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('meta').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+
+        function showResult(data, meta = {}) {
+            const resultPre = document.getElementById('result');
+            resultPre.textContent = JSON.stringify(data, null, 2);
+            resultPre.style.display = 'block';
+
+            if (Object.keys(meta).length > 0) {
+                const metaDiv = document.getElementById('meta');
+                metaDiv.innerHTML = `
+                    <strong>Response Info:</strong><br>
+                    ${Object.entries(meta).map(([k, v]) => `${k}: ${v}`).join('<br>')}
+                `;
+                metaDiv.style.display = 'block';
+            }
+        }
+
+        async function apiCall(endpoint, description) {
+            showLoading();
+            showStatus(`Calling ${description}...`, 'info');
+
+            try {
+                const url = `${API_BASE}${endpoint}`;
+                const startTime = Date.now();
+                const response = await fetch(url);
+                const duration = Date.now() - startTime;
+                
+                const data = await response.json();
+                
+                hideLoading();
+
+                if (response.ok) {
+                    const articleCount = data.count || data.articles?.length || 0;
+                    const filterStatus = data.filter_applied ? 
+                        '<span class="badge success">Filter Applied</span>' : 
+                        '<span class="badge warning">No Filter</span>';
+                    
+                    showStatus(
+                        `✅ Success! ${filterStatus}<br>` +
+                        `Articles: ${articleCount} | Response Time: ${duration}ms`,
+                        'success'
+                    );
+
+                    showResult(data, {
+                        'Status': response.status,
+                        'Response Time': `${duration}ms`,
+                        'URL': url
+                    });
+                } else {
+                    showStatus(`❌ Error ${response.status}: ${response.statusText}`, 'error');
+                    showResult(data);
+                }
+            } catch (error) {
+                hideLoading();
+                showStatus(`❌ Network Error: ${error.message}`, 'error');
+                document.getElementById('result').textContent = error.stack;
+                document.getElementById('result').style.display = 'block';
+            }
+        }
+
+        async function testHealth() {
+            await apiCall('/news/realtime/health', 'Health Check');
+        }
+
+        async function testLatest() {
+            await apiCall('/news/realtime/latest?hours=24&max_articles=50', 'Latest News (24h)');
+        }
+
+        async function testRaw() {
+            await apiCall('/news/realtime/raw?hours=24', 'Raw News');
+        }
+
+        async function testTicker(ticker) {
+            await apiCall(`/news/realtime/ticker/${ticker}?days=1`, `${ticker} News`);
+        }
+
+        function openDocs() {
+            window.open(`${API_BASE}/docs`, '_blank');
+        }
+
+        // Auto-run health check on load
+        window.addEventListener('load', () => {
+            setTimeout(testHealth, 500);
+        });
+    </script>
+</body>
+</html>

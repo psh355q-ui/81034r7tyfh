@@ -1,0 +1,19 @@
+{
+  "request_id": "544b0705-a98d-455c-b360-2b9731e12374",
+  "ticker": "GOOGL",
+  "action": "BUY",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "AI leadership",
+  "consensus_confidence": 0.0,
+  "priority_score": 0.75,
+  "debate_rounds": 0,
+  "approval_level": "HARD_APPROVAL",
+  "status": "approved",
+  "requested_at": "2025-12-16T20:58:18.933697",
+  "decided_at": "2025-12-16T20:58:18.934372",
+  "auto_approve_after": null,
+  "decided_by": "user@example.com",
+  "rejection_reason": null,
+  "metadata": {}
+}

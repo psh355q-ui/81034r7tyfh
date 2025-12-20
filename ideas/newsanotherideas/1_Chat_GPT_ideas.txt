@@ -1,0 +1,474 @@
+확인했습니다 — **깃허브 리포지토리 전체 구조**를 보고 **프로젝트가 꽤 성숙하게 구성돼 있다는 결론**을 냈습니다.([GitHub][1])
+아래는 **주요 모듈**, **강점**, 그리고 **개선 포인트**를 종합적으로 정리한 검토 리포트입니다. Claude Code나 VSCode에서 바로 참고할 수 있도록 **구조/문제/해결 제안** 형식으로 정리했습니다.
+
+---
+
+# 📊 **전체 리포지토리 개요**
+
+리포지토리는 AI 기반 트레이딩 시스템으로서 다음과 같은 레이어로 구성되어 있습니다:([GitHub][1])
+
+📁 **backend/**
+· API 서버(FastAPI): 뉴스, 시그널, 백테스트, 리포트 등
+· AI 레이어: Claude, ChatGPT, Gemini 클라이언트
+· 데이터: 뉴스, SEC/EDGAR, 벡터 스토어
+· 시그널 생성 및 검증 엔진
+· 백테스팅 엔진
+· 리포팅, 알림, 모니터링
+
+📁 **frontend/**
+· 리액트 기반 Dashboard & Analytics UI
+
+📁 **monitoring/**
+· Prometheus/Grafana 설정
+
+📁 **tests/**
+· Unit/Integration 테스트 스크립트
+
+📄 다양한 문서 (API, MASTER_GUIDE, ARCHITECTURE, INCREMENTAL_PLANS) 포함되어 있음.([GitHub][1])
+
+---
+
+## ✅ **강점 (Current Good Design)**
+
+### 🔹 1) 명확하게 레이어 분리된 구조
+
+· **API / AI / Signals / Backtesting / Analytics / Monitoring**이 계층적으로 나뉘어 있어서 유지보수 및 확장성이 좋습니다.([GitHub][1])
+
+---
+
+### 🔹 2) AI 앙상블 구조
+
+· Claude, ChatGPT, Gemini를 통일 클라이언트로 다루는 구조가 이미 구축되어 있습니다.([GitHub][1])
+· 역할별 AI 클라이언트 분리(`claude_client.py`, `chatgpt_client.py`, `gemini_client.py`)는 좋은 설계입니다.([GitHub][1])
+
+---
+
+### 🔹 3) 뉴스 기반 시그널 + RAG/Deep Reasoning Pipeline
+
+· 뉴스 수집 → AI 분석 → 시그널 생성 → 검증 → 백테스트 흐름이 단단합니다.([GitHub][1])
+
+---
+
+### 🔹 4) 데이터 저장/캐시 레이어도 갖추고 있음
+
+· PostgreSQL / TimescaleDB / Redis
+· Vector Store 설정
+→ 실전에 적합한 DB 구조를 갖추고 있습니다.([GitHub][1])
+
+---
+
+### 🔹 5) 테스트 스크립트 포함 — 품질 관리 의지
+
+· 여러 테스트 파일이 존재합니다 (`test_ai_signals_api.py`, `test_full_system.py`, etc.)([GitHub][1])
+
+---
+
+## 🛠 **보완/개선 포인트 (Actionable)**
+
+아래는 **구조적으로 중요하며 빠르게 적용할 수 있는 개선점**입니다.
+
+---
+
+### 🧩 1) **AI 역할 프롬프트 주입 연결 확인**
+
+현재 AI 클라이언트(`claude_client.py`, `chatgpt_client.py`, `gemini_client.py`)는 역할 정의를 명시적으로 받지 않을 가능성이 큽니다.
+이전 설계 대화에서 강조한 대로, **AI 역할(role) 기반 프롬프트 prefix**를 넣어야 에이전트 별 행동(Trader, Risk, Guardian 등)이 명확하게 발현됩니다.
+
+**실행 체크리스트**
+
+* `analyze_*` 메서드들이 role 인자를 받는가?
+* Prompt builder 함수가 role-specific prompt를 상단에 삽입하는가?
+* JSON 형식 가이드가 role마다 올바르게 주입되는가?
+
+👉 role injection enhancement code 필요.
+
+---
+
+### 🧠 2) **Guardian / Risk Manager 통합 실행 루프 강화**
+
+현재 리포지토리에는 심층 Reasoning/Signals/Backtest 구조는 있지만, 우리가 논의한 **지속적 포트폴리오 관리(Guardian Agent)** 루프가 보이지 않습니다.
+
+**제안:**
+
+* `portfolio_manager.py` (새 모듈)
+* 백엔드 스케줄러(`auto_trading_scheduler.py`)에 Guardian 루프 추가
+* thesis drift 검사 로직 구현
+
+📌 이 부분은 현재 코드상에는 **구현 부재로 보입니다**.
+
+---
+
+### 🧪 3) **사후 평가/Forensics 엔진 부재**
+
+PostMortem 분석(실패 원인·AI가 놓친 뉴스 등)은 문서/아이디어로는 풍부하지만, 코드상에서는 구현 흔적이 보이지 않습니다.
+
+**제안:**
+
+* `forensics/decision_forensics.py`
+* AI가 판단 근거 + 놓친 데이터 체크 + cost 계산
+* 이후 리포트로 PDF 생성(`report_generator.py`)
+
+---
+
+### 🛡 4) **강제 승인/헌법 검증 로직 확립**
+
+현재 ‘Proposal’ 객체 구조나 헌법 검증 모듈은 보이지 않습니다.
+
+**제안:**
+
+* `backend/constitution/` 패키지 생성
+* `constitution_checker.py`에서 모든 AI 제안을 검증하는 단계 도입
+* 실행 전/후 모두 헌법 검증
+
+---
+
+### 📊 5) **Forced Liquidation Equity 지표 시각화**
+
+현재 대시보드에는 일반적인 평가손익/시그널/뉴스만 있는 반면,
+**현금기준 잔존 현금 표시(FLE)**는 없습니다.
+
+**제안:**
+
+* 프론트엔드 `Dashboard.tsx`에 FLE 컴포넌트 추가
+* 백엔드에서 실시간 계산 API(`/portfolio/liquidation_equity`)
+
+---
+
+### 📈 6) **Feedback Loop & Autobiography Engine**
+
+AI 자가 개선 루프(Autobiography Engine)를 구현하려면:
+
+* AI 코멘트 저장 DB 스키마
+* 운영자 대시보드에서 확인 UI
+* 나중에 “AI 자체 리비전 제안” 가능
+
+현재 이런 구조는 없습니다.
+
+---
+
+## 📌 브랜치 전략 확인
+
+리포지토리 **브랜치 목록 로딩이 어려웠지만** (GitHub 페이지 오류로 확인 불가)([GitHub][1])
+아래 브랜치 정책을 권장합니다:
+
+```
+main
+├── develop
+│   ├── feature/ai_role_injection
+│   ├── feature/guardian_agent
+│   ├── feature/decision_forensics
+│   └── feature/ui_portfolio_metrics
+```
+
+---
+
+## 💡 종합 코멘트
+
+### 👍 잘 만든 점
+
+✔ 전체 아키텍처가 엔터프라이즈급
+✔ DB/Monitoring/AI/Backtest Layer가 명확
+✔ 다양한 문서(가이드/로드맵/REPORT) 포함
+
+### ⚠️ 보완해야 할 점
+
+❗ AI 역할 프롬프트 연결
+❗ 지속 Portfolio Guardian Agent
+❗ Forensics/Feedback Loop
+❗ 헌법(규칙) 검증 체계
+❗ 실현 가능한 Cash-first 지표(API/UI
+
+---
+
+## 📍 바로 다음 작업 힌트 (Claude Code 지시)
+
+1. **AI Role Injection**
+
+   ```
+   claude "Enhance AI clients to accept role and inject role-specific prompt prefixes. Ensure JSON schema compliance."
+   ```
+2. **Guardian Agent**
+
+   ```
+   claude "Implement portfolio_guardian module with thesis drift detection and scheduled scanning."
+   ```
+3. **Decision Forensics**
+
+   ```
+   claude "Add decision_forensics module to record missed information, cost of error, and generate PDF insight reports."
+   ```
+4. **Constitution Checker**
+
+   ```
+   claude "Create backend/constitution package and introduce constitution validation for all proposals before execution."
+   ```
+
+---
+
+원하면 다음 단계로 **구체적인 파일/함수 별 보완 설계**도 정리해 줄 수 있습니다.
+원하면 "기능 별 TODO 스펙 세트"로도 만들어 줄게.
+
+
+물론입니다! 아래는 **오늘까지 나눈 모든 논의와 답변을 기반으로 정리한 개발용 요약 문서**입니다.
+이 문서는 **VS Code + Claude Code**에게 그대로 전달해도 되고, `docs/IMPLEMENTATION_NOTES.md` 같은 파일로 저장해도 됩니다.
+
+---
+
+# 📂 Implementation Notes for AI-Driven Institutional Trading System
+
+> 이 문서는 **아이디어 정리 → 설계 → 운영 철학**을 넘어, **개발자/AI가 바로 구현할 수 있는 코드 중심 요약**입니다.
+> 논쟁은 끝났고, 이제는 **구현만 남았습니다**.
+
+---
+
+## 1️⃣ 다수 의견 기반 의사결정 (AI War Priority)
+
+### 목적
+
+AI 역할이 많아질수록,
+
+* 더 많은 의견이 나와 싸운 후의 결론에 우선권을 둔다.
+
+### Action Items
+
+✔ **AgentOpinion 모델에 충돌 정보 추가**
+
+```python
+class AgentOpinion(BaseModel):
+    agent_name: str
+    stance: Literal["BUY","SELL","HOLD","DCA","TRIM"]
+    confidence: float
+    reasoning: str
+    conflict_with: Optional[List[str]]
+```
+
+✔ **DebateAggregator 스코어링 로직**
+
+```python
+priority_score = (
+    len(opinions) * 0.4
+    + avg_confidence * 0.3
+    + num_conflicts * 0.2
+    + institutional_weight * 0.1
+)
+```
+
+✔ **결론에 다수/반론/충돌 횟수 결합**
+
+---
+
+## 2️⃣ 13F 데이터 처리 + 발표일 동기 로직
+
+### 13F 데이터
+
+SEC에서 공식 **Form 13F XML/JSON 데이터를 분기 단위로 다운로드/가공 가능**합니다. ([Securities and Exchange Commission][1])
+
+### 리서치 + 현재 주가 비교
+
+✔ 13F는 과거 분기 기준이므로 **현재 시장 상태와 비교해야 유의미함**
+
+### 기능 요구
+
+* 정기 13F 발표 캘린더 감지
+* 발표일에 자동 리뷰 및 리서치 트리거
+* 13F 변화 + 현재 포지션 체킹
+
+```python
+if today in economic_calendar["13F_RELEASE"]:
+    for fund in top_funds:
+        compare_13f_to_current(fund)
+```
+
+### 데이터 소스 옵션
+
+* `sec.gov` Form 13F Data Sets (XML) ([Securities and Exchange Commission][1])
+* `sec-api` 라이브러리 통한 JSON 13F fetch (PyPI) ([PyPI][2])
+* 외부 REST API(예: forms13f.com)도 활용 가능 ([Forms 13F][3])
+
+---
+
+## 3️⃣ 인간 중심 승인론 (Human-in-the-Loop)
+
+### 원칙
+
+* **AI는 조언만 제공**
+* **결정권은 사용자**
+* **철학/전략 변경 또한 반드시 승인**
+
+### 구현
+
+Proposal like:
+
+```python
+class Proposal(BaseModel):
+    id: str
+    summary: str
+    reasoning: str
+    requires_approval: bool = True
+    approved: bool = False
+    user_rationale: Optional[str]
+```
+
+✔ 승인 시:
+
+* 사용자는 **근거를 입력**
+* 시스템은 **AI War 재진행 & 재검증**
+
+---
+
+## 4️⃣ 행동경제학 기반 UX (Loss Aversion)
+
+> 사람은 **수익보다 손실에 2배 이상 민감하다**는 전망 이론(Prospect Theory)이 입증돼 있습니다. ([위키백과][4])
+
+### 전략
+
+**손실이 가시적으로 보이면 행동이 변한다.**
+
+### 구현
+
+✔ Forced Liquidation Equity (FLE, 즉시 모든 포지션 매도 시 남는 현금)
+
+```python
+FLE = sum(position.qty * price) + cash_balance - fees
+```
+
+### UI 노출
+
+```
+📉 지금 모두 팔면 손에 남는 돈: ₩XXX
+(평가손익 지표와 별도 표시)
+```
+
+---
+
+## 5️⃣ 사후 피드백 & 회유형 보고 (Post-Decision)
+
+### 원칙
+
+* 비난❌, 다독임⭕
+* AI + 사용자 판단 교차 리포트
+
+### 구현
+
+```python
+class PostDecisionReport(BaseModel):
+    decision_id: str
+    ai_summary: str
+    user_rationale: str
+    new_info: List[str]
+    outcome: str
+    analysis: str
+```
+
+✔ Tone:
+
+> “당시 판단은 합리적이었습니다.
+> 이후 {이벤트}가 발생했습니다.”
+
+---
+
+## 6️⃣ AI Autobiography (Self-Improvement)
+
+### 목표
+
+AI가 **자체 개선 코멘터리**를 남겨서 자동으로 개선을 유도
+
+### 구조
+
+```python
+class AICommentary(BaseModel):
+    failure_type: str
+    suggested_fix: str
+    confidence: float
+    timestamp: datetime
+```
+
+### 사용 흐름
+
+* 코멘터리 DB 저장
+* 운영자가 검토 후 승인 시 코드 개선
+* 누적 데이터 → 선순환
+
+---
+
+## 7️⃣ UI 리포트 확장
+
+### 오늘의 기록 PDF
+
+**Report Title (추천)**
+
+* **「오늘의 투자 기록」** (Friendly network modeling growth)
+* **「판단 복기 노트」**
+* **「선택과 학습의 오늘」**
+
+📄 구성
+
+1. Decision summary
+2. 당시 AI argument + user rationale
+3. New info since decision
+4. What was right/wrong
+5. Next criterion (1-line)
+
+---
+
+## 8️⃣ 종합 체크리스트 (Code Priorities)
+
+### Must-Have
+
+☑ AI role injection in prompt
+☑ Debate aggregator with conflict weighting
+☑ 13F release date trigger + comparison engine
+☑ Proposal approval structure
+☑ FLE metric implemented (API+UI)
+☑ Post-decision feedback pipeline
+☑ AI Autobiography logs
+
+### Nice-to-Have
+
+🔹 Institutional Analyst agent (13F + smart money inference)
+🔹 ETF flow & insider analysis integration
+🔹 Sector propagation (supply chain relationships)
+🔹 Podcast/short video auto generation
+
+---
+
+## 9️⃣ Example API Endpoints Needed
+
+```
+GET /portfolio/liquidation_equity
+POST /proposals/:id/approve
+GET /reports/daily
+GET /13f/review?date=yyyy-mm-dd
+POST /feedback/post_decision
+```
+
+---
+
+# 🚀 Claude Code 실행 명령어 예시
+
+```shell
+claude "Implement AI role injection. Enhance all AI clients to accept role and append role-specific prompt headers."
+```
+
+```shell
+claude "Implement 13F release trigger logic and review pipeline. Integrate sec-api or XML parser for SEC 13F data."
+```
+
+```shell
+claude "Build Forced Liquidation Equity API and UI component in dashboard for immediate cash indication."
+```
+
+```shell
+claude "Create post-decision feedback API and persistent storage for AI autobiographical commentary."
+```
+
+---
+
+필요하면 **구현할 함수/클래스 별 템플릿**도 정리해 드릴게.
+
+[1]: https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets?utm_source=chatgpt.com "SEC.gov | Form 13F Data Sets"
+[2]: https://pypi.org/project/sec-api/1.0.3/?utm_source=chatgpt.com "sec-api · PyPI"
+[3]: https://forms13f.github.io/api-docs/?utm_source=chatgpt.com "SEC form 13F API"
+[4]: https://en.wikipedia.org/wiki/Prospect_theory?utm_source=chatgpt.com "Prospect theory"
+
+

@@ -1,0 +1,502 @@
+[
+  {
+    "ticker": "AAPL",
+    "risk_score": 0.15,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 1.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:52:22.483701",
+    "v1_result": {
+      "ticker": "AAPL",
+      "risk_score": 0.15,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 1.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:52:22.483701"
+    },
+    "v2_result": {
+      "ticker": "AAPL",
+      "risk_score": 0.32,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.6,
+        "regulatory": 0.1,
+        "management": 0.5,
+        "operational": 0.1,
+        "social": 0.3
+      },
+      "reasoning": "AAPL faces ongoing legal challenges including class-action and shareholder lawsuits, alongside a recent settlement, indicating moderate legal and management scrutiny, but no critical operational or regulatory issues.",
+      "timestamp": "2025-11-12T12:52:49.381164",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.17,
+    "v2_reasoning": "AAPL faces ongoing legal challenges including class-action and shareholder lawsuits, alongside a recent settlement, indicating moderate legal and management scrutiny, but no critical operational or regulatory issues."
+  },
+  {
+    "ticker": "MSFT",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:52:49.381421",
+    "v1_result": {
+      "ticker": "MSFT",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:52:49.381421"
+    },
+    "v2_result": {
+      "ticker": "MSFT",
+      "risk_score": 0.1,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.1,
+        "regulatory": 0.1,
+        "management": 0.1,
+        "operational": 0.1,
+        "social": 0.1
+      },
+      "reasoning": "The provided news headlines are positive or neutral (earnings report, new product, analyst upgrade) and do not indicate any specific non-standard risks across the evaluated categories for MSFT.",
+      "timestamp": "2025-11-12T12:53:04.949962",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.1,
+    "v2_reasoning": "The provided news headlines are positive or neutral (earnings report, new product, analyst upgrade) and do not indicate any specific non-standard risks across the evaluated categories for MSFT."
+  },
+  {
+    "ticker": "GOOGL",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:53:04.950237",
+    "v1_result": {
+      "ticker": "GOOGL",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:53:04.950237"
+    },
+    "v2_result": {
+      "ticker": "GOOGL",
+      "risk_score": 0.1,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.1,
+        "regulatory": 0.1,
+        "management": 0.1,
+        "operational": 0.1,
+        "social": 0.1
+      },
+      "reasoning": "The provided news headlines are positive or neutral, indicating no immediate non-standard risks across the specified categories.",
+      "timestamp": "2025-11-12T12:53:38.469644",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.1,
+    "v2_reasoning": "The provided news headlines are positive or neutral, indicating no immediate non-standard risks across the specified categories."
+  },
+  {
+    "ticker": "AMZN",
+    "risk_score": 0.12,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.6,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:53:38.469929",
+    "v1_result": {
+      "ticker": "AMZN",
+      "risk_score": 0.12,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.6,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:53:38.469929"
+    },
+    "v2_result": {
+      "ticker": "AMZN",
+      "risk_score": 0.64,
+      "risk_level": "HIGH",
+      "categories": {
+        "legal": 0.7,
+        "regulatory": 0.8,
+        "management": 0.2,
+        "operational": 0.8,
+        "social": 0.7
+      },
+      "reasoning": "A major data breach affecting millions, product recalls, and an unexpected plant shutdown indicate significant operational failures with substantial legal, regulatory, and social repercussions.",
+      "timestamp": "2025-11-12T12:53:46.161213",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.52,
+    "v2_reasoning": "A major data breach affecting millions, product recalls, and an unexpected plant shutdown indicate significant operational failures with substantial legal, regulatory, and social repercussions."
+  },
+  {
+    "ticker": "META",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:53:46.161519",
+    "v1_result": {
+      "ticker": "META",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:53:46.161519"
+    },
+    "v2_result": {
+      "ticker": "META",
+      "risk_score": 0.24,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.4,
+        "regulatory": 0.5,
+        "management": 0.1,
+        "operational": 0.1,
+        "social": 0.1
+      },
+      "reasoning": "Recent positive headlines indicate strong performance and investor confidence, mitigating immediate risks. However, underlying legal and regulatory challenges remain inherent to META's operations, influencing a slightly elevated baseline in those categories.",
+      "timestamp": "2025-11-12T12:54:38.177601",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.24,
+    "v2_reasoning": "Recent positive headlines indicate strong performance and investor confidence, mitigating immediate risks. However, underlying legal and regulatory challenges remain inherent to META's operations, influencing a slightly elevated baseline in those categories."
+  },
+  {
+    "ticker": "NVDA",
+    "risk_score": 0.12,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.6,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:54:38.177896",
+    "v1_result": {
+      "ticker": "NVDA",
+      "risk_score": 0.12,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.6,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:54:38.177896"
+    },
+    "v2_result": {
+      "ticker": "NVDA",
+      "risk_score": 0.7,
+      "risk_level": "HIGH",
+      "categories": {
+        "legal": 0.8,
+        "regulatory": 0.8,
+        "management": 0.1,
+        "operational": 0.9,
+        "social": 0.9
+      },
+      "reasoning": "Severe operational failures from product defects, a major data breach, and plant shutdown pose high legal, regulatory, and social risks for NVDA.",
+      "timestamp": "2025-11-12T12:54:54.361360",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.58,
+    "v2_reasoning": "Severe operational failures from product defects, a major data breach, and plant shutdown pose high legal, regulatory, and social risks for NVDA."
+  },
+  {
+    "ticker": "TSLA",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:54:54.361672",
+    "v1_result": {
+      "ticker": "TSLA",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:54:54.361672"
+    },
+    "v2_result": {
+      "ticker": "TSLA",
+      "risk_score": 0.62,
+      "risk_level": "HIGH",
+      "categories": {
+        "legal": 0.6,
+        "regulatory": 0.6,
+        "management": 0.7,
+        "operational": 0.5,
+        "social": 0.7
+      },
+      "reasoning": "TSLA faces persistent legal, regulatory, and social risks tied to its technology and CEO's public persona, coupled with moderate management and operational challenges.",
+      "timestamp": "2025-11-12T12:55:21.031234",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.62,
+    "v2_reasoning": "TSLA faces persistent legal, regulatory, and social risks tied to its technology and CEO's public persona, coupled with moderate management and operational challenges."
+  },
+  {
+    "ticker": "NFLX",
+    "risk_score": 0.12,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.6,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:55:21.031508",
+    "v1_result": {
+      "ticker": "NFLX",
+      "risk_score": 0.12,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.6,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:55:21.031508"
+    },
+    "v2_result": {
+      "ticker": "NFLX",
+      "risk_score": 0.72,
+      "risk_level": "HIGH",
+      "categories": {
+        "legal": 0.8,
+        "regulatory": 0.9,
+        "management": 0.1,
+        "operational": 0.9,
+        "social": 0.9
+      },
+      "reasoning": "Multiple critical incidents, including a major data breach, product recalls, and significant operational shutdowns, indicate widespread failures across legal, regulatory, operational, and social domains, leading to a high overall risk profile.",
+      "timestamp": "2025-11-12T12:55:33.583489",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.6,
+    "v2_reasoning": "Multiple critical incidents, including a major data breach, product recalls, and significant operational shutdowns, indicate widespread failures across legal, regulatory, operational, and social domains, leading to a high overall risk profile."
+  },
+  {
+    "ticker": "ADBE",
+    "risk_score": 0.15,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 1.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:55:33.583731",
+    "v1_result": {
+      "ticker": "ADBE",
+      "risk_score": 0.15,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 1.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:55:33.583731"
+    },
+    "v2_result": {
+      "ticker": "ADBE",
+      "risk_score": 0.38,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.8,
+        "regulatory": 0.1,
+        "management": 0.6,
+        "operational": 0.1,
+        "social": 0.3
+      },
+      "reasoning": "ADBE faces significant legal challenges, including a class action lawsuit and a $100M settlement, alongside shareholder litigation against management. These events indicate moderate overall risk requiring close monitoring.",
+      "timestamp": "2025-11-12T12:55:43.247029",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.23,
+    "v2_reasoning": "ADBE faces significant legal challenges, including a class action lawsuit and a $100M settlement, alongside shareholder litigation against management. These events indicate moderate overall risk requiring close monitoring."
+  },
+  {
+    "ticker": "CRM",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:55:43.247279",
+    "v1_result": {
+      "ticker": "CRM",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:55:43.247279"
+    },
+    "v2_result": {
+      "ticker": "CRM",
+      "risk_score": 0.1,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.1,
+        "regulatory": 0.1,
+        "management": 0.1,
+        "operational": 0.1,
+        "social": 0.1
+      },
+      "reasoning": "The provided news headlines are generally positive or neutral, indicating no specific red flags across legal, regulatory, management, operational, or social risk categories. No recent adverse events were reported.",
+      "timestamp": "2025-11-12T12:55:47.744000",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.1,
+    "v2_reasoning": "The provided news headlines are generally positive or neutral, indicating no specific red flags across legal, regulatory, management, operational, or social risk categories. No recent adverse events were reported."
+  }
+]

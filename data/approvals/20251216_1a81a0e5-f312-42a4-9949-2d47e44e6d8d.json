@@ -1,0 +1,19 @@
+{
+  "request_id": "1a81a0e5-f312-42a4-9949-2d47e44e6d8d",
+  "ticker": "AMD",
+  "action": "BUY",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "AMD growth",
+  "consensus_confidence": 0.0,
+  "priority_score": 0.7,
+  "debate_rounds": 0,
+  "approval_level": "SOFT_APPROVAL",
+  "status": "pending",
+  "requested_at": "2025-12-16T20:58:18.959173",
+  "decided_at": null,
+  "auto_approve_after": "2025-12-17T20:58:18.959176",
+  "decided_by": null,
+  "rejection_reason": null,
+  "metadata": {}
+}

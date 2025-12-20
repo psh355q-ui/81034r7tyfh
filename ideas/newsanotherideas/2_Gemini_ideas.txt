@@ -1,0 +1,204 @@
+사용자님의 우려는 **"기관급 시스템"**을 완성하는 데 있어 매우 치명적이고 중요한 지적입니다.
+
+**"뉴스가 많다(Hit Count가 높다)"**는 것은 단순히 **"시끄럽다(Loudness)"**는 뜻이지, 그것이 **"진실이다(Truth)"**라는 뜻은 아닙니다. 특히 작전 세력의 보도자료 배포, 매크로 봇의 리트윗 공격, 특정 카르텔의 여론 몰이일 가능성을 배제하면 시스템은 **"가짜 확신(False Confidence)"**에 빠지게 됩니다.
+
+단순 DB 저장 단계에서도 이 **"작전(Operation)"**과 **"합의(Consensus)"**를 구분할 수 있는 **[3단계 검증 필터]**를 제안합니다.
+
+---
+
+### 🏛️ 핵심 전략: "양(Volume)이 아닌 출처의 다양성(Entropy)을 본다"
+
+단순히 `hit_count + 1`을 하는 로직을 버리고, **`Consensus Integrity Score` (합의 진실성 점수)**를 도입해야 합니다.
+
+#### 1. DB 레벨: "출처 다양성 지수 (Source Diversity Index)" 도입
+
+작전 세력은 보통 **"동시다발적으로", "비슷한 하꼬(Minor) 언론사"**를 통해 뉴스를 뿌립니다.
+
+* **기존**: 뉴스 100개 = 점수 100점 (위험!)
+* **개선**: `hit_count`와 함께 **`source_set` (출처 목록)**을 저장합니다.
+* **시나리오 A (작전 의심)**: 뉴스 100개가 떴는데, 출처가 모두 "00경제, XX타임즈, ZZ뉴스" 등 마이너 언론사이거나, 같은 모회사 계열사임. → **가중치 0.1**
+* **시나리오 B (진짜 합의)**: 뉴스 100개가 떴는데, "블룸버그(기관), 레딧(개인), 로이터(통신사), 연합뉴스(국내)"가 섞여 있음. → **가중치 1.0**
+
+
+
+**[구현 방안]**
+`deduplication` 로직에서 `hit_count`를 올릴 때, **`source_diversity_score`**를 같이 계산합니다.
+
+```python
+# (개념 코드)
+def calculate_integrity(sources):
+    major_media = {"Bloomberg", "Reuters", "WSJ", "CNBC"}
+    score = len(sources) # 기본 다양성
+    if any(s in major_media for s in sources):
+        score *= 2.0 # 메이저 언론사 포함 시 가산
+    return score
+
+```
+
+#### 2. AI 레벨: "Skeptic Agent (회의론자)"의 비동기 개입
+
+사용자님은 "단순 DB 저장이라 에이전트를 못 붙인다"고 하셨지만, **"트리거(Trigger)"** 방식이라면 가능합니다.
+
+* **Trigger**: 특정 뉴스의 `hit_count`가 급격히 올라가는데(실검 1위 등), `source_diversity`가 낮거나 내용이 토씨 하나 안 틀리고 똑같을 때.
+* **Action**: 이때 시스템이 **`Skeptic Agent`**를 비동기로 호출합니다.
+* **Skeptic의 임무**:
+* *"이 50개의 뉴스가 혹시 단 하나의 보도자료(Press Release)를 복사+붙여넣기 한 것인가?"*
+* *"내용에 감정적 선동('긴급', '폭등 예상', '대박') 어휘가 과도하게 포함되었는가?"*
+
+
+
+**결과**: Skeptic이 "이건 작전이다"라고 판명하면, `hit_count`가 아무리 높아도 해당 시그널을 **"Spam/Manipulation"**으로 마킹하고 무시합니다.
+
+#### 3. 시간 레벨: "속도(Velocity)의 부자연스러움" 감지
+
+진짜 호재는 정보가 확산되는 **시차**가 있습니다 (속보 -> 분석 -> 반응). 반면, 작전은 **1초 만에 50개가 동시에** 뜹니다.
+
+* **Burst Detection**: 1분 안에 30개 이상의 유사 뉴스가 등록되면 **"Bot Attack"**으로 간주하고, 해당 뉴스 그룹 전체를 **30분간 격리(Quarantine)** 시킵니다. 30분 뒤에도 메이저 언론의 교차 검증이 없으면 폐기합니다.
+
+---
+
+### 🚀 수정된 구현 가이드 (Claude Code 전달용)
+
+이 내용을 반영하여 `MASTER_BLUEPRINT_FINAL.md`의 구현 지침을 보강해야 합니다.
+
+**[수정 요청 사항]**
+
+1. **DB 스키마 수정 (`analysis_lineage` & `news_clusters`)**
+* 단순 `hit_count` (Integer) 대신 `source_metadata` (JSONB) 컬럼 추가.
+* `is_manipulation_suspected` (Boolean) 플래그 추가.
+
+
+2. **`PropagandaDetector` (선동 감지기) 에이전트 추가**
+* `backend/intelligence` 레이어에 추가.
+* RAG나 뉴스 수집기가 "중복 의심"을 보고할 때, 이 에이전트가 원문을 비교 분석하여 **"Copy-Paste Ratio(복붙율)"**을 계산.
+
+
+
+**[Claude Code 명령]**
+
+```bash
+# 1. 중복 제거 로직 고도화 (다양성 점수)
+claude "Modify the deduplication logic in 'backend/data/news_models.py'.
+Instead of just incrementing a counter, store unique 'source_ids'.
+Implement a 'DiversityScore' calculation: Major media outlets get higher weights.
+If 50 articles appear instantly (within 1 min) from minor sources, flag as 'SUSPICIOUS_BURST'."
+
+# 2. Skeptic Agent (비동기 검증)
+claude "Implement 'backend/intelligence/skeptic_agent.py'.
+This agent is triggered ONLY when a news cluster has high hit_count but low diversity score.
+It compares the text of the articles. If they are >90% identical (Press Release Copy-Paste), mark the signal as 'MANIPULATION_RISK' and set conviction to 0."
+
+```
+
+### 💡 결론
+
+사용자님의 우려 덕분에 시스템은 **"앵무새(단순 확산)"**와 **"집단 지성(진짜 합의)"**을 구분할 수 있게 되었습니다.
+
+* **뉴스 100개 (복붙)** = **소음 (Noise)** = 무시.
+* **뉴스 3개 (블룸버그 + 로이터 + 개인 분석)** = **신호 (Signal)** = 강력 매수 근거.
+
+이 필터가 있어야만 사용자님의 시스템이 세력의 "설거지" 대상이 되는 것을 막을 수 있습니다. 이것이 진짜 **Devil's Advocate**의 역할입니다.
+
+
+
+추가로, 엠바고가 풀리는 시간일 수도 있으니 그러한 고려도 검토하는걸로 하자
+
+
+
+사용자님의 통찰력은 정말 대단합니다. **"엠바고(Embargo) 해제"**는 뉴스 데이터 분석에서 **"조작(Manipulation)"**과 **"진짜 정보의 폭발(Information Burst)"**을 구분하는 결정적인 **엣지 케이스(Edge Case)**입니다.
+
+보통 작전 세력의 매크로 공격과 엠바고 해제는 **"짧은 시간에 뉴스가 쏟아진다"**는 점에서는 똑같습니다. 하지만 **질적 특성**이 완전히 다릅니다. 이를 구분하지 못하면, 시스템은 애플의 신제품 발표나 FOMC 의사록 공개 같은 **중요한 순간을 "스팸 공격"으로 오판**하고 무시해버릴 위험이 있습니다.
+
+이 **"엠바고 고려 로직"**을 시스템에 통합하는 방안을 정리해 드립니다.
+
+---
+
+### 1. 🕵️‍♂️ 핵심 구분법: "작전 vs 엠바고"
+
+시스템은 다음 3가지 기준을 통해 쏟아지는 뉴스의 성격을 판별해야 합니다.
+
+| 비교 항목 | 🤖 작전/매크로 공격 (Manipulation) | ⏰ 엠바고 해제/이벤트 (Embargo Lift) |
+| --- | --- | --- |
+| **발생 시각** | 랜덤함 (예: 14:12:43) | **정각 또는 30분 단위** (예: 09:00:00, 14:30:00) |
+| **내용 유사도** | **100% 복사 붙여넣기** (토씨 하나 안 틀림) | **내용이 다양함** (같은 주제지만 언론사별 관점이 다름) |
+| **예정 여부** | 예고 없음 | **경제 캘린더/기업 일정**과 매칭됨 |
+| **시스템 대응** | **무시 (Ignore) & 차단** | **긴급 분석 (Deep Analyze) & 반영** |
+
+---
+
+### 2. 🛠️ 구현 전략: "The Embargo Validator"
+
+기존의 `Skeptic Agent`(회의론자)의 로직에 **[엠바고 예외 처리]** 루틴을 추가해야 합니다.
+
+#### **Step 1: "Clean Time" 감지 (시간 동기화)**
+
+엠바고는 약속입니다. 따라서 뉴스가 등록된 타임스탬프가 **"깨끗한 시간(Clean Timestamp)"**인지 확인합니다.
+
+* **로직**: `if timestamp.second == 00 and timestamp.minute % 30 == 0:`
+* 1분 내 50건의 뉴스가 떴는데, 시작 시간이 `09:00:00`이다? → **엠바고 해제 가능성 90%**.
+
+#### **Step 2: "다양성(Entropy)" 체크 (내용 분석)**
+
+작전 세력은 보도자료 하나를 뿌리지만, 엠바고가 풀리면 기자들이 각자 준비했던 기사를 풉니다.
+
+* **로직**: `Text Similarity Check` (Jaccard Similarity or Cosine Similarity).
+* 유사도가 **90% 이상(복붙)**이면 **"공격"**, 유사도가 **60% 이하(다양함)**면 **"정상적인 이벤트"**로 간주합니다.
+
+#### **Step 3: "일정 매칭" (캘린더 연동)**
+
+`EconomicCalendar` 데이터를 조회합니다.
+
+* "지금(14:00) 쏟아지는 뉴스들이 혹시 **FOMC 회의록 공개 시간**과 겹치는가?"
+* "지금(16:00) 엔비디아 **실적 발표 시간**인가?"
+
+---
+
+### 3. 🚀 수정된 Blueprint 및 Claude 명령
+
+이 내용을 반영하여 `MASTER_BLUEPRINT_FINAL.md`와 구현 지침을 업데이트합니다.
+
+**[수정된 `Skeptic Agent` 로직]**
+
+```python
+# (개념 코드)
+def analyze_burst(news_cluster):
+    # 1. 시간 검증
+    is_clean_time = check_clean_timestamp(news_cluster.start_time)
+    
+    # 2. 내용 유사도 검증
+    similarity_score = calculate_text_similarity(news_cluster.articles)
+    
+    # 3. 캘린더 매칭
+    is_scheduled_event = check_economic_calendar(current_time)
+
+    if is_clean_time and similarity_score < 0.7:
+        return "VALID_EMBARGO_LIFT"  # 호재/악재 분석 시작 (강력한 신호)
+    elif similarity_score > 0.9:
+        return "MANIPULATION_ATTACK" # 무시
+    elif is_scheduled_event:
+        return "SCHEDULED_EVENT"     # 이벤트 분석 모드 진입
+    else:
+        return "VIRAL_TREND"         # 일반적인 확산
+
+```
+
+**[Claude Code 실행 명령 추가]**
+
+```bash
+claude "Update 'backend/intelligence/skeptic_agent.py'.
+Add an 'EmbargoDetection' logic.
+1. If a burst of news happens at exact hours (e.g., 09:00:00) OR matches a scheduled event in 'EconomicCalendar', DO NOT flag it as manipulation immediately.
+2. Instead, check 'Content Diversity'. If articles are distinct (low similarity), treat it as a 'High Confidence Signal' (Embargo Lift).
+3. If articles are identical copies, treat it as 'Spam/Manipulation' regardless of timing."
+
+```
+
+### 💡 운영자의 결론
+
+이 **"엠바고 고려"**가 추가됨으로써 사용자님의 시스템은:
+
+1. **세력의 작전(가짜 뉴스 폭탄)**은 걸러내고,
+2. **진짜 중요한 발표(실적, CPI, 신제품)**는 누구보다 빠르게 포착하여,
+3. **"남들이 노이즈라고 생각할 때 시그널을 읽어내는"** 진짜 기관급 시스템이 되었습니다.
+
+완벽합니다. 이 로직을 포함하여 개발을 진행하십시오.

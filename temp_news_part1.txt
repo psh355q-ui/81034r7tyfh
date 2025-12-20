@@ -1,0 +1,417 @@
+﻿/**
+ * News Aggregation Tab
+ * 
+ * Features:
+ * - RSS 크롤링 트리거
+ * - AI 분석 트리거
+ * - 뉴스 목록 (필터링)
+ * - 분석 결과 표시
+ * - 통계 대시보드
+ */
+
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Newspaper,
+  RefreshCw,
+  Brain,
+  Filter,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  BarChart2,
+  Clock,
+} from 'lucide-react';
+import {
+  getNewsArticles,
+  getNewsStats,
+  getNewsDetail,
+  NewsArticle,
+  NewsStats,
+  NewsDetail,
+  getSentimentColor,
+  getSentimentBgColor,
+  getUrgencyColor,
+  formatMagnitude,
+  getTimeAgo,
+} from '../services/newsService';
+import { RssCrawlProgress } from '../components/News/RssCrawlProgress';
+import { AnalysisConfigModal } from '../components/News/AnalysisConfigModal';
+import { NewsBadges } from '../components/News/NewsBadges';
+
+export const NewsAggregation: React.FC = () => {
+  const queryClient = useQueryClient();
+
+  // State
+  const [selectedArticle, setSelectedArticle] = useState<NewsDetail | null>(null);
+  const [filters, setFilters] = useState({
+    sentiment: '' as '' | 'positive' | 'negative' | 'neutral' | 'mixed',
+    actionable_only: false,
+    hours: 24,
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCrawlProgress, setShowCrawlProgress] = useState(false);
+  const [showAnalysisConfig, setShowAnalysisConfig] = useState(false);
+  const [tickerSearch, setTickerSearch] = useState('');
+
+  // Queries
+  const { data: articles, isLoading: articlesLoading, refetch: refetchArticles } = useQuery({
+    queryKey: ['news-articles', filters],
+    queryFn: () => getNewsArticles({
+      limit: 50,
+      hours: filters.hours,
+      sentiment: filters.sentiment || undefined,
+      actionable_only: filters.actionable_only,
+    }),
+    refetchInterval: 60000, // 1분마다 새로고침
+  });
+
+  const { data: stats, refetch: refetchStats } = useQuery({
+    queryKey: ['news-stats'],
+    queryFn: getNewsStats,
+    refetchInterval: 60000,
+  });
+
+  // Crawl button handler
+  const handleCrawl = () => {
+    setShowCrawlProgress(true);
+  };
+
+  const handleCrawlComplete = () => {
+    setShowCrawlProgress(false);
+    refetchArticles();
+    refetchStats();
+  };
+
+  // Article detail query
+  const handleArticleClick = async (articleId: number) => {
+    try {
+      const detail = await getNewsDetail(articleId);
+      setSelectedArticle(detail);
+    } catch (err) {
+      console.error('Failed to load article detail:', err);
+    }
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <Newspaper className="text-blue-600" size={28} />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">뉴스 수집 및 분석</h1>
+            <p className="text-sm text-gray-600">RSS 크롤링 + Gemini 무료 AI 분석</p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center space-x-3">
+          {/* Ticker Search */}
+          <input
+            type="text"
+            placeholder="티커 검색 (예: AAPL)"
+            value={tickerSearch}
+            onChange={(e) => setTickerSearch(e.target.value.toUpperCase())}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {tickerSearch && (
+            <button
+              onClick={() => setTickerSearch('')}
+              className="text-gray-500 hover:text-gray-700 text-sm"
+            >
+              ✕ Clear
+            </button>
+          )}
+
+          <button
+            onClick={handleCrawl}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw size={16} />
+            <span>RSS 크롤링</span>
+          </button>
+
+          <button
+            onClick={() => setShowAnalysisConfig(true)}
+            disabled={stats?.unanalyzed_articles === 0}
+            className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            <Brain size={16} />
+            <span>AI 분석</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="전체 기사"
+            value={stats.total_articles}
+            icon={<Newspaper className="text-blue-500" />}
+          />
+          <StatCard
+            title="분석 완료"
+            value={stats.analyzed_articles}
+            subtitle={`미분석: ${stats.unanalyzed_articles}`}
+            icon={<Brain className="text-purple-500" />}
+          />
+          <StatCard
+            title="행동 가능"
+            value={stats.actionable_count}
+            icon={<TrendingUp className="text-green-500" />}
+          />
+          <StatCard
+            title="Gemini 사용량"
+            value={`${stats.gemini_usage.requests_used}/1500`}
+            subtitle={stats.gemini_usage.cost}
+            icon={<Zap className="text-yellow-500" />}
+          />
+        </div>
+      )}
+
+      {/* Sentiment Distribution */}
+      {stats && (
+        <div className="bg-white rounded-lg shadow p-4">
+          <h3 className="font-semibold mb-3">감정 분포</h3>
+          <div className="flex items-center space-x-4">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-green-600">긍정</span>
+                <span className="text-sm font-medium">{stats.sentiment_distribution.positive}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-green-500 h-2 rounded-full"
+                  style={{
+                    width: `${(stats.sentiment_distribution.positive / stats.analyzed_articles) * 100}%`
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-gray-600">중립</span>
+                <span className="text-sm font-medium">{stats.sentiment_distribution.neutral}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-gray-500 h-2 rounded-full"
+                  style={{
+                    width: `${(stats.sentiment_distribution.neutral / stats.analyzed_articles) * 100}%`
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-red-600">부정</span>
+                <span className="text-sm font-medium">{stats.sentiment_distribution.negative}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-red-500 h-2 rounded-full"
+                  style={{
+                    width: `${(stats.sentiment_distribution.negative / stats.analyzed_articles) * 100}%`
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
+        >
+          <div className="flex items-center space-x-2">
+            <Filter size={18} className="text-gray-600" />
+            <span className="font-medium">필터</span>
+          </div>
+          {showFilters ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+
+        {showFilters && (
+          <div className="p-4 border-t border-gray-200 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">감정</label>
+                <select
+                  value={filters.sentiment}
+                  onChange={e => setFilters(prev => ({ ...prev, sentiment: e.target.value as any }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="">전체</option>
+                  <option value="positive">긍정</option>
+                  <option value="negative">부정</option>
+                  <option value="neutral">중립</option>
+                  <option value="mixed">혼합</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">기간</label>
+                <select
+                  value={filters.hours}
+                  onChange={e => setFilters(prev => ({ ...prev, hours: parseInt(e.target.value) }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value={6}>최근 6시간</option>
+                  <option value={12}>최근 12시간</option>
+                  <option value={24}>최근 24시간</option>
+                  <option value={48}>최근 48시간</option>
+                  <option value={168}>최근 1주일</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={filters.actionable_only}
+                    onChange={e => setFilters(prev => ({ ...prev, actionable_only: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">행동 가능한 것만</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Articles List */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="font-semibold">뉴스 기사 ({articles?.filter(a => !tickerSearch || a.related_tickers?.some(t => t.includes(tickerSearch))).length || 0}개)</h3>
+          {tickerSearch && (
+            <p className="text-sm text-gray-600 mt-1">🔍 Filtering by ticker: <strong>{tickerSearch}</strong></p>
+          )}
+        </div>
+
+        <div className="divide-y divide-gray-200">
+          {articlesLoading ? (
+            <div className="p-8 text-center">
+              <RefreshCw size={24} className="animate-spin mx-auto text-gray-400" />
+              <p className="mt-2 text-gray-600">로딩 중...</p>
+            </div>
+          ) : articles?.filter(a => !tickerSearch || a.related_tickers?.some(t => t.includes(tickerSearch))).length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <Newspaper size={48} className="mx-auto mb-4 text-gray-300" />
+              <p>{tickerSearch ? `${tickerSearch} 관련 뉴스가 없습니다.` : '뉴스가 없습니다. RSS 크롤링을 실행해주세요.'}</p>
+            </div>
+          ) : (
+            articles
+              ?.filter(a => !tickerSearch || a.related_tickers?.some(t => t.includes(tickerSearch)))
+              .map(article => (
+                <NewsArticleItem
+                  key={article.id}
+                  article={article}
+                  onClick={() => handleArticleClick(article.id)}
+                  isSelected={selectedArticle?.id === article.id}
+                  onTickerClick={setTickerSearch}
+                />
+              ))
+          )}
+        </div>
+      </div>
+
+      {/* RSS Crawl Progress Modal */}
+      <RssCrawlProgress
+        isOpen={showCrawlProgress}
+        onClose={handleCrawlComplete}
+      />
+
+      {/* Analysis Config Modal */}
+      <AnalysisConfigModal
+        isOpen={showAnalysisConfig}
+        onClose={() => setShowAnalysisConfig(false)}
+      />
+
+      {/* Article Detail Modal */}
+      {selectedArticle && (
+        <NewsDetailModal
+          article={selectedArticle}
+          onClose={() => setSelectedArticle(null)}
+        />
+      )}
+
+
+    </div>
+  );
+};
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  subtitle?: string;
+  icon: React.ReactNode;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon }) => (
+  <div className="bg-white rounded-lg shadow p-4">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600">{title}</p>
+        <p className="text-2xl font-bold mt-1">{value}</p>
+        {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+      </div>
+      <div className="p-3 bg-gray-50 rounded-lg">{icon}</div>
+    </div>
+  </div>
+);
+
+interface NewsArticleItemProps {
+  article: NewsArticle;
+  onClick: () => void;
+  isSelected: boolean;
+  onTickerClick?: (ticker: string) => void;
+}
+
+const NewsArticleItem: React.FC<NewsArticleItemProps> = ({ article, onClick, isSelected, onTickerClick }) => (
+  <div
+    onClick={onClick}
+    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''
+      }`}
+  >
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <h4 className="font-medium text-gray-900 line-clamp-2">{article.title}</h4>
+        <div className="flex items-center space-x-3 mt-2 text-sm text-gray-500">
+          <span>{article.source}</span>
+          <span>•</span>
+          <span>{article.published_at ? getTimeAgo(article.published_at) : '날짜 없음'}</span>
+        </div>
+        {article.keywords.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {article.keywords.slice(0, 5).map((kw, i) => (
+              <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                {kw}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Analysis Badges */}
+        {article.has_analysis && (
+          <div className="mt-2">
+            <NewsBadges
+              sentiment={article.sentiment}
+              urgency={article.urgency}
+              actionable={article.actionable}
+            />
+          </div>
+        )}

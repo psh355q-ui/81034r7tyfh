@@ -1,0 +1,502 @@
+[
+  {
+    "ticker": "AAPL",
+    "risk_score": 0.15,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 1.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:47.480335",
+    "v1_result": {
+      "ticker": "AAPL",
+      "risk_score": 0.15,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 1.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:47.480335"
+    },
+    "v2_result": {
+      "ticker": "AAPL",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:47.768734",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.35,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "MSFT",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:47.769078",
+    "v1_result": {
+      "ticker": "MSFT",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:47.769078"
+    },
+    "v2_result": {
+      "ticker": "MSFT",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:47.856002",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "GOOGL",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:47.856193",
+    "v1_result": {
+      "ticker": "GOOGL",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:47.856193"
+    },
+    "v2_result": {
+      "ticker": "GOOGL",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:47.962450",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "AMZN",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:47.962627",
+    "v1_result": {
+      "ticker": "AMZN",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:47.962627"
+    },
+    "v2_result": {
+      "ticker": "AMZN",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.066184",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "META",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:48.066414",
+    "v1_result": {
+      "ticker": "META",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:48.066414"
+    },
+    "v2_result": {
+      "ticker": "META",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.161498",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "NVDA",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:48.161689",
+    "v1_result": {
+      "ticker": "NVDA",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:48.161689"
+    },
+    "v2_result": {
+      "ticker": "NVDA",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.251516",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "TSLA",
+    "risk_score": 0.15,
+    "risk_level": "MODERATE",
+    "categories": {
+      "legal": 1.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:48.251735",
+    "v1_result": {
+      "ticker": "TSLA",
+      "risk_score": 0.15,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 1.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:48.251735"
+    },
+    "v2_result": {
+      "ticker": "TSLA",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.343079",
+      "mode": "gemini"
+    },
+    "agreement": true,
+    "score_difference": 0.35,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "NFLX",
+    "risk_score": 0.045,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.3,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:48.343312",
+    "v1_result": {
+      "ticker": "NFLX",
+      "risk_score": 0.045,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.3,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:48.343312"
+    },
+    "v2_result": {
+      "ticker": "NFLX",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.436437",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.455,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "ADBE",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:48.436665",
+    "v1_result": {
+      "ticker": "ADBE",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:48.436665"
+    },
+    "v2_result": {
+      "ticker": "ADBE",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.523912",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "ticker": "CRM",
+    "risk_score": 0.0,
+    "risk_level": "LOW",
+    "categories": {
+      "legal": 0.0,
+      "regulatory": 0.0,
+      "operational": 0.0,
+      "labor": 0.0,
+      "governance": 0.0,
+      "reputation": 0.0
+    },
+    "reasoning": "Rule-based analysis: 3 headlines analyzed",
+    "mode": "dual",
+    "timestamp": "2025-11-12T12:47:48.524147",
+    "v1_result": {
+      "ticker": "CRM",
+      "risk_score": 0.0,
+      "risk_level": "LOW",
+      "categories": {
+        "legal": 0.0,
+        "regulatory": 0.0,
+        "operational": 0.0,
+        "labor": 0.0,
+        "governance": 0.0,
+        "reputation": 0.0
+      },
+      "reasoning": "Rule-based analysis: 3 headlines analyzed",
+      "mode": "rule_based",
+      "timestamp": "2025-11-12T12:47:48.524147"
+    },
+    "v2_result": {
+      "ticker": "CRM",
+      "risk_score": 0.5,
+      "risk_level": "MODERATE",
+      "categories": {
+        "legal": 0.5,
+        "regulatory": 0.5,
+        "management": 0.5,
+        "operational": 0.5,
+        "social": 0.5
+      },
+      "reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "timestamp": "2025-11-12T12:47:48.619260",
+      "mode": "gemini"
+    },
+    "agreement": false,
+    "score_difference": 0.5,
+    "v2_reasoning": "Error during analysis: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  }
+]

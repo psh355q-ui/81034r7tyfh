@@ -1,0 +1,564 @@
+/**
+ * War Room CSS - AI 토론 시각화 스타일
+ * 
+ * 카카오톡 스타일의 채팅 UI
+ * 
+ * 작성일: 2025-12-15
+ */
+
+.war-room {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 헤더 */
+.war-room-header {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+    padding: 24px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.war-room-header h2 {
+    margin: 0 0 8px 0;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.war-room-header .subtitle {
+    margin: 0 0 16px 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+/* 합의 레벨 */
+.consensus-meter {
+    margin-top: 16px;
+}
+
+.consensus-label {
+    color: #ffffff;
+    font-size: 12px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.consensus-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.consensus-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+    transition: width 0.5s ease;
+    border-radius: 4px;
+}
+
+/* 토론 메시지 영역 */
+.debate-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: #0f0f23;
+}
+
+.debate-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.debate-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.debate-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.debate-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-state p {
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+
+.btn-start-debate {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-start-debate:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-start-debate:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 메시지 */
+.message {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-left: 4px solid #667eea;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.message.decision {
+    background: linear-gradient(135deg, #2d3561 0%, #1f2847 100%);
+    border-left-width: 6px;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 메시지 헤더 */
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.agent-icon {
+    font-size: 24px;
+}
+
+.agent-name {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.agent-role {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+}
+
+.action-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    margin-left: auto;
+}
+
+.confidence {
+    color: #ffd700;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* 메시지 내용 */
+.message-content {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.message-content p {
+    margin: 0;
+}
+
+/* 타임스탬프 */
+.message-time {
+    margin-top: 8px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    text-align: right;
+}
+
+/* Constitutional 결과 */
+.constitutional-result {
+    background: linear-gradient(135deg, #2d3561 0%, #1f2847 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+    animation: slideIn 0.5s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.constitutional-result.pass {
+    border: 2px solid #4CAF50;
+}
+
+.constitutional-result.fail {
+    border: 2px solid #F44336;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.result-icon {
+    font-size: 32px;
+}
+
+.result-title {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.result-details {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.violations,
+.articles {
+    margin-bottom: 12px;
+}
+
+.violations strong,
+.articles strong {
+    color: #ffffff;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.violations ul,
+.articles ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.violations li,
+.articles li {
+    margin-bottom: 4px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* 푸터 통계 */
+.war-room-footer {
+    display: flex;
+    gap: 24px;
+    padding: 16px 24px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .war-room-header {
+        padding: 16px;
+    }
+
+    .war-room-header h2 {
+        font-size: 20px;
+    }
+
+    .debate-messages {
+        padding: 16px;
+    }
+
+    .message {
+        padding: 12px;
+    }
+
+    .agent-name {
+        font-size: 14px;
+    }
+
+    .war-room-footer {
+        gap: 16px;
+        padding: 12px 16px;
+    }
+
+    .stat-value {
+        font-size: 16px;
+    }
+}
+
+/* Article Cards */
+.article-cards {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.article-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #667eea;
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.2s;
+}
+
+.article-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.article-card .article-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.article-card .article-icon {
+    font-size: 20px;
+}
+
+.article-card .article-number {
+    font-weight: 700;
+    color: #ffd700;
+    font-size: 14px;
+}
+
+.article-card .article-title {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.article-card .article-description {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-left: 28px;
+}
+
+/* View Constitution Button */
+.view-constitution-btn {
+    margin-top: 16px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+}
+
+.view-constitution-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Constitution Modal */
+.constitution-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.constitution-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    max-width: 800px;
+    max-height: 90vh;
+    width: 90%;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.constitution-content .modal-header {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+    padding: 24px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.constitution-content .modal-header h2 {
+    margin: 0 0 8px 0;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.constitution-content .modal-subtitle {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.constitution-content .close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 24px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.constitution-content .close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.constitution-content .modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px);
+}
+
+.constitution-content .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.constitution-content .modal-body::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.constitution-content .modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.constitution-article {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #667eea;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+}
+
+.constitution-article:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.constitution-article .article-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.constitution-article .article-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+}
+
+.constitution-article h3 {
+    margin: 0 0 8px 0;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.constitution-article p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.constitution-footer {
+    text-align: center;
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.constitution-footer p {
+    margin: 0;
+    color: #ffd700;
+    font-size: 16px;
+    font-weight: 600;
+}

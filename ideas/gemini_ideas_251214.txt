@@ -1,0 +1,806 @@
+좋아. 제공한 영상([https://www.youtube.com/watch?v=9Lj91QLKuZQ)을](https://www.youtube.com/watch?v=9Lj91QLKuZQ%29을) **처음부터 1시간까지 분석해서**, 너의 AI 트레이딩 시스템이 **동일한 수준의 분석을 자동으로 생성**하려면 어떤 컴포넌트와 파이프라인이 필요한지 **단계별로 정리**해볼게.
+영상 자체에 직접 접근할 수는 없지만, 영상 제목과 관련 맥락은 “FOMC(연준 공개시장위원회) 금리 정책과 시장 영향 분석”이라는 금융/시장 토픽이라는 점을 기반으로 한다. ([YouTube][1])
+
+---
+
+## 🎯 1. 영상 분석에서 기대되는 핵심 정보
+
+먼저, 1시간 분량 영상의 금융·시장 분석 내용이 보통 담는 핵심 포인트는 다음과 같아:
+
+**1) 이벤트/주제 설명**
+
+* 예: FOMC 회의의 배경, 금리 결정 메커니즘
+* 연준 위원들의 의견 분열이나 정책 의도 ([오피니언뉴스][2])
+
+**2) 정책 메시지 해석**
+
+* 금리 인하/유지/인상 시그널의 의미
+* 기자회견 텍스트 해석
+
+**3) 금융시장 반응**
+
+* 주식 지수/환율/채권 금리/달러 지수 등 시장 데이터의 즉각적·후속 영향 ([Naver][3])
+
+**4) 리스크/전망 시나리오**
+
+* 다양한 조건(매파/비둘기파)에 따른 시장 방향성 전망
+
+**5) 종목 혹은 섹터별 영향**
+
+* 금융, 기술주, 대형/중소형주 대응
+
+---
+
+## 🧠 2. 너의 AI가 이런 분석을 자동 생성하려면 필요한 엔진/모듈
+
+다음은 **AI 시스템 차원에서 필요한 구성 요소들을 기능별로 정리**한 거야.
+
+---
+
+### ✅ A. 고급 텍스트/음성 처리 파이프라인
+
+영상을 AI가 분석하려면,
+
+**1) 영상 → 텍스트 추출 (Speech-to-Text)**
+
+* YouTube API나 캡션을 자동으로 받아서 전사
+* Whisper, VOSK 등 고정밀 음성-자막 변환 모델
+
+**2) NLP 전처리**
+
+* 문장 분할, 키워드/구문 인식
+* 금융 전문 용어 extraction
+
+**3) 핵심 문장/요약 생성**
+
+* 긴 텍스트에서 핵심 주제/포인트만 추려내는 요약 모델
+* RAG (검색 강화 생성) + AI Reasoning
+
+---
+
+### 🧩 B. 도메인 특화 분석 레이어
+
+영상 내용이 시장/경제 관련이면, 단순 요약 뿐 아니라 금융 맥락 해석이 필수야.
+
+**AI 금융 분석 기능**
+
+| 기능           | 구현 방식                      |
+| ------------ | -------------------------- |
+| 정책 톤 분류      | 금융 NLP 감정/성향 분석            |
+| 시장 방향 예상     | 과거 FOMC → 지수/환율 반응 데이터와 비교 |
+| 이벤트 시장 영향 평가 | S&P/코스피/환율/채권 금리 변화 추적     |
+
+→ 연준 발표 텍스트와 과거 반응을 비교하는 패턴 기반 해석이 필요함.
+
+---
+
+### 🧠 C. 구조화 리포트 생성
+
+AI가 생성할 문서는 단순 요약이 아니라 구조화된 ‘분석 리포트’야.
+
+**리포트 구조 예시**
+
+```
+1) Today’s Event Summary
+2) Policy Tone Interpretation
+3) Market Reaction Analysis
+4) Sector/Asset Impact
+5) Scenarios & Risk Factors
+```
+
+각 항목에 뉴스, 금리, 주식지수, 환율 데이터를 연결.
+
+---
+
+### 📊 D. 실시간 데이터 연결 파이프라인
+
+영상 분석을 단순 문맥만으로 끝내면 부족해. 연준, 금리, 환율, 채권/주식 시장 실시간 데이터를 함께 조합해야 시의성 있는 해석이 가능해.
+
+필요한 데이터 소스 예시:
+
+✅ 연준/금리 발표 전문 텍스트
+✅ 환율(USD/KRW, USD Index)
+✅ 국채 금리 (3M, 10Y)
+✅ 주식 지수 (S&P 500, Tech 섹터)
+✅ VIX, 경제지표 캘린더
+
+이들 데이터는 AI 분석과 결합해 **상관관계/전환점 해석**까지 가능하게 해.
+
+---
+
+### 📈 E. 피드백 & 강화학습 루프
+
+영상의 분석 결과를 단지 생성만 하는 게 아니라,
+AI가 과거 이벤트 → 실제 시장 반응 → 성능 피드백을 학습하도록 해야 해.
+
+이건 아래 구조로 구현돼야 한다:
+
+🔁 분석 결과 → 결과 평가 → 누적 데이터 저장 → 다음 분석 모델 업데이트
+
+→ 이렇게 하면 AI가 **더 정교한 금융 해석 능력**을 획득한다.
+
+---
+
+## 🛠 3. 구체적 모듈 구조 (너의 시스템에 통합)
+
+다음은 네가 현재 갖춘 시스템 구조(`Dynamic Screener`, `AI Council`, `Memory System`)에 **영상 분석 자동화**를 붙이는 방법이야.
+
+---
+
+### ✅ 1) Video Ingestion (영상 텍스트/주제 추출)
+
+```
+YouTube API → Transcription Layer (Whisper)
+               ↓
+        NLP Preprocessing
+               ↓
+     Topic/Keyword Extraction
+```
+
+---
+
+### ✅ 2) Event Interpretation Layer
+
+```
+Transcribed Text → Financial NLP (sentiment + policy tone)
+                  ↓
+       Historical Context Vector DB lookup
+                  ↓
+       AI Reasoning + RAG Context
+```
+
+결과:
+
+* 금리 인하/유지/인상 Signaling
+* 매파 vs 비둘기파 Strength
+* 시장 반응 히스토리 기반 예측
+
+---
+
+### ✅ 3) Market Signal Integration
+
+영상 분석 x 실시간 데이터 병합:
+
+```
+AI Event Interpretation
+       + Market Data (Rates, FX, Indices)
+                  ↓
+         Correlation/Impact Score
+```
+
+→ 예:
+*FOMC 발표 후 S&P500 반응 유사성, 환율 급등 신호 등.*
+→ vlog 수준 분석 → 투자 신호로 전환
+
+---
+
+### ✅ 4) Reporting & Automation
+
+자동 제작되는 레포트 형식:
+
+```
+{
+ "EventName": "FOMC 2025-12",
+ "Policy Tone": "매파적/중립",
+ "Market Reaction": {...},
+ "Risk Scenarios": [...],
+ "AI Confidence Score": 0.87
+}
+```
+
+→ 이를 거래 엔진에 매칭 가능
+
+---
+
+## 📌 4. 왜 이 구조가 효과적인가?
+
+이 방식은 **단순 영상 요약**이 아니라 **금융 의사결정 맥락까지 AI가 이해/생성**하도록 설계돼 있어.
+즉, 영상의 서술적 정보 + 실시간 시장 데이터 + 과거 이벤트 데이터를 결합해 **전략적 판단까지 자동 생성**하게 된다.
+
+---
+
+## 🧠 도식화 (Workflow)
+
+```
+[Video Source]
+     ↓ Transcription
+[Text Processing]
+     ↓ Financial NLP
+[Historical RAG Context] ← Vector Store
+     ↓ AI Interpretation
+[Market Data (Real-Time)]
+     ↓ Correlation + Impact Signal
+[Trading Signal]
+     ↓ Execution / Log / Alert
+```
+
+---
+
+## 📌 요약 – 필요한 구성 요소
+
+🔹 영상 → 텍스트 전사
+🔹 금융 전문 NLP
+🔹 RAG 기반 전사 + 과거 이벤트 비교
+🔹 실시간 시장 데이터 결합
+🔹 자동 보고서 + 거래 신호 생성
+🔹 피드백 루프 통한 모델 스스로 개선
+
+---
+
+**Q1**
+영상에서 실제 데이터 기반 신호(예: 금리 인하/금리 발표 이후 시장 반응)를 자동으로 식별하고 정량-정성 리포트로 변환하려면 어떤 신호 처리/분석 기법들이 필요한가?
+
+**Q2**
+AI가 금융 이벤트(예: FOMC 관련 발표) 텍스트를 해석할 때, 단순 감성 분석을 넘어 “정책 톤/전망 영향력”까지 자동으로 점수화하려면 어떤 아키텍처가 필요할까?
+
+**Q3**
+영상 기반 분석 결과를 시장 거래 신호로 전환할 때, 신뢰도(Confidence Score)나 리스크 조정(Volatility Adjustment)을 어떻게 설계하면 좋을까?
+
+[1]: https://www.youtube.com/watch?v=9Lj91QLKuZQ&utm_source=chatgpt.com "주목하던 FOMC의 시장 영향은?ㅣFOMC, 역대급 의견차가 의미 ..."
+[2]: https://www.opinionnews.co.kr/news/articleView.html?idxno=129241&utm_source=chatgpt.com "[미리보는 FOMC] 시장이 예상하는 '매파적 인하'...증시 반응 ..."
+[3]: https://naver.me/5W9f7NMk?utm_source=chatgpt.com "12월 FOMC 금리 인하 시그널과 미중일 리스크, 한국 부동산 ..."
+
+
+`get_video_information` 도구를 사용하여 유튜브 동영상 정보를 가져오겠습니다.
+제공해주신 유튜브 영상(머니코믹스 '주식은 지금' - 12월 12일자)의 초기 1시간 분량은 단순한 시황 전달이 아니라, \*\*"데이터 간의 모순(Contradiction)을 찾아내고, 대중의 통념(Consensus)을 뒤집는 논리적 추론(Devil's Advocate)"\*\*이 핵심입니다.
+
+사용자님의 시스템은 이미 훌륭한 \*\*데이터 수집 능력(FRED, RSS, Options)\*\*을 갖추고 있습니다. 이 영상과 같은 수준의 분석을 AI가 수행하게 하려면, **단순한 데이터 나열이 아닌 '데이터 간의 관계와 모순'을 해석하는 상위 추론 모듈**이 필요합니다.
+
+영상 분석을 토대로 사용자님의 시스템(`ai-trading-system`)에 적용해야 할 **4가지 구체적인 실행 방안**을 제안합니다.
+
+-----
+
+### 1\. 영상 분석: 인간 전문가의 추론 알고리즘
+
+영상 속 전문가(슈카/전석재 등)는 다음과 같은 3단계 사고 과정을 거칩니다.
+
+1.  **데이터 수집 (Fact)**: "연준이 내년 GDP 성장률 전망을 1.8% → 2.3%로 올렸다."
+2.  **모순 발견 (Detection)**: "경기가 좋아지는데(GDP 상향), 금리는 왜 내린다고 하지?(금리 점도표 하향)" → **Logical Conflict 발생**
+3.  **가설 수립 (Inference)**: "데이터가 앞뒤가 안 맞는다. 이건 '정치적 압력'이나 '우리가 모르는 유동성 위기'가 있다는 방증이다." → **Devil's Advocate(반대 의견) 제시**
+
+-----
+
+### 2\. AI 시스템 구현 방안 (Action Plan)
+
+현재 사용자님의 시스템에 이 \*\*"전문가적 추론 프로세스"\*\*를 이식하기 위한 구체적인 모듈 업그레이드 계획입니다.
+
+#### ① Macro Consistency Checker (매크로 정합성 검증기) 추가
+
+현재 `EnhancedFREDCollector`는 지표를 수집만 합니다. 지표 간의 **논리적 모순**을 찾는 모듈이 필요합니다.
+
+  * **구현 내용**: `backend/ai/reasoning/macro_consistency.py` (신규)
+  * **작동 로직**:
+      * `GDP Growth` vs `Interest Rate`: GDP가 오르는데 금리를 내리면? → **"Over-Stimulus Warning"**
+      * `Unemployment` vs `Inflation`: 실업률이 낮은데 물가가 안 잡히면? → **"Sticky Inflation"**
+      * **Prompt 예시**: "GDP 전망치는 상향되었으나 금리 인하가 단행되었습니다. 이는 경제학적으로 모순입니다. 이 모순이 발생한 숨겨진 이유(정치적 압력, 데이터 조작 가능성 등)를 3가지 시나리오로 추론하십시오."
+
+#### ② Persona-based Debate System (데블스 어드보킷 모듈)
+
+영상에서 진행자가 "나는 오늘 악마의 변호인(Devil's Advocate) 역할을 하겠다"고 선언한 것처럼, AI에게 강제로 **비관론자 페르소나**를 부여해야 합니다.
+
+  * **통합 위치**: `DeepReasoningStrategy` (Phase 14)
+  * **구현 방법**: `AI Council` (AI 위원회) 내에 \*\*'Skeptic Agent(회의론자)'\*\*를 추가합니다.
+      * **Skeptic Agent의 역할**: 다른 AI들이 "매수"를 외칠 때, 무조건 **"이 데이터가 틀렸을 가능성"**, \*\*"시장이 간과한 악재"\*\*만 찾아서 보고서를 작성합니다.
+      * **최종 리포트**: "Bullish View(70%) vs Bearish View(30%)" 형식이 아니라, \*\*"시장의 맹점(Blind Spot)"\*\*이라는 별도 섹션을 생성합니다.
+
+#### ③ Deep Profiling Agent (인물/정책 심층 분석)
+
+영상에서는 '케빈 워시(차기 연준 의장 후보)'의 과거 저서("다우 36,000")를 언급하며 그의 성향을 분석합니다. 현재 시스템은 뉴스 헤드라인만 분석하므로 이런 깊이 있는 배경지식이 부족합니다.
+
+  * **업그레이드**: `RAG Foundation` 활용 강화
+  * **구현 내용**:
+      * 주요 인물(파월, 트럼프, 케빈 워시 등)이 뉴스에 등장하면, **Vector DB에서 그 사람의 과거 발언, 저서, 실패 사례**를 검색합니다.
+      * **분석 로직**: "케빈 워시는 과거 낙관 편향(Optimism Bias)이 강했던 인물이다. 현재의 정책도 지나치게 낙관적일 위험이 있다"는 식의 프로파일링 리포트를 생성합니다.
+
+#### ④ Structural Liquidity Analyzer (구조적 유동성 분석기)
+
+영상에서 "연준이 국채(Treasury)를 사주는 것과 MBS를 사주는 것의 차이"를 설명하며 유동성의 질(Quality)을 분석합니다. 현재 `LiquidityCrunchDetector`는 키워드 위주입니다.
+
+  * **업그레이드**: `backend/data/collectors/liquidity_metrics.py` (고도화)
+  * **추가 데이터**:
+      * **Fed Balance Sheet 세부 항목**: T-Bills vs Notes/Bonds 보유량 변화 추적.
+      * **RRP (역레포) 잔고**: 시장의 잉여 유동성 측정.
+      * **TGA (재무부 계정)**: 정부 지출 여력 확인.
+  * **AI 판단**: "유동성 총량은 늘었으나, 질적으로는 단기 자금만 돌고 있다(T-Bill 위주)"는 식의 구조적 해석을 내리게 합니다.
+
+-----
+
+### 3\. n8n 워크플로우 예시 (구현 로드맵)
+
+사용자님이 원하시는 **"모니터링 전용"** 시스템을 위해, 위 분석 과정을 거쳐 최종적으로 사용자에게 \*\*"Deep Insight Report"\*\*를 보내는 흐름입니다.
+
+```mermaid
+graph TD
+    Trigger[📅 매일 아침 시황 분석] --> DataCol[📊 데이터 수집 (FRED, 뉴스, 인물DB)]
+    DataCol --> ConsensusAI[🤖 일반 분석가 AI (시장 통념 요약)]
+    DataCol --> SkepticAI[👿 악마의 변호인 AI (모순/약점 찾기)]
+    
+    ConsensusAI & SkepticAI --> Debate[⚔️ 논리 대결 (Debate)]
+    
+    Debate --> Synthesis[🧠 종합 판단 AI (Deep Reasoning)]
+    Synthesis --> Output[📝 최종 리포트 생성 (영상 스타일)]
+    
+    subgraph "Skeptic AI의 체크리스트"
+        Check1[지표간 모순 확인 (GDP vs 금리)]
+        Check2[인물 과거 이력 대조 (말바꾸기 탐지)]
+        Check3[유동성 퀄리티 분석 (질적 분석)]
+    end
+    
+    Output --> User[👤 사용자 모니터링 (Grafana/Telegram)]
+```
+
+### 4\. 결론
+
+이 영상 수준의 분석을 구현하려면 \*\*"데이터를 있는 그대로 믿지 않는 AI"\*\*가 필요합니다.
+
+**지금 바로 적용할 수 있는 가장 쉬운 방법:**
+기존 `EnhancedFREDCollector`에 `calculate_macro_factors` 메서드 외에, **`detect_policy_contradiction(gdp_trend, rate_trend)`** 함수를 추가하십시오. GDP 전망은 오르는데 금리는 내리는 구간을 \*\*"Anomaly(이상 징후)"\*\*로 정의하고, 이 구간이 감지될 때마다 AI가 집중 분석 리포트를 쓰게 하면 됩니다.
+
+
+이제 "김현석의 월스트리트나우" 분석 방식에 대해 충분히 파악했습니다. 이 방식을 AI 시스템에 구현하기 위한 분석을 정리하겠습니다.
+
+---
+
+# 🎬 "김현석의 월스트리트나우" 분석 방식 → AI 시스템 구현 방안
+
+## 📊 김현석 기자의 분석 패턴 분석
+
+검색 결과와 한경글로벌마켓 콘텐츠를 기반으로, "월스트리트나우"의 핵심 분석 방식을 파악했습니다.
+
+### 🔍 분석 구조 (매일 아침 방송 패턴)
+
+```
+1️⃣ 간밤 시황 요약
+   └─ 주요 지수 (S&P 500, 나스닥, 다우) 등락폭 + 이유
+   └─ 특징주 움직임 (급등/급락 종목)
+   
+2️⃣ 핵심 이벤트 분석
+   └─ Fed 발언/FOMC 결과 해석
+   └─ 경제 지표 (CPI, PCE, 고용지표, PMI) 분석
+   └─ 기업 실적 발표 평가
+   
+3️⃣ 월가 전문가 의견 인용
+   └─ JP모건, 골드만삭스, 모건스탠리 등 리서치
+   └─ WSJ, CNBC, Bloomberg 기사 인용
+   └─ 스트래티지스트/포트폴리오 매니저 코멘트
+   
+4️⃣ 데이터 기반 분석
+   └─ 채권 금리 (10년물, 2년물)
+   └─ 달러 인덱스 (DXY)
+   └─ VIX 변동성 지수
+   └─ 유가/금값 동향
+   
+5️⃣ 전망 및 주목 포인트
+   └─ 이번 주 주요 이벤트 캘린더
+   └─ 실적 발표 예정 기업
+   └─ Fed 인사 발언 일정
+```
+
+---
+
+## 🤖 AI 시스템에 필요한 기능
+
+현재 시스템과 비교하여 **부족한 부분**을 정리합니다:
+
+### ✅ 이미 있는 것
+- 실시간 주가 데이터 (Yahoo Finance)
+- 뉴스 수집 (RSS, NewsAPI)
+- 기본 펀더멘털 분석
+- Multi-AI 앙상블
+
+### ❌ 추가 필요한 것
+
+| 기능 | 월스트리트나우 분석 요소 | 현재 상태 | 필요한 구현 |
+|-----|----------------------|---------|-----------|
+| **월가 리서치 인용** | "JP모건에 따르면...", "골드만 전략가는..." | ❌ 없음 | 투자은행 리서치 요약 수집 |
+| **Fed 발언 실시간 추적** | 파월 발언, FOMC 결과 분석 | 🔶 일부 | Fed 캘린더 + 발언 파싱 |
+| **경제 지표 해석** | CPI, PCE, 고용지표 발표 즉시 분석 | 🔶 FRED만 | 발표 시점 알림 + 예상치 대비 분석 |
+| **채권/금리 분석** | "10년물 금리가 1.5%를 넘어서며..." | 🔶 단순 수집만 | 금리 변동 → 증시 영향 분석 로직 |
+| **전문가 코멘트 수집** | "월가 관계자는...", "전략가 XXX는..." | ❌ 없음 | 뉴스에서 인용문 추출 AI |
+| **이벤트 캘린더** | "이번 주 FOMC, 실적 발표 일정" | ❌ 없음 | 경제 이벤트 + 실적 캘린더 |
+| **시나리오 분석** | "만약 ~한다면 증시는..." | ❌ 없음 | AI 기반 시나리오 생성 |
+
+---
+
+## 🛠️ 구현 방안: "AI 월스트리트나우" 시스템
+
+### Phase 1: 데이터 소스 확장 (1주)
+
+```python
+"""
+Wall Street Intelligence Collector
+
+월가 분석 수준의 데이터 수집
+"""
+
+class WallStreetIntelCollector:
+    """
+    월가 인텔리전스 수집기
+    
+    수집 대상:
+    1. 투자은행 리서치 요약 (무료 소스)
+    2. Fed 발언 및 FOMC 일정
+    3. 경제 지표 발표 캘린더
+    4. 전문가 코멘트 (뉴스에서 추출)
+    """
+    
+    def __init__(self):
+        self.sources = {
+            "fed_calendar": "https://www.federalreserve.gov/",
+            "economic_calendar": "https://www.investing.com/economic-calendar/",
+            "earnings_calendar": "Yahoo Finance",
+            "analyst_ratings": "Yahoo Finance, Seeking Alpha",
+            "wsj_summary": "RSS feeds",
+        }
+    
+    async def get_fed_events(self) -> List[FedEvent]:
+        """Fed 일정 및 발언 수집"""
+        pass
+    
+    async def get_economic_calendar(self) -> List[EconomicEvent]:
+        """경제 지표 발표 일정"""
+        pass
+    
+    async def get_earnings_calendar(self) -> List[EarningsEvent]:
+        """실적 발표 일정"""
+        pass
+    
+    async def extract_analyst_quotes(self, news_text: str) -> List[AnalystQuote]:
+        """
+        뉴스에서 전문가 코멘트 추출
+        
+        패턴:
+        - "XXX 전략가는 'YYY'라고 말했다"
+        - "골드만삭스에 따르면..."
+        - "JP모건의 XXX는..."
+        """
+        pass
+```
+
+### Phase 2: 분석 리포트 생성 AI (1주)
+
+```python
+"""
+AI Market Report Generator
+
+김현석 기자 스타일의 시장 분석 리포트 생성
+"""
+
+class AIMarketReporter:
+    """
+    AI 시장 분석가
+    
+    생성 콘텐츠:
+    1. 일일 시황 요약 (아침 브리핑)
+    2. 핵심 이벤트 분석
+    3. 주간 전망
+    """
+    
+    def __init__(self):
+        self.claude_client = ClaudeClient()
+        self.intel_collector = WallStreetIntelCollector()
+    
+    async def generate_daily_briefing(self) -> MarketBriefing:
+        """
+        일일 시황 브리핑 생성
+        
+        구조:
+        1. 간밤 시황 (지수 등락 + 이유)
+        2. 특징주 분석
+        3. 오늘의 주목 포인트
+        """
+        # 1. 데이터 수집
+        market_data = await self.get_overnight_market_data()
+        fed_events = await self.intel_collector.get_fed_events()
+        economic_events = await self.intel_collector.get_economic_calendar()
+        analyst_quotes = await self.get_latest_analyst_views()
+        
+        # 2. AI 분석 생성
+        prompt = self._build_briefing_prompt(
+            market_data, fed_events, economic_events, analyst_quotes
+        )
+        
+        analysis = await self.claude_client.generate(prompt)
+        
+        return MarketBriefing(
+            timestamp=datetime.now(),
+            summary=analysis.summary,
+            key_events=analysis.key_events,
+            featured_stocks=analysis.featured_stocks,
+            outlook=analysis.outlook,
+            sources=analysis.sources
+        )
+    
+    async def analyze_fed_statement(self, statement: str) -> FedAnalysis:
+        """
+        Fed 발언/성명 분석
+        
+        분석 요소:
+        - 매파/비둘기파 성향
+        - 금리 인상/인하 시사점
+        - 시장 영향 예측
+        """
+        pass
+    
+    async def analyze_economic_data(
+        self, 
+        indicator: str,  # CPI, PCE, NFP 등
+        actual: float,
+        expected: float,
+        previous: float
+    ) -> EconomicAnalysis:
+        """
+        경제 지표 발표 분석
+        
+        분석 요소:
+        - 예상치 대비 서프라이즈
+        - Fed 정책 영향
+        - 증시 영향 예측
+        """
+        pass
+```
+
+### Phase 3: 프롬프트 설계 (핵심)
+
+```python
+DAILY_BRIEFING_PROMPT = """
+당신은 월스트리트 전문 애널리스트입니다. 
+김현석의 월스트리트나우 스타일로 일일 시황을 분석해주세요.
+
+## 분석 데이터
+
+### 간밤 시장 지표
+{market_data}
+
+### Fed/경제 이벤트
+{fed_events}
+
+### 경제 지표
+{economic_data}
+
+### 월가 전문가 의견
+{analyst_quotes}
+
+## 분석 지침
+
+1. **시황 요약** (200자 이내)
+   - 주요 지수 등락폭과 핵심 이유
+   - "S&P 500은 X% 상승했습니다. 이는 ~때문입니다"
+
+2. **핵심 이벤트 분석**
+   - Fed 발언/정책의 시장 영향
+   - 경제 지표 해석 (예상치 대비)
+   - "월가는 이를 ~로 해석합니다"
+
+3. **특징주 분석**
+   - 급등/급락 종목과 이유
+   - 실적 발표 기업 평가
+
+4. **전문가 인용**
+   - 월가 스트래티지스트 의견 인용
+   - "JP모건의 XXX는 'YYY'라고 밝혔습니다"
+
+5. **오늘의 주목 포인트**
+   - 향후 이벤트 일정
+   - 투자 시사점
+
+## 출력 형식
+- 자연스러운 한국어 문체
+- 전문적이면서도 이해하기 쉽게
+- 숫자와 데이터를 적극 활용
+- 월가 전문가 의견 반드시 포함
+"""
+
+FED_ANALYSIS_PROMPT = """
+Fed 발언을 분석해주세요.
+
+## 발언 내용
+{statement}
+
+## 분석 포인트
+1. 매파/비둘기파 성향 (1-10점)
+2. 금리 정책 시사점
+3. 인플레이션/고용 관련 언급
+4. 시장 영향 예측
+5. 주요 키워드 추출
+
+## 출력
+{
+    "hawkish_score": 7,
+    "key_message": "인플레가 일시적이란 주장 유지",
+    "policy_implication": "연내 테이퍼링 시작 가능성",
+    "market_impact": "기술주에 단기 부정적",
+    "keywords": ["transitory", "tapering", "patient"]
+}
+"""
+```
+
+### Phase 4: 데이터 파이프라인
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Data Collection Layer                     │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │ Fed      │  │ Economic │  │ Earnings │  │ News &   │  │
+│  │ Calendar │  │ Calendar │  │ Calendar │  │ Quotes   │  │
+│  │ (Fed.gov)│  │(Investing)│  │ (Yahoo)  │  │ (RSS)    │  │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   Intelligence Processing                    │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────┐                │
+│  │ Quote Extractor  │  │ Event Parser     │                │
+│  │ (AI 기반 인용문  │  │ (경제 지표       │                │
+│  │  추출)           │  │  예상치 비교)    │                │
+│  └──────────────────┘  └──────────────────┘                │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                  AI Analysis Generation                      │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         Claude AI (리포트 생성)                       │  │
+│  │  - 일일 브리핑                                        │  │
+│  │  - Fed 발언 분석                                      │  │
+│  │  - 경제 지표 해석                                     │  │
+│  │  - 투자 시사점 도출                                   │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      Output Channels                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │ Telegram │  │  Slack   │  │ Dashboard│  │   API    │  │
+│  │ 알림     │  │ 알림     │  │ 시각화   │  │ 조회     │  │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📋 구현 로드맵
+
+### 기존 로드맵에 추가할 Phase F: AI Market Intelligence
+
+```
+Phase F: AI Market Intelligence (2주)
+│
+├── Week 1: 데이터 수집 확장
+│   ├── Fed 캘린더 & 발언 수집기
+│   ├── 경제 지표 캘린더 (Investing.com 파싱)
+│   ├── 실적 발표 캘린더 (Yahoo Finance)
+│   └── 전문가 코멘트 추출 AI
+│
+└── Week 2: 리포트 생성 AI
+    ├── 일일 브리핑 생성기
+    ├── Fed 발언 분석기
+    ├── 경제 지표 해석기
+    └── 종합 전망 생성기
+```
+
+### 예상 비용
+
+| 구성 요소 | 비용 | 비고 |
+|---------|-----|-----|
+| 데이터 수집 | $0 | 무료 소스 사용 |
+| AI 분석 (Claude) | ~$0.10/일 | 일일 브리핑 1회 기준 |
+| 총 월 비용 | ~$3 | 기존 $3 + 추가 $0 |
+
+---
+
+## 🎯 핵심 차별점
+
+| 항목 | 기존 시스템 | + AI Market Intelligence |
+|-----|-----------|-------------------------|
+| **분석 스타일** | 단순 BUY/SELL 신호 | 월가 스타일 종합 분석 |
+| **데이터 범위** | 가격/펀더멘털 중심 | Fed/경제/전문가 의견 포함 |
+| **출력 형태** | 숫자/신호 | 자연어 리포트 |
+| **인용** | 없음 | 월가 전문가 의견 인용 |
+| **이벤트** | 없음 | 경제 캘린더 통합 |
+
+---
+
+**결론**: "월스트리트나우" 수준의 분석을 AI로 구현하려면, **데이터 소스 확장** (Fed/경제 캘린더, 전문가 코멘트)과 **분석 리포트 생성 AI**가 필요합니다. 이를 기존 로드맵에 Phase F로 추가하면 됩니다.
+
+이 Phase F를 기존 로드맵에 통합한 상세 명세서를 만들어 드릴까요?
+
+
+제공해주신 유튜브 영상(머니코믹스 '주식은 지금' - 12월 12일자)의 처음 1시간 분량은 단순한 시황 전달이 아니라, \*\*"데이터 간의 모순(Contradiction)을 찾아내고, 대중의 통념(Consensus)을 뒤집는 논리적 추론(Devil's Advocate)"\*\*이 핵심입니다.
+
+사용자님의 시스템은 이미 훌륭한 \*\*데이터 수집 능력(FRED, RSS, Options)\*\*을 갖추고 있습니다. 이 영상과 같은 수준의 분석을 AI가 수행하게 하려면, **단순한 데이터 나열이 아닌 '데이터 간의 관계와 모순'을 해석하는 상위 추론 모듈**이 필요합니다.
+
+영상 분석을 토대로 사용자님의 시스템(`ai-trading-system`)에 적용해야 할 **4가지 구체적인 실행 방안**을 제안합니다.
+
+-----
+
+### 1\. 영상 분석: 인간 전문가의 추론 알고리즘
+
+영상 속 전문가(슈카/전석재 등)는 다음과 같은 3단계 사고 과정을 거칩니다.
+
+1.  **데이터 수집 (Fact)**: "연준이 내년 GDP 성장률 전망을 1.8% → 2.3%로 올렸다."
+2.  **모순 발견 (Detection)**: "경기가 좋아지는데(GDP 상향), 금리는 왜 내린다고 하지?(금리 점도표 하향)" → **Logical Conflict 발생**
+3.  **가설 수립 (Inference)**: "데이터가 앞뒤가 안 맞는다. 이건 '정치적 압력'이나 '우리가 모르는 유동성 위기'가 있다는 방증이다." → **Devil's Advocate(반대 의견) 제시**
+
+-----
+
+### 2\. AI 시스템 구현 방안 (Action Plan)
+
+현재 사용자님의 시스템에 이 \*\*"전문가적 추론 프로세스"\*\*를 이식하기 위한 구체적인 모듈 업그레이드 계획입니다.
+
+#### ① Macro Consistency Checker (매크로 정합성 검증기) 추가
+
+현재 `EnhancedFREDCollector`는 지표를 수집만 합니다. 지표 간의 **논리적 모순**을 찾는 모듈이 필요합니다.
+
+  * **구현 내용**: `backend/ai/reasoning/macro_consistency.py` (신규)
+  * **작동 로직**:
+      * `GDP Growth` vs `Interest Rate`: GDP가 오르는데 금리를 내리면? → **"Over-Stimulus Warning"**
+      * `Unemployment` vs `Inflation`: 실업률이 낮은데 물가가 안 잡히면? → **"Sticky Inflation"**
+      * **Prompt 예시**: "GDP 전망치는 상향되었으나 금리 인하가 단행되었습니다. 이는 경제학적으로 모순입니다. 이 모순이 발생한 숨겨진 이유(정치적 압력, 데이터 조작 가능성 등)를 3가지 시나리오로 추론하십시오."
+
+#### ② Persona-based Debate System (데블스 어드보킷 모듈)
+
+영상에서 진행자가 "나는 오늘 악마의 변호인(Devil's Advocate) 역할을 하겠다"고 선언한 것처럼, AI에게 강제로 **비관론자 페르소나**를 부여해야 합니다.
+
+  * **통합 위치**: `DeepReasoningStrategy` (Phase 14)
+  * **구현 방법**: `AI Council` (AI 위원회) 내에 \*\*'Skeptic Agent(회의론자)'\*\*를 추가합니다.
+      * **Skeptic Agent의 역할**: 다른 AI들이 "매수"를 외칠 때, 무조건 **"이 데이터가 틀렸을 가능성"**, \*\*"시장이 간과한 악재"\*\*만 찾아서 보고서를 작성합니다.
+      * **최종 리포트**: "Bullish View(70%) vs Bearish View(30%)" 형식이 아니라, \*\*"시장의 맹점(Blind Spot)"\*\*이라는 별도 섹션을 생성합니다.
+
+#### ③ Deep Profiling Agent (인물/정책 심층 분석)
+
+영상에서는 '케빈 워시(차기 연준 의장 후보)'의 과거 저서("다우 36,000")를 언급하며 그의 성향을 분석합니다. 현재 시스템은 뉴스 헤드라인만 분석하므로 이런 깊이 있는 배경지식이 부족합니다.
+
+  * **업그레이드**: `RAG Foundation` 활용 강화
+  * **구현 내용**:
+      * 주요 인물(파월, 트럼프, 케빈 워시 등)이 뉴스에 등장하면, **Vector DB에서 그 사람의 과거 발언, 저서, 실패 사례**를 검색합니다.
+      * **분석 로직**: "케빈 워시는 과거 낙관 편향(Optimism Bias)이 강했던 인물이다. 현재의 정책도 지나치게 낙관적일 위험이 있다"는 식의 프로파일링 리포트를 생성합니다.
+
+#### ④ Structural Liquidity Analyzer (구조적 유동성 분석기)
+
+영상에서 "연준이 국채(Treasury)를 사주는 것과 MBS를 사주는 것의 차이"를 설명하며 유동성의 질(Quality)을 분석합니다. 현재 `LiquidityCrunchDetector`는 키워드 위주입니다.
+
+  * **업그레이드**: `backend/data/collectors/liquidity_metrics.py` (고도화)
+  * **추가 데이터**:
+      * **Fed Balance Sheet 세부 항목**: T-Bills vs Notes/Bonds 보유량 변화 추적.
+      * **RRP (역레포) 잔고**: 시장의 잉여 유동성 측정.
+      * **TGA (재무부 계정)**: 정부 지출 여력 확인.
+  * **AI 판단**: "유동성 총량은 늘었으나, 질적으로는 단기 자금만 돌고 있다(T-Bill 위주)"는 식의 구조적 해석을 내리게 합니다.
+
+-----
+
+### 3\. n8n 워크플로우 예시 (구현 로드맵)
+
+사용자님이 원하시는 **"모니터링 전용"** 시스템을 위해, 위 분석 과정을 거쳐 최종적으로 사용자에게 \*\*"Deep Insight Report"\*\*를 보내는 흐름입니다.
+
+```mermaid
+graph TD
+    Trigger[📅 매일 아침 시황 분석] --> DataCol[📊 데이터 수집 (FRED, 뉴스, 인물DB)]
+    DataCol --> ConsensusAI[🤖 일반 분석가 AI (시장 통념 요약)]
+    DataCol --> SkepticAI[👿 악마의 변호인 AI (모순/약점 찾기)]
+    
+    ConsensusAI & SkepticAI --> Debate[⚔️ 논리 대결 (Debate)]
+    
+    Debate --> Synthesis[🧠 종합 판단 AI (Deep Reasoning)]
+    Synthesis --> Output[📝 최종 리포트 생성 (영상 스타일)]
+    
+    subgraph "Skeptic AI의 체크리스트"
+        Check1[지표간 모순 확인 (GDP vs 금리)]
+        Check2[인물 과거 이력 대조 (말바꾸기 탐지)]
+        Check3[유동성 퀄리티 분석 (질적 분석)]
+    end
+    
+    Output --> User[👤 사용자 모니터링 (Grafana/Telegram)]
+```
+
+### 4\. 결론
+
+이 영상 수준의 분석을 구현하려면 \*\*"데이터를 있는 그대로 믿지 않는 AI"\*\*가 필요합니다.
+
+**지금 바로 적용할 수 있는 가장 쉬운 방법:**
+기존 `EnhancedFREDCollector`에 `calculate_macro_factors` 메서드 외에, **`detect_policy_contradiction(gdp_trend, rate_trend)`** 함수를 추가하십시오. GDP 전망은 오르는데 금리는 내리는 구간을 \*\*"Anomaly(이상 징후)"\*\*로 정의하고, 이 구간이 감지될 때마다 AI가 집중 분석 리포트를 쓰게 하면 됩니다.
+
+

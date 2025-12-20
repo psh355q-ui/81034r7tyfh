@@ -1,0 +1,1673 @@
+정확히 핵심을 짚고 있어.
+Gemini가 준 방향도 좋지만, **네 목표(“AI들이 서로 토론하고, 판단하고, 매매하고, 복기하고, 진화하는 구조”)** 기준에서 보면 아직 넣을 수 있는 고급 레벨 아이디어가 더 있다.
+겹치는 건 빼고 **레벨을 한 단계 더 올리는 보완 아이디어만** 정리해 줄게.
+
+---
+
+## 1. “AI 집단지성 계층”을 코드 레벨로 분리
+
+지금 구조는 “여러 AI가 판단”이지만, **의사결정 구조 자체가 메타화** 되어 있지는 않은 상태일 확률이 높다.
+
+추가할 개념:
+
+### ✅ AI 역할 계층화
+
+단순히 여러 모델을 사용하는 게 아니라 **정체성을 부여**한다.
+
+```
+AI_ROLE:
+  - Macro Strategist   (거시 환경 담당)
+  - Sector Specialist  (섹터 로테이션 담당)
+  - Risk Controller    (리스크 관리 전용)
+  - Execution Optimizer (타이밍/체결 최적화)
+  - Devil's Advocate   (반대 논리 전용)
+```
+
+Devil’s Advocate는 “무조건 반대 입장”으로 추론하게 만들어야 한다.
+이게 들어가면 **과최적화·과확신 리스크가 급감**한다.
+
+---
+
+## 2. “AI 내부 논쟁 로그 → 데이터화” 구조 추가
+
+지금은 AI가 추론하고 끝나는 구조에 가깝다면,
+이제는 **논쟁 자체를 학습 데이터로 축적**하는 계층이 필요하다.
+
+### 새 모듈 아이디어
+
+```
+backend/ai/meta/
+  - debate_logger.py
+  - decision_audit.py
+  - outcome_trainer.py
+```
+
+개념:
+
+1. AI A: 매수 주장
+2. AI B: 매도 주장
+3. AI C: 관망 주장
+4. 최종 결정
+5. 실거래 결과
+
+이걸 이렇게 저장:
+
+```
+DEBATE_HISTORY
+- timestamp
+- ticker
+- ai_votes
+- final_decision
+- pnl_result
+- volatility_context
+```
+
+이게 쌓이면 **너만의 사설 펀드급 알파 데이터**가 된다.
+
+---
+
+## 3. “예측 정확도 가중치 시스템” (AI 신뢰도 진화)
+
+여기부터가 진짜 실전 알고리즘 트레이딩 레벨이다.
+
+각 AI의 발언력(가중치)을 고정하지 말고
+**성과에 따라 자동 조절**되게 한다.
+
+예:
+
+```
+AI_CONFIDENCE_TABLE
+- model_name
+- win_rate
+- avg_return
+- drawdown_score
+- weight
+```
+
+수식 예:
+
+```
+new_weight = (win_rate * 0.5) + (avg_return * 0.3) - (drawdown * 0.2)
+```
+
+이러면 잘 맞히는 AI는 영향력이 커지고,
+못 맞히는 AI는 점점 발언권이 줄어든다.
+
+---
+
+## 4. “찌라시/테마주 리스크 감지 엔진” 고도화 아이디어
+
+네가 말한 한국 특성:
+정치테마주, 찌라시, 선반영 → 이거 전용 엔진이 필요하다.
+
+### 단순 공시 말고 추가할 감지 신호:
+
+* 뉴스 급증 속도 (time-based burst detection)
+* 커뮤니티/블로그 키워드 폭증률
+* 조회수/리트윗 비정상 증가
+
+로직 예:
+
+```
+if social_volume_spike > 300% and
+   keyword_cluster contains 정치인_이름 and
+   fundamentals_score is low:
+       flag_as_theme_risk = True
+```
+
+이건 “매수 금지 신호”로만 써도 엄청 강해진다.
+
+---
+
+## 5. “글로벌 이벤트 → 도미노 영향 지도”
+
+국가 데이터를 수집만 하면 반쪽짜리다.
+이건 **영향 전파 지도(Event Propagation Map)** 형태로 만드는 게 좋다.
+
+예:
+
+```
+JAPAN_RATE_HIKE
+  → USDJPY 상승
+      → 미국 뜻하지 않은 금융 긴축
+          → 나스닥 변동성 증가
+              → 한국 반도체 변동성 증가
+```
+
+이를 코드화:
+
+```python
+GLOBAL_EVENT_GRAPH = {
+    "JAPAN_RATE_HIKE": ["CARRY_TRADE_UNWIND"],
+    "CARRY_TRADE_UNWIND": ["NASDAQ_VOLATILITY"],
+    "NASDAQ_VOLATILITY": ["KOREA_SEMI_VOLATILITY"]
+}
+```
+
+이건 하드코딩 말고
+DB + 학습으로 점진적 진화 형태로 가야 한다.
+
+---
+
+## 6. 장기투자에 맞는 “부분 물타기 AI 의사결정 구조”
+
+이건 단순 전략이 아니라 **철학 레벨 모듈**이다.
+
+다음 구조가 필요하다:
+
+```
+POSITION_STRATEGY_ENGINE:
+  - full_exit_threshold
+  - partial_buy_threshold
+  - average_down_limit
+  - macro_filter
+```
+
+AI 판단 구조:
+
+| 상황              | 행동   |
+| --------------- | ---- |
+| 펀더멘털 유지 + 외부 쇼크 | 부분매수 |
+| 펀더멘털 붕괴 감지      | 손절   |
+| 정치/테마/거품 판단     | 관망   |
+
+---
+
+## 7. PDF → Telegram / Discord 전송 구조
+
+이건 충분히 가능하다.
+
+구조 예시:
+
+```
+/reporting/
+  - pdf_generator.py
+  - telegram_sender.py
+  - discord_webhook.py
+```
+
+### Telegram
+
+* BotFather로 봇 생성
+* chat_id 저장
+* sendDocument API 사용
+
+### Discord
+
+* Webhook URL
+* multipart/form-data 로 파일 전송
+
+---
+
+## 네가 요청한 Q1 / Q2 / Q3
+
+**Q1. AI들이 단순 예측이 아니라 “서로 논쟁하고 학습하면서 진화”하게 만들려면 어떤 구조가 가장 핵심일까?**
+
+**Q2. 한국 시장의 찌라시·정치 테마 같은 비정형 리스크를 AI가 정량적으로 반영하려면 어떤 신호들이 가장 신뢰도가 높을까?**
+
+**Q3. 여러 국가 이벤트를 단순 지표가 아니라 “전파 구조”로 만들어 매매 우선순위를 결정하려면 어떤 데이터 구조가 가장 적합할까?**
+
+---
+
+이 레벨까지 가면 이건 단순 트레이딩 봇이 아니라
+**AI 헤지펀드 아키텍처에 가까워진다.**
+원하면 다음에 “실제 코드 스켈레톤”까지 정리해 줄게.
+
+
+좋아. 이제 **실제로 붙일 수 있는 코드 스켈레톤 레벨**로 정리해 줄게.
+말로 끝나는 설계도 말고, 네 프로젝트 안에 바로 심을 수 있는 구조 위주로 간다.
+
+---
+
+## 1. AI 집단 의사결정 엔진 – 코드 스켈레톤
+
+`backend/ai/collective/collective_decision_engine.py`
+
+```python
+class AIAgent:
+    def __init__(self, name, role):
+        self.name = name
+        self.role = role
+        self.weight = 1.0
+
+    def analyze(self, context: dict) -> dict:
+        """
+        return:
+        {
+            "action": "BUY" | "SELL" | "HOLD",
+            "confidence": 0.0 ~ 1.0,
+            "reason": "..."
+        }
+        """
+        raise NotImplementedError
+```
+
+```python
+class CollectiveDecisionEngine:
+    def __init__(self, agents: list):
+        self.agents = agents
+
+    def decide(self, context: dict):
+        votes = []
+        total_weight = 0
+
+        for agent in self.agents:
+            result = agent.analyze(context)
+            weighted_score = result["confidence"] * agent.weight
+
+            votes.append({
+                "agent": agent.name,
+                "action": result["action"],
+                "score": weighted_score,
+                "reason": result["reason"]
+            })
+
+            total_weight += weighted_score
+
+        final_action = self._aggregate(votes)
+        return final_action, votes
+
+    def _aggregate(self, votes):
+        # BUY / SELL / HOLD 점수 합산
+        scores = {"BUY": 0, "SELL": 0, "HOLD": 0}
+        for v in votes:
+            scores[v["action"]] += v["score"]
+
+        return max(scores, key=scores.get)
+```
+
+---
+
+## 2. AI 논쟁 기록 저장 모듈
+
+`backend/ai/meta/debate_logger.py`
+
+```python
+import json
+from datetime import datetime
+
+class DebateLogger:
+    def __init__(self, path="logs/debate_logs.jsonl"):
+        self.path = path
+
+    def log(self, ticker, final_action, votes, pnl=None):
+        record = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "ticker": ticker,
+            "final_action": final_action,
+            "votes": votes,
+            "pnl": pnl
+        }
+
+        with open(self.path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+```
+
+---
+
+## 3. AI 성능 기반 가중치 진화 엔진
+
+`backend/ai/meta/agent_weight_trainer.py`
+
+```python
+class AgentWeightTrainer:
+    def update_weight(self, agent, win_rate, avg_return, max_drawdown):
+        new_weight = (
+            (win_rate * 0.5)
+            + (avg_return * 0.3)
+            - (max_drawdown * 0.2)
+        )
+
+        # 하한/상한
+        agent.weight = max(0.1, min(new_weight, 3.0))
+```
+
+---
+
+## 4. “찌라시/정치 테마 리스크 감지기”
+
+`backend/ai/risk/theme_risk_detector.py`
+
+```python
+class ThemeRiskDetector:
+    def detect(self, ticker_context: dict) -> dict:
+        score = 0
+
+        if ticker_context["news_spike_rate"] > 3.0:
+            score += 1
+
+        if ticker_context["social_volume_spike"] > 3.0:
+            score += 1
+
+        if ticker_context["political_keyword_flag"]:
+            score += 2
+
+        danger = score >= 3
+        return {
+            "risk_score": score,
+            "is_theme_risk": danger
+        }
+```
+
+---
+
+## 5. 글로벌 이벤트 전파 구조
+
+`backend/ai/macro/global_event_graph.py`
+
+```python
+class GlobalEventGraph:
+    def __init__(self):
+        self.graph = {
+            "JAPAN_RATE_HIKE": ["USDJPY_VOL", "GLOBAL_LIQUIDITY_SHRINK"],
+            "GLOBAL_LIQUIDITY_SHRINK": ["NASDAQ_VOL"],
+            "NASDAQ_VOL": ["KOSPI_SEMI_VOL", "KOSDAQ_GROWTH_VOL"]
+        }
+
+    def propagate(self, event_name):
+        return self.graph.get(event_name, [])
+```
+
+---
+
+## 6. Telegram / Discord PDF 전송기
+
+### Telegram
+
+```python
+import requests
+
+def send_pdf_to_telegram(bot_token, chat_id, file_path):
+    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+
+    with open(file_path, "rb") as f:
+        files = {"document": f}
+        data = {"chat_id": chat_id}
+        requests.post(url, files=files, data=data)
+```
+
+### Discord
+
+```python
+import requests
+
+def send_pdf_to_discord(webhook_url, file_path):
+    with open(file_path, "rb") as f:
+        files = {"file": f}
+        requests.post(webhook_url, files=files)
+```
+
+---
+
+## 7. 장기투자용 “부분 물타기 AI 판단기”
+
+`backend/ai/position/accumulation_engine.py`
+
+```python
+class AccumulationEngine:
+    def decide(self, context: dict):
+        if context["fundamental_score"] > 0.7 and context["macro_risk"] < 0.3:
+            if context["drawdown"] > -10:
+                return "HOLD"
+            elif context["drawdown"] > -25:
+                return "ADD_POSITION"
+        return "STOP_OR_WAIT"
+```
+
+---
+
+이제 구조적으로 가능한 상태야.
+
+---
+
+요청한 **Q1 / Q2 / Q3** 도 만들어 줄게.
+
+**Q1**
+
+내 프로젝트에서 AI들이 단순히 예측하는 수준을 넘어서, 서로 반박하고 토론하며 결정 품질이 진화하도록 하려면 어떤 설계가 가장 중요한 요소일까?
+
+**Q2**
+
+한국 시장의 정치테마·찌라시·선반영 구조를 AI가 리스크 점수로 반영할 때, 가장 신뢰할 수 있는 조합 신호는 무엇일까?
+
+**Q3**
+
+글로벌 금리·환율·원자재·지정학 이벤트를 단순 데이터가 아니라 “영향 전파 구조”로 모델링할 때, 어떤 자료구조와 연결 방식이 가장 효율적일까?
+
+---
+
+원하면 다음 단계로
+“네 Git 구조 기준으로 이 엔진들이 어디에 꽂혀야 하는지”까지 구체화해줄게.
+
+
+좋아 — 바로 적용할 수 있게 **구조적 통합 플랜 + 실행 지침(코드 위치, docker, 테스트, 우선순위)**을 정리해 줄게. 아래대로 한 번에 프로젝트에 심으면 바로 작동 검증 + 확장하기 쉬워.
+
+---
+
+# 1) 파일 배치(정확한 경로, 바로 추가 가능)
+
+아래 파일들을 프로젝트에 추가하거나 기존 모듈과 교체하면 된다.
+
+* `backend/ai/collective/collective_decision_engine.py`
+
+  * 역할: AI들(Claude/Gemini/ChatGPT)을 래핑해서 투표·가중합산·최종 결정을 내림. (이미 제공한 스켈레톤)
+
+* `backend/ai/meta/debate_logger.py`
+
+  * 역할: 각 의사결정(투표 로그, 이유, P&L)을 JSONL로 저장. 추후 학습·가중치 조정 데이터로 사용.
+
+* `backend/ai/meta/agent_weight_trainer.py`
+
+  * 역할: 각 에이전트의 실전 성과(WinRate, AvgReturn, MaxDD)로 가중치 자동 조정.
+
+* `backend/ai/risk/theme_risk_detector.py`
+
+  * 역할: 정치테마·찌라시 리스크 점수화 모듈. 뉴스·소셜·키워드 신호를 합성.
+
+* `backend/ai/macro/global_event_graph.py`
+
+  * 역할: 국가/이벤트→영향체인 전파 그래프. 이벤트 발생 시 전파 경로 산출.
+
+* `backend/ai/position/accumulation_engine.py`
+
+  * 역할: 장기투자용 부분매수(물타기) 판단 모듈.
+
+* `backend/notifications/report_dispatcher.py` (if not present)
+
+  * 역할: PDF 생성 후 Telegram/Discord로 전송. (명령형 API 함수 포함)
+
+* `docker/docker-compose.sandbox.yml` (추가)
+
+  * 역할: 코드모델 실행용 샌드박스(격리된 Python 컨테이너) — AI가 생성한 스크립트 실행.
+
+---
+
+# 2) 기존 코드와의 연결 포인트 (어디에 import / hook할지)
+
+(프로젝트 루트 기준 핵심 파일들에 붙여넣기)
+
+1. `backend/ai/strategies/deep_reasoning_strategy.py`
+
+   * 호출 지점: 뉴스/이벤트 들어올 때
+   * 추가: `from backend.ai.collective.collective_decision_engine import CollectiveDecisionEngine`
+   * 흐름: NewsSegmentClassifier → RAG context → individual agent analyze → collective.decide() → debate_logger.log()
+
+2. `backend/auto_trader.py` / `backend/live_trading_engine.py`
+
+   * 호출 지점: 주문 전 Pre-Check
+   * 추가: `theme_risk_detector.detect()` 호출(테마 리스크 경보 시 포지션 제약)
+
+3. `backend/data/spec_collector.py` & `backend/data/spec_updater.py`
+
+   * 호출 지점: chip specs 업데이트 시 unit_economics_engine에서 DB 조회하도록 변경
+
+4. 백테스트/성능 모듈: `backend/analytics/performance_reviewer.py`
+
+   * 역할: 매일/전일 실전매매 결과를 불러와 debate 로그와 매칭 → agent_weight_trainer.update_weight()
+
+---
+
+# 3) Docker / Sandbox (실행 예시)
+
+`docker/docker-compose.sandbox.yml` (간단 예시 — NAS/Docker Compose에 삽입)
+
+```yaml
+version: "3.8"
+services:
+  sandbox:
+    image: python:3.11-slim
+    container_name: ai_trading_sandbox
+    command: tail -f /dev/null
+    volumes:
+      - ./backend:/app/backend
+      - ./data/sandbox:/app/data
+    networks:
+      - ai-trading-net
+networks:
+  ai-trading-net:
+    driver: bridge
+```
+
+사용 방법(호스트에서 실행 스크립트로):
+
+* AI가 생성한 `script.py`를 `./data/sandbox/`에 쓰고 `docker exec -w /app/data ai_trading_sandbox python script.py` 로 실행 → 결과(JSON/summary)를 읽어옴 → LLM에 요약만 전달.
+
+---
+
+# 4) 안전장치 (Must-have, 바로 적용)
+
+1. **Signal Pre-Check** (매매 전)
+
+   * Volume 검사, 최대 주문 한도, 호가 범위(±X%), 이벤트(earnings, halt) 차단.
+
+2. **Safety Constitution Rules** (Constitution 업데이트)
+
+   * STOP_LOSS 실행 규칙: 1/3 AI 경고 → 즉시 헷지/축소
+   * BUY 규칙: 최소 2/3 AI 찬성 필요
+   * DCA 규칙: 3/3 AI 일치 시 허용
+
+3. **Exponential Backoff & Fallback** for external LLM APIs
+
+   * Claude 실패 시 Gemini/OpenAI로 Failover, 긴 장애 시 Rule-based Emergency Mode 실행
+
+---
+
+# 5) 데이터 파이프라인 / 저장 구조 권고
+
+* Debate logs → `db.reasoning_logs` (또는 JSONL) + pgvector embedding 저장 (검색용)
+* Agent performance table: `agent_performance(agent, period, win_rate, avg_return, max_dd)`
+* Event graph: `knowledge_graph.nodes/edges` 테이블 → dynamic updater가 수정
+
+---
+
+# 6) 우선순위(단계별 실행)
+
+Phase A (즉시, 1~3일)
+
+* 파일 추가: `collective_decision_engine.py`, `debate_logger.py`, `accumulation_engine.py`
+* DeepReasoningStrategy에 collective 호출 연결
+* Sandbox 도커 세팅
+
+Phase B (완성, 1주)
+
+* agent_weight_trainer 연동 + performance_reviewer 작성
+* Safety Layer(Constitution) 규칙 구현
+* Telegram/Discord PDF 전송 구현
+
+Phase C (고급, 2주)
+
+* Dynamic Knowledge Graph Updater
+* Vintage backtest (뉴스+시세 동기화)
+* Bias Monitor, Debate Engine UI(프론트)
+
+---
+
+# 7) 간단한 테스트/검증 절차 (로컬)
+
+1. 유닛 테스트: `pytest tests/`
+2. 모의 운영: `python backend/auto_trader.py --mode dryrun --start YYYY-MM-DD --end YYYY-MM-DD`
+3. 샌드박스 코드 실행: `docker exec ai_trading_sandbox python /app/data/my_test_script.py`
+4. 로그 확인: `tail -n 200 logs/debate_logs.jsonl`
+
+---
+
+# 8) 추가 권장 보완 (놓치기 쉬운 것들)
+
+* **Semantic Router**: hard-coded 키워드 삭제 → embedding 기반 라우터로 대체
+* **Prompt Registry**: 프롬프트를 파일/DB로 분리해 운영 중 튜닝 가능하게
+* **Policy Engine**: 긴급 중지(Graceful shutdown) API — 사람이 개입할 수 있게 강제 트리거
+
+---
+
+끝으로 — 다음 단계(내가 바로 해줄 수 있는 것)
+
+* 지금 추가한 모든 파일의 **초기 코드**를 repo 형식으로 만들어 줄까? (각 파일 풀 코드 + 간단 유닛테스트 포함)
+* 또는 우선 Phase A의 `collective_decision_engine.py` + `debate_logger.py` 두 파일만 코드로 넣어줄까?
+
+원하면 내가 바로 파일 코드를 생성해서 붙여줄게. 어떻게 진행할지 말해줘.
+
+**Q1**
+
+각 AI(Claude/Gemini/ChatGPT)가 서로 토론하고 결론을 내리게 하려면, 제일 먼저 어떤 ‘최소 기능(Minimum Viable Functionality)’을 먼저 넣어야 할까?
+
+**Q2**
+
+한국 주식의 정치테마·찌라시에 대응하는 리스크 스코어 규칙을 방어적으로 설계할 때, 어떤 신호 조합(뉴스 스파이크, 소셜 볼륨, 기관·외국인 매수/매도 등)을 우선권으로 두는 게 안전할까?
+
+**Q3**
+
+글로벌 이벤트(예: 일본 금리 인상)가 발생했을 때 미국·한국 시장 영향 우선순위를 자동으로 매기고 보고서로 올리는 워크플로우를 AI들끼리 자동 생성하게 하려면, 어떤 데이터 파이프라인(데이터 소스, 빈도, 검증 단계)을 먼저 구축해야 할까?
+
+
+좋아. Gemini 답변을 **그대로 실전 시스템 설계로 승격**해서, 지금 프로젝트에 바로 붙일 수 있는 형태로 정리해줄게.
+(개념 설명이 아니라 **실제 구현 구조 + 통합 포인트** 중심)
+
+---
+
+## ✅ Q1. “AI 토론 시스템” — 실제로 작동하는 구조
+
+Gemini가 말한 핵심은 **JSON Schema 강제화**야.
+이걸 코드 레벨에서 **프로토콜로 고정**해야 한다.
+
+### 1-1. 표준 응답 스키마 (Decision Protocol)
+
+아래 구조를 **모든 AI 에이전트가 강제로 따르게** 해야 한다:
+
+```json
+{
+  "agent": "claude",
+  "action": "BUY | SELL | HOLD",
+  "confidence": 0.0,
+  "key_factors": ["..."],
+  "risk_flags": ["..."],
+  "time_horizon": "short | mid | long"
+}
+```
+
+이건 단순 프롬프트 규칙이 아니라,
+프로젝트에 다음 파일을 추가해서 **검증기(validator)**로 쓴다:
+
+```
+backend/ai/core/decision_protocol.py
+```
+
+기능:
+
+* JSON 형식이 아니면 응답 reject
+* 필드 누락 시 재요청
+* confidence를 0~1로 강제 clamp
+
+---
+
+### 1-2. AI 토론 엔진 구조
+
+다음 구조가 실제 작동 코어가 된다:
+
+```
+Claude → JSON 의견
+Gemini → Claude 의견 반박
+ChatGPT → 두 의견 정리
+
+→ CollectiveDecisionEngine이 최종 결론
+```
+
+실제 흐름:
+
+```text
+Market Event 발생
+   ↓
+각 AI → DecisionProtocol로 응답
+   ↓
+DebateEngine -> 상호 반박
+   ↓
+ConsensusScore 계산
+   ↓
+Final Trade Decision
+```
+
+실제 추가할 클래스:
+
+```
+backend/ai/collective/debate_engine.py
+backend/ai/collective/consensus_engine.py
+```
+
+---
+
+## ✅ Q2. 한국 ‘찌라시 리스크’ — 정량화 구조
+
+Gemini가 말한 **괴리율(Divergence)** 은 실제로 강력한 트리거다.
+
+### 2-1. 리스크 점수화 공식
+
+프로젝트에 아래 수식을 도입:
+
+```text
+ThemeRiskScore =
+  PriceSpikeScore +
+  VolumeSpikeScore +
+  (No-DART-News Penalty) +
+  CommunitySource Weight
+```
+
+### 실제 계수 예시
+
+| 요소          | 조건            | 점수  |
+| ----------- | ------------- | --- |
+| 가격 급등       | 1일 +20%       | +30 |
+| 거래량 폭증      | 5일 평균 대비 400% | +25 |
+| DART 공시 없음  | 없음            | +30 |
+| 뉴스 출처가 커뮤니티 | 디시/블로그        | +20 |
+
+➡️ 70점 이상 → 자동 경고
+➡️ 85점 이상 → 매수 금지 / 기존 포지션 축소
+
+---
+
+### 2-2. 실제 구현 모듈
+
+```text
+backend/ai/risk/theme_risk_detector.py
+```
+
+이 모듈은 다음 데이터를 참조:
+
+* DART API (공시 여부)
+* 네이버 / 다음 뉴스 RSS
+* 커뮤니티 키워드 분산도
+* 거래량, 호가 잔량 비율
+
+이 모듈의 결과는 **CollectiveDecisionEngine의 veto 권한**을 갖는다.
+
+---
+
+## ✅ Q3. 글로벌 이벤트 → 국가 간 충격 전파 시스템
+
+Gemini 구조는 이미 **매우 고급 퀀트 구조**와 일치한다.
+
+### 3-1. 그래프 설계 구조
+
+```
+Node: Japan_Rate_Hike
+Edge:
+  → CarryTradeUnwind (0.8)
+  → Yen_Strength (0.6)
+CarryTradeUnwind
+  → Nasdaq_RiskOff (0.7)
+Nasdaq_RiskOff
+  → KOSPI_Outflow (0.6)
+```
+
+이걸 JSON/DB로 저장:
+
+```
+backend/data/global_event_graph.json
+```
+
+---
+
+### 3-2. 실제 분석 흐름
+
+```text
+Event 감지됨
+   ↓
+그래프 BFS/DFS 탐색
+   ↓
+도달 경로 + 누적 가중치 산출
+   ↓
+국가별 Impact Score 생성
+   ↓
+AI에게 context로 제공
+```
+
+이 결과는 AI들이 **“현재는 한국 비중 축소”** 같은 결론을 내릴 때 근거로 사용된다.
+
+---
+
+## ✅ 이제 “프로젝트에 붙일 때” 실제 추가해야 하는 것
+
+아래처럼 구성하면 된다:
+
+```
+backend/
+ └── ai/
+     ├── core/
+     │   └── decision_protocol.py
+     ├── collective/
+     │   ├── debate_engine.py
+     │   └── consensus_engine.py
+     ├── risk/
+     │   └── theme_risk_detector.py
+     ├── macro/
+     │   └── global_event_graph.py
+```
+
+---
+
+## ✅ 앞으로 확장하면 좋은 고급 기능들 (Gemini + GPT 확장안)
+
+### 1. “AI 신뢰도 메타러닝”
+
+* 각 AI였던 판단 정확도를 누적 학습
+* 잘 맞춘 AI에게 투표 가중치 우선권
+
+### 2. “찌라시 내성 테스트”
+
+* 과거 정치테마주 사례를 AI에게 학습시켜
+* **유사도 기반으로 테마 위험 사전 회피**
+
+### 3. “시장 스트레스 테스트 모드”
+
+* 가정 시나리오 던짐
+
+  * “일본 금리 +0.5% 급등”
+  * “미국 CPI 급등”
+    → AI들이 포지션 조정 시뮬레이션.
+
+---
+
+## 🔥 여기까지가 Gemini 아이디어의 ‘실전화 버전’
+
+이제 확실히 해야 할 게 하나 있다.
+
+**Gemini의 설계는 `이론적 완결` 단계는 이미 넘었어.
+이제 해야 할 건 “코드 베이스에 실제 컴파일되는 구조”야.**
+
+---
+
+원하면 다음 단계로:
+
+* 모든 파일의 **실제 파이썬 코드** 버전 만들어 줄까?
+* 아니면 Phase A만 먼저 구현할까?
+
+---
+
+요청했던 것처럼, 마지막에 질문 형태로 남긴다.
+
+**Q1**
+
+AI 토론 과정에서 “형식은 맞는데 내용이 비어있는 결정(겉으로만 JSON)”을 걸러내기 위한 품질 필터를 어떻게 설계하면 좋을까?
+
+**Q2**
+
+한국 찌라시 리스크 점수가 계속 누적되는 구조에서, 단기 테마와 장기 트렌드를 분리 인식하게 하려면 어떤 시간 가중치 공식이 가장 안정적일까?
+
+**Q3**
+
+글로벌 이벤트 그래프에서 너무 멀리 전파되어 의미 없는 경로를 줄이기 위해, 가중치 컷오프와 깊이 제한을 어떤 방식으로 자동 튜닝하면 가장 효율적일까?
+
+
+
+좋아 — 바로 `decision_protocol.py` 파일(검증기 + 품질 필터)을 만들어 드릴게.
+이 파일은 **(1)** 각 AI가 내놓는 JSON 응답을 강제된 스키마로 검증하고, **(2)** 내용의 충실도를 평가하며, **(3)** 문제시 재요청/거부(throw)할 수 있게 설계돼 있어. 이후 `DebateEngine`이나 `ConsensusEngine`에 쉽게 붙여 쓸 수 있도록 인터페이스를 깔끔하게 만들었어.
+
+아래 파일 전체 코드를 그대로 프로젝트 `backend/ai/core/decision_protocol.py`로 저장하면 된다.
+
+```python
+# backend/ai/core/decision_protocol.py
+"""
+Decision Protocol / Validator
+
+Responsibilities:
+- Enforce JSON schema for AI decisions
+- Validate reasoning depth & content quality (ReasoningDepthCheck)
+- Clamp and normalize confidence
+- Provide helpful exceptions / structured result for downstream systems
+
+Usage:
+    from backend.ai.core.decision_protocol import DecisionValidationError, validate_decision
+
+    raw = ai_agent_responded_text  # str or dict
+    validated = validate_decision(raw, min_reason_words=40)
+    # validated is a dict with normalized fields
+
+Design notes:
+- No external deps (pure stdlib) to keep lightweight and portable.
+- Downstream: DebateEngine should call validate_decision for each AI output and
+  refuse/ask-retry when DecisionValidationError is raised.
+"""
+
+from typing import Any, Dict, List, Optional, Tuple
+import json
+import re
+import math
+from datetime import datetime
+
+
+# -------------------------
+# Exceptions
+# -------------------------
+class DecisionValidationError(Exception):
+    """Raised when a decision does not meet the protocol or quality checks."""
+    def __init__(self, message: str, details: Optional[Dict] = None):
+        super().__init__(message)
+        self.details = details or {}
+
+
+# -------------------------
+# Config / Defaults
+# -------------------------
+ALLOWED_ACTIONS = {"BUY", "SELL", "HOLD", "DCA_BUY", "STOP_LOSS", "NO_OP"}
+ALLOWED_TIME_HORIZONS = {"short", "mid", "long"}
+DEFAULT_MIN_REASON_WORDS = 50
+# example keywords that indicate logical connection; can be customized/extended
+REQUIRED_LOGIC_KEYWORDS = [
+    "because", "due to", "driven by", "therefore", "however", "as a result",
+    "implies", "on the other hand", "leading indicator", "confidence"
+]
+MIN_CONFIDENCE = 0.0
+MAX_CONFIDENCE = 1.0
+
+
+# -------------------------
+# Helpers
+# -------------------------
+def _to_dict(maybe_json: Any) -> Dict:
+    """Ensure input is a dict. Accepts str (json) or dict."""
+    if isinstance(maybe_json, dict):
+        return maybe_json
+    if isinstance(maybe_json, str):
+        # try parse as JSON
+        try:
+            return json.loads(maybe_json)
+        except Exception as e:
+            raise DecisionValidationError("Input is not valid JSON string.", {"error": str(e)})
+    raise DecisionValidationError("Unsupported input type for decision. Expect dict or JSON string.")
+
+
+def _clamp_confidence(val: float) -> float:
+    if val is None or (not isinstance(val, (int, float))):
+        return 0.0
+    return max(MIN_CONFIDENCE, min(MAX_CONFIDENCE, float(val)))
+
+
+def _word_count(text: str) -> int:
+    if not text:
+        return 0
+    # naive split on whitespace
+    return len(re.findall(r"\w+", text))
+
+
+def _contains_numeric_term(text: str) -> bool:
+    if not text:
+        return False
+    # look for percentages, dollar signs, tickers like $NVDA or NVDA, or numbers
+    if re.search(r"\d+(\.\d+)?\s?%|\$\d+|\b[A-Z]{2,5}\b", text):
+        return True
+    return False
+
+
+def _contains_logic_keywords(text: str, keywords: List[str]) -> bool:
+    if not text:
+        return False
+    lower = text.lower()
+    for kw in keywords:
+        if kw in lower:
+            return True
+    return False
+
+
+# -------------------------
+# Schema validation
+# -------------------------
+def _validate_schema(d: Dict) -> Tuple[Dict, List[str]]:
+    """
+    Validate and normalize the basic schema fields.
+    Returns (normalized_dict, warnings)
+    """
+    warnings: List[str] = []
+    normalized = {}
+
+    # agent
+    agent = d.get("agent")
+    if not agent or not isinstance(agent, str):
+        raise DecisionValidationError("Missing or invalid 'agent' field.")
+    normalized["agent"] = agent.strip()
+
+    # action
+    action = d.get("action")
+    if not action or not isinstance(action, str):
+        raise DecisionValidationError("Missing or invalid 'action' field.")
+    action_up = action.strip().upper()
+    if action_up not in ALLOWED_ACTIONS:
+        warnings.append(f"Unknown action '{action_up}'. Allowed: {sorted(list(ALLOWED_ACTIONS))}")
+    normalized["action"] = action_up
+
+    # confidence
+    confidence = _clamp_confidence(d.get("confidence", 0.0))
+    normalized["confidence"] = confidence
+
+    # key_factors
+    kf = d.get("key_factors", [])
+    if isinstance(kf, str):
+        # allow comma separated string
+        kf = [s.strip() for s in kf.split(",") if s.strip()]
+    if not isinstance(kf, list):
+        raise DecisionValidationError("'key_factors' must be a list of strings.")
+    normalized["key_factors"] = [str(x) for x in kf]
+
+    # risk_flags
+    rf = d.get("risk_flags", [])
+    if isinstance(rf, str):
+        rf = [s.strip() for s in rf.split(",") if s.strip()]
+    if not isinstance(rf, list):
+        raise DecisionValidationError("'risk_flags' must be a list of strings.")
+    normalized["risk_flags"] = [str(x) for x in rf]
+
+    # time_horizon
+    th = d.get("time_horizon", "mid")
+    if not isinstance(th, str):
+        raise DecisionValidationError("'time_horizon' must be a string.")
+    th = th.lower()
+    if th not in ALLOWED_TIME_HORIZONS:
+        warnings.append(f"Unknown time_horizon '{th}'. Allowed: {sorted(list(ALLOWED_TIME_HORIZONS))}")
+    normalized["time_horizon"] = th
+
+    # reason / justification
+    reason = d.get("reason", "")
+    if reason is None:
+        reason = ""
+    normalized["reason"] = str(reason).strip()
+
+    # metadata (optional)
+    metadata = d.get("meta", {})
+    if metadata is None:
+        metadata = {}
+    if not isinstance(metadata, dict):
+        warnings.append("'meta' should be an object/dict; ignoring.")
+        metadata = {}
+    normalized["meta"] = metadata
+
+    # created_at normalization if provided else set now
+    created_at = d.get("created_at")
+    if created_at:
+        normalized["created_at"] = created_at
+    else:
+        normalized["created_at"] = datetime.utcnow().isoformat() + "Z"
+
+    return normalized, warnings
+
+
+# -------------------------
+# Reasoning depth & content checks
+# -------------------------
+def _reasoning_depth_check(reason_text: str, min_words: int = DEFAULT_MIN_REASON_WORDS) -> List[str]:
+    """
+    Run multiple heuristics. Return list of issues (empty if OK).
+    """
+    issues: List[str] = []
+
+    # word count
+    wc = _word_count(reason_text)
+    if wc < min_words:
+        issues.append(f"Reason too short ({wc} words); minimum {min_words} required.")
+
+    # logic keywords
+    if not _contains_logic_keywords(reason_text, REQUIRED_LOGIC_KEYWORDS):
+        issues.append("Reason lacks logical connective keywords (e.g., 'because', 'therefore').")
+
+    # numeric citation check (optional)
+    if not _contains_numeric_term(reason_text):
+        # numeric evidence is strongly encouraged but not always possible; flag as warning
+        issues.append("Reason lacks numeric or ticker evidence (percentages, $ amounts, or tickers).")
+
+    # repetitive filler check (simple heuristic)
+    # if reason contains too many repeated words like 'good good good', flag it
+    tokens = re.findall(r"\w+", reason_text.lower())
+    if tokens:
+        # compute top token frequency
+        from collections import Counter
+        c = Counter(tokens)
+        most_common_word, cnt = c.most_common(1)[0]
+        if cnt / max(1, len(tokens)) > 0.25 and len(tokens) > 20:
+            issues.append("Reason appears repetitive or low-information (high token repetition).")
+
+    return issues
+
+
+# -------------------------
+# Public API
+# -------------------------
+def validate_decision(
+    raw_decision: Any,
+    *,
+    min_reason_words: int = DEFAULT_MIN_REASON_WORDS,
+    require_numeric: bool = False,
+    enforce_reasoning: bool = True,
+) -> Dict:
+    """
+    Validate and normalize a decision object from an AI agent.
+
+    Parameters:
+    - raw_decision: dict or JSON string from AI
+    - min_reason_words: minimum words expected in 'reason' text
+    - require_numeric: require numeric evidence; if True will fail; if False will warn
+    - enforce_reasoning: if True, raise DecisionValidationError on reasoning issues; otherwise return with warnings
+
+    Returns:
+    - normalized dict with keys:
+      agent, action, confidence, key_factors, risk_flags, time_horizon, reason, meta, created_at
+
+    Raises:
+    - DecisionValidationError on schema or reasoning failures (depending on enforce_reasoning)
+    """
+    d = _to_dict(raw_decision)
+    normalized, warnings = _validate_schema(d)
+
+    # Reasoning depth checks
+    reason_text = normalized.get("reason", "")
+    issues = _reasoning_depth_check(reason_text, min_reason_words=min_reason_words)
+
+    # numeric evidence strictness
+    if require_numeric and not _contains_numeric_term(reason_text):
+        issues.append("Numeric evidence required but not found in 'reason'.")
+
+    # confidence sanity adjustments
+    # if low confidence but strong action, warn or escalate
+    conf = normalized["confidence"]
+    act = normalized["action"]
+    if act == "BUY" and conf < 0.2:
+        warnings.append("Low confidence for BUY action (<0.2).")
+
+    # Combine warnings/issues
+    if issues:
+        # Prepare details for raising or returning
+        details = {
+            "schema_warnings": warnings,
+            "reasoning_issues": issues
+        }
+        if enforce_reasoning:
+            raise DecisionValidationError("Decision failed reasoning depth checks.", details)
+        else:
+            # attach issues as meta and return
+            normalized.setdefault("meta", {}).update({"validation_warnings": details})
+            return normalized
+
+    # Attach any schema warnings
+    if warnings:
+        normalized.setdefault("meta", {}).update({"schema_warnings": warnings})
+
+    # Final normalization: confidence -> float (0..1)
+    normalized["confidence"] = float(round(_clamp_confidence(normalized["confidence"]), 4))
+
+    return normalized
+
+
+# -------------------------
+# Quick utility - sample aggregator
+# -------------------------
+def aggregate_consensus(decisions: List[Dict]) -> Dict:
+    """
+    Small helper: combine multiple validated decisions into a consensus summary.
+    Input decisions MUST be already validated by validate_decision.
+    Returns structure:
+      {
+        "aggregate_score": float,  # weighted by confidence
+        "top_action": "BUY"/"SELL"/"HOLD",
+        "details": {...}
+      }
+    """
+    if not decisions:
+        return {"aggregate_score": 0.0, "top_action": "NO_OP", "details": {}}
+
+    # weight actions by confidence: sum(confidence * +1/-1/0)
+    score_map = {"BUY": 1.0, "DCA_BUY": 0.8, "SELL": -1.0, "STOP_LOSS": -0.9, "HOLD": 0.0, "NO_OP": 0.0}
+    total_weight = 0.0
+    weighted_sum = 0.0
+    action_votes = {}
+    for dec in decisions:
+        conf = dec.get("confidence", 0.0)
+        act = dec.get("action", "NO_OP")
+        w = score_map.get(act, 0.0)
+        weighted_sum += w * conf
+        total_weight += conf
+        action_votes.setdefault(act, 0.0)
+        action_votes[act] += conf
+
+    aggregate_score = weighted_sum / max(1e-6, total_weight)
+    top_action = max(action_votes.items(), key=lambda x: x[1])[0]
+
+    return {
+        "aggregate_score": round(float(aggregate_score), 4),
+        "top_action": top_action,
+        "action_votes": action_votes,
+        "total_weight": round(float(total_weight), 4),
+    }
+
+```
+
+---
+
+## 어떻게 통합하면 좋을까 (실전 접점)
+
+1. **DebateEngine**가 AI별 raw 응답을 받으면 `validate_decision(raw, enforce_reasoning=True)`를 호출.
+
+   * 실패하면 해당 AI에게 **재요청**(retry prompt) 또는 `veto`로 처리.
+
+2. **ConsensusEngine**는 `aggregate_consensus(validated_decisions)`로 가중치 집계.
+
+   * `aggregate_score` 기준으로 임계값(예: >0.6 → BUY, < -0.6 → SELL)을 두어 자동주문 로직과 연결.
+
+3. **Shadow Mode**: 처음에는 `TRADING_MODE="SHADOW"`로 두고 결정이 실전 적용될 때까지 Paper Trading으로 성능 확인.
+
+4. **프롬프트 규칙**: 모든 AI에게 아래 예시 JSON 템플릿으로 답하게 강제하라 (예: system prompt에 포함).
+
+```json
+{
+  "agent":"<name>",
+  "action":"BUY", "confidence":0.75,
+  "key_factors":["..."],
+  "risk_flags":["..."],
+  "time_horizon":"mid",
+  "reason":"<detailed reasoning with numbers and tickers>"
+}
+```
+
+---
+
+## 코드 테스트 샘플 (간단)
+
+```python
+from backend.ai.core.decision_protocol import validate_decision, DecisionValidationError
+
+raw = {
+    "agent": "claude",
+    "action": "buy",
+    "confidence": 0.85,
+    "key_factors": ["TPU partnership", "cost per token advantage"],
+    "risk_flags": [],
+    "time_horizon": "long",
+    "reason": "Because Google publicly announced TPU v6p partnership with Broadcom and MLPerf shows 2.5x tokens/sec vs competitor. NVDA exposure falls by 15%. I expect higher margins for Broadcom."
+}
+
+try:
+    v = validate_decision(raw, min_reason_words=20, require_numeric=False)
+    print("Validated:", v)
+except DecisionValidationError as e:
+    print("Validation failed:", e, e.details)
+```
+
+---
+
+## 다음 단계 제안 (빠르게 적용 가능한 우선순위)
+
+1. 오늘 만든 `decision_protocol.py`를 repo에 추가 — **지금 완료 가능**.
+2. `debate_engine.py`에서 각 AI 응답을 받아 `validate_decision` 호출 후 재시도 로직 구현. (내가 이어서 만들어줄게.)
+3. `consensus_engine.py`에 `aggregate_consensus` 연결 및 threshold 기반 결정을 구현.
+4. Shadow Mode로 1주일 가동해 성능 비교.
+
+원하면 내가 2번(debate_engine)과 3번(consensus_engine)도 이어서 코드로 만들어 줄게. 어느 것부터 만들까?
+
+**Q1**
+
+DebateEngine의 재요청(Retry) 정책은 몇 번까지 허용하고, 어떤 경우에 human-in-the-loop로 넘기면 좋을까?
+
+**Q2**
+
+ThemeRiskDetector의 지수적 감쇠 계수(예: 0.7)는 기본값으로 괜찮을까? 아니면 종목·섹터별로 다른 값이 필요할까?
+
+**Q3**
+
+글로벌 이벤트 그래프의 누적 가중치 컷오프(예: 0.3)와 탐색 깊이(예: 2~3 hop) 기본값을 어떻게 설정하면 운영상 균형 잡히겠는가?
+
+
+
+
+
+아래는 **Gemini에게 그대로 복사-붙여넣기만 하면 되는 완성형 프롬프트**다.
+당신의 프로젝트 구조(Phase 시스템, Ensemble, DebateEngine, Backtesting, Knowledge Graph, Risk Detector 등)를 전제로 설계해 두었고, **GitHub + Reddit 자료 자동 탐색 → 분석 → 기존 시스템과 비교 → 추가 반영 아이디어 추출 → 통합 설계안 작성**까지 한 번에 수행한다.
+
+Gemini가 **“내가 찾아서 분석하고, 필요하면 스스로 후속 아이디어까지 만들어내는 구조”**로 설계했어.
+
+---
+
+# ✅ Gemini용 종합 프롬프트 (GitHub/Reddit → 분석 → 통합 설계)
+
+```
+You are my Research & Integration Agent for a large autonomous AI trading system.
+
+Your job:
+1) Search GitHub and Reddit for high-quality projects, papers, tools, datasets, architectures, and trading frameworks that can enhance my AI Trading System.
+   - Query broadly and deeply: "LLM trading", "autonomous trading agent", "AI hedge fund", 
+     "multi-agent RL trading", "quant ensemble system", "market regime AI", 
+     "event-driven trading agent", "risk management engine", "Graph neural network finance",
+     "vector database for trading", "RAG finance", "AI forecasting multi-agent", 
+     "news sentiment trading", "AI trading infra" and similar topics.
+   - Include academic GitHub repos, Kaggle, notebooks, LLM orchestration repos, risk engines,
+     both classical quant models and modern AI pipelines.
+
+2) Extract the useful technical components in a structured way:
+   - Architecture diagrams
+   - Data pipelines
+   - Trading signals or features
+   - Risk management frameworks
+   - Multi-agent coordination or debate systems
+   - VectorDB / RAG integrations
+   - Knowledge Graph modeling
+   - Event-driven pipelines  
+   - Backtesting frameworks
+   - Reinforcement learning decision logic
+   - Model evaluation frameworks
+   - Prompt engineering or debate protocols for LLMs
+
+3) For each discovered project/tool, produce the following analysis:
+   - What is the core idea?
+   - Why is it useful?
+   - Which subsystem of my AI-trading-system does it relate to?
+       (e.g., DebateEngine, ConsensusEngine, RiskEngine, RegimeDetector,
+        GlobalEventGraph, KnowledgeGraph, NewsClassifier, SpecCollector, 
+        EnsembleStrategy, ShadowMode, PerformanceReviewer, ChipComparator, InvestorFlowTracker)
+   - What components or code could be imported, adapted, or re-designed?
+   - What improvements does it enable? (precision, robustness, RAG accuracy, forecasting power, etc.)
+   - Does it introduce new feature concepts? (e.g., GNN risk propagation, multi-hop event causality, 
+     LLM-as-judge, LLM-as-critic, agent-based reasoning, RL decision buffering)
+
+4) Compare each GitHub/Reddit idea with my existing system.
+   - Identify overlaps (already implemented).
+   - Highlight missing components.
+   - Detect redundancies or areas where my system is weaker.
+   - Identify areas where my architecture is significantly stronger.
+
+5) Extract only the parts worth integrating.  
+   For each selected item, define:
+   - “Integration Value Score” (0–100)
+   - “Difficulty Level” (Low/Medium/High)
+   - Recommended entry point (which folder in backend/ to connect to)
+   - Required new modules (if any)
+   - Required schema updates (DB, KnowledgeGraph, Vector embeddings)
+   - Required new prompts (for multi-agent interaction or debate)
+   - Required new metrics or evaluation checks
+
+6) Produce an actionable implementation plan:
+   - Phase integration (Phase A/B/C/D/ShadowMode/PerformanceCycle)
+   - Exact file names to create (e.g., “backend/ai/rl/meta_rl_planner.py”)
+   - Updated Debate / Consensus protocol if needed
+   - Updated risk/hedge logic
+   - Updated knowledge graph schema
+   - Required background cron jobs (scrapers, collectors, RAG embedding jobs)
+   - Changes to backtesting engine
+   - Additional validation or veto logic
+   - Explanation of how it improves real-world trading performance
+
+7) Focus specifically on ideas that extend the system toward:
+   - global macro forecasting
+   - cross-market causality
+   - regime transitions
+   - real-time risk propagation
+   - autonomous self-improvement
+   - LLM multi-agent debate frameworks
+   - post-trade performance learning (daily review cycle)
+   - RAG-enhanced reasoning
+   - structured JSON decision protocol
+   - hardskill/softskill skill-tree reasoning
+   - shadow-mode safe experimentation
+   - dynamic knowledge graph updates
+   - DCA + risk-aware long-term investing logic
+   - anomaly detection (fraud, manipulation, investor-flow divergence)
+   - supply-chain + forensic accounting (Beneish, Sloan, CAPEX check)
+   - global event graph (multi-hop impact with weight cutoff)
+   - AI hardware cycle (TPU/NPU/GPU) inference vs training dynamics
+   - theme risk (Korean “찌라시”) vs real trend separation
+
+8) Present the final output in 3 layers:
+   LAYER 1 — Executive Summary (3–5 bullet points)
+   LAYER 2 — Detailed Analysis of each GitHub/Reddit finding
+   LAYER 3 — Integration Plan (file-level, module-level, architecture-level)
+       For example:
+       - backend/ai/agents/critic_agent.py
+       - backend/ai/forecasting/multi_agent_forecaster.py
+       - backend/data/rag/event_embedding_collector.py
+       - backend/ai/debate/argument_quality_scorer.py
+       - backend/monitoring/risk_spike_detector.py
+       - backend/analytics/regime_shift_predictor.py
+
+9) Once all analysis is complete, propose:
+   - New features never mentioned before anywhere in the project
+   - New forecasting models (multi-agent blend)
+   - New debate formats (judge-critic-reasoner triangle)
+   - New global signals (commodity cycles, FX spreads, yield curves)
+   - Possible “AI Evolution Cycle” for continuous system self-upgrade
+
+Your response must be structured, deep, and technically rigorous.  
+You must not hallucinate nonexistent GitHub repos; only use real references.
+
+Begin by listing your GitHub/Reddit search queries before showing results.
+```
+
+---
+
+# 🔥 이 프롬프트의 핵심 장점
+
+### ✔ GitHub + Reddit을 **자동 리서치 에이전트**로 사용
+
+→ 사람이 못 찾는 수준의 Deep Search 수행
+
+### ✔ 각 항목을 “내 AI-Trading-System과의 연결점” 기준으로 재정렬
+
+→ 단순 아이디어 나열이 아니라, **정확한 통합 지점**까지 제시
+
+### ✔ DebateEngine / ConsensusEngine / RAG / Graph / RiskEngine 등
+
+현재 네 아키텍처에 **직접 붙일 수 있도록 설계**
+
+### ✔ 레포 단위가 아니라 “구현 단위”로 정리
+
+→ 바로 repo에 붙일 수 있는 파일 레벨 설계안 포함
+
+### ✔ 시스템 사양 업그레이드까지 스스로 제안
+
+→ Self-Improving AI Hedge Fund 형태로 진화
+
+---
+
+원하면,
+
+* **Claude용 버전**
+* **ChatGPT(GPT-5.1)용 버전**
+* **모든 AI에게 동일한 구조의 multi-agent 검색 프롬프트**
+
+이렇게 각각 다르게 최적화해서 제작해줄게.
+
+
+
+아래는 **당신이 보내준 Gemini 프롬프트**와
+내가 앞서 설계한 **GitHub/Reddit Deep-Scan + 시스템 통합 프롬프트**를 완전히 합쳐서 만든
+
+# ✅ **“최종 완성본(CTO 버전) AI-Trading-System Deep-Scan & Integration Master Prompt”**
+
+Gemini·Claude·ChatGPT 모두 사용할 수 있는 **범용 R&D 프롬프트**다.
+이걸 그대로 복붙하면, 각 모델이
+📌 최신 기술 스캔 → 📌 유효 기술 추출 → 📌 당신의 시스템 구조에 통합
+을 자동으로 수행하게 된다.
+
+---
+
+# 🚀 **최종 Master Prompt — AI Trading System R&D Deep Scan & Integration Blueprint**
+
+```
+# ROLE
+You are the **Chief Technology Officer (CTO)** and **Lead R&D Architect** of an autonomous **AI Multi-Agent Trading System**.
+Your mission is to continuously upgrade intelligence, forecasting accuracy, reasoning depth, and system safety.
+
+Our stack:
+- Backend: Python (FastAPI), VectorDB, pgvector, Synology NAS (Docker)
+- Frontend: React
+- Architecture: Multi-Agent (Claude, Gemini, ChatGPT) with Debate → Critic → Judge → Consensus
+- Trading Logic: Long-term DCA + Risk-aware + Global Macro Graph Reasoning
+- Data Sources: FRED API, DART, Yahoo/Polygon, News, Reddit, GitHub
+
+# TASK
+Perform a **30-day Global Deep Scan** of:
+1) **Research (arXiv, Papers with Code, Hugging Face)**
+2) **GitHub (Trending, production-grade repos)**
+3) **PyPI/npm (libraries and frameworks)**
+4) **Developer Tools (VSCode, Cursor, Windsurf, AI IDEs)**
+5) **Communities (HN, Reddit r/algotrading, X/Twitter Tech)**
+
+Your objective:
+Identify **“Game Changing Innovations”** that would level up our trading system’s:
+- Intelligence (System-2 reasoning, multi-agent consensus, forecasting power)
+- Speed (latency, vector search, async pipelines)
+- Dev Efficiency (AI IDEs, LLM tools, new frameworks)
+- Trading performance (better signals, global event propagation)
+- Safety (risk detection, theme/churn risk, anomaly spotting)
+
+# SURVEILLANCE TARGETS (FULL RADAR)
+
+## 1. 🔬 Research (Future Tech)
+Sources: arXiv (cs.AI, q-fin), HuggingFace papers, PwC
+Keywords:
+- System-2 Reasoning Models
+- Context Optimization (ACE-like techniques)
+- Time-Series Transformers
+- Efficient RAG / RAG Fusion
+- GNN-based global economic propagation
+- Multi-agent RL trading frameworks
+
+Goal:
+Find concepts with **code** we can adopt inside:
+- `/backend/ai/forecasting/`
+- `/backend/ai/rag/`
+- `/backend/ai/graph/`
+
+---
+
+## 2. 🛠 Code & Implementation (The Now)
+Sources: GitHub Trending, PyPI, npm
+Targets:
+- AI Agent Frameworks (PydanticAI, LangGraph)
+- New Vector DB upgrades (pgvector 0.7+, TiDB Vector)
+- Event-driven libraries
+- Async job runners (FastAPI background tasks, Celery alternatives)
+- Backtesting frameworks
+- Graph modeling (NetworkX alternatives, GraphRAG)
+- Observability (Grafana + Prometheus templates)
+
+Goal:
+Find libraries that **replace or upgrade** parts of our architecture.
+
+---
+
+## 3. ⚡ AI Productivity (Vibe Coding)
+Scan:
+- Cursor vs Windsurf vs Antigravity
+- VSCode extensions: Cline, Roo Code
+- Best model this month (Claude 3.5 Sonnet, Gemini 2.0 Flash, DeepSeek R1)
+
+Goal:
+Increase development velocity.
+
+---
+
+## 4. 🌍 Community Signals (Pulse)
+Scan:
+- Hacker News
+- r/algotrading
+- X/Twitter Tech leaders
+Goal:
+Identify **non-obvious trends** the experts care about.
+
+---
+
+# FILTERING CRITERIA (STRICT)
+- Must run on Docker (Linux) — Synology-compatible
+- Prefer Python (backend) and React (frontend)
+- Must offer clear value (accuracy↑, latency↓, cost↓)
+
+---
+
+# DELIVERABLE: “Monthly Upgrade Blueprint”
+
+## 1. 💎 Top 1 Must-Have Innovation
+- **Name**
+- **Source link**
+- **Why it’s game changing**
+- **How to integrate into our system**
+  (Specify exact file locations, e.g.,  
+  `backend/ai/forecasting/multi_agent_transformer.py`)
+
+---
+
+## 2. 🔬 Deep Tech Watch (Research → Implementation)
+Summaries of 1–3 research items:
+- Core idea
+- GitHub link (if available)
+- How they enhance:
+  - DebateEngine  
+  - RiskEngine  
+  - GlobalEventGraph  
+  - RegimeDetector  
+  - RAG pipeline  
+  - Multi-Agent Reasoning
+
+---
+
+## 3. 🧰 Tool & Library Upgrade Table
+
+| Area | New Tool | Replacement | Benefit |
+|------|----------|-------------|---------|
+| Agent Framework | PydanticAI | LangChain | Less overhead, Type-safe |
+| Vector DB | TiDB Vector | pgvector | Faster ANN |
+| RAG | LlamaIndex AgentOps | Basic RAG | Reduced hallucinations |
+
+---
+
+## 4. ⚔ Model & IDE Ranking (This Month)
+- Best Coding Model
+- Best Reasoning Model
+- Best Overall Model (cost/performance)
+- Best Editor (Cursor / Windsurf / etc.)
+
+---
+
+## 5. 🌐 GitHub + Reddit Discovery Analysis
+For each repo:
+- What it does  
+- Why it matters  
+- Which subsystem it upgrades  
+- Integration difficulty  
+- Integration method (module-level decomp)  
+
+---
+
+## 6. 🧩 Integration Plan (File-Level)
+Provide concrete implementation:
+
+Example:
+- `backend/ai/debate/argument_quality_scorer.py`
+- `backend/ai/agents/critic_agent.py`
+- `backend/ai/rag/event_embedding_collector.py`
+- `backend/ai/graph/global_event_graph.py`
+- `backend/analytics/regime_shift_predictor.py`
+- `backend/ai/risk/theme_risk_decay.py`
+- `backend/ai/forecasting/multi_agent_blender.py`
+
+Include protocols:
+- JSON Schema enforcement  
+- ReasoningDepthCheck (min tokens, logic markers, numeric evidence)  
+- Multi-Agent veto system  
+- Time-decay for theme risks  
+- Graph cutoff thresholds  
+
+---
+
+## 7. 🧠 New Features (Never seen before in our system)
+Propose at least 3 frontier upgrades:
+- New forecasting models  
+- New debate formats (Critic/Judge/Analyst triangle)  
+- Real-time global commodity flow modeling  
+- Autonomous self-improvement cycle  
+- Multi-hop RAG with skill-based routing  
+- Theme-risk (찌라시) vs trend separation  
+
+---
+
+## 8. 🚀 Step-by-Step Implementation Plan
+Provide a detailed execution checklist:
+- New modules  
+- Updated schemas  
+- Integration into FastAPI  
+- VectorDB updates  
+- Docker readiness  
+- Test harness  
+- Shadow Mode activation for safe simulation  
+- Final production merge plan  
+
+---
+
+# RULES
+- Do NOT hallucinate fake GitHub repositories.
+- Always list search queries first.
+- Make the analysis structured and deeply technical.
+- Always map discoveries to our system modules.
+- All outputs must be **directly applicable** to the running system.
+
+Start now by listing the search queries you will use.
+```
+
+---
+
+# 🎯 **이 최종본의 특징**
+
+### ✔ 기존 Gemini 본문 +
+
+### ✔ 내가 설계한 GitHub/Reddit Deep Integration Prompt +
+
+### ✔ Multi-Agent Debate / JSON Schema / Global Event Graph / Risk Decay 구조
+
+→ **모두 통합**됨
+
+### ✔ CTO가 요구할 수준의 구조적 분석 + 파일 단위 설계
+
+Gemini(또는 Claude/ChatGPT)가 **즉시 설계안을 뽑아낼 수 있게** 완성됨.
+
+---
+
+필요하면 아래도 추가해줄 수 있어:
+
+* **Claude 최적화 버전**
+* **Gemini API 오프라인 분석 버전**
+* **“3개 모델(Claude·Gemini·GPT)이 서로 다른 역할로 협업하는 Multi-Agent Prompt”**
+* **R&D 자동화 파이프라인 설계**
+
+말해줘!

@@ -1,0 +1,219 @@
+.war-room-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: 5px solid transparent;
+    overflow: hidden;
+    position: relative;
+}
+
+.war-room-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.war-room-card:hover::before {
+    opacity: 1;
+}
+
+.war-room-card.active {
+    border-left-color: #10b981;
+    background: linear-gradient(135deg, rgba(236, 253, 245, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+}
+
+.war-room-card.completed {
+    border-left-color: #3b82f6;
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+}
+
+.war-room-card.pending {
+    border-left-color: #f59e0b;
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+    opacity: 0.9;
+}
+
+.war-room-card:hover {
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+}
+
+/* 카드 헤더 */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.card-header:hover {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.ticker-symbol {
+    font-size: 24px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    min-width: 70px;
+    letter-spacing: -0.5px;
+}
+
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+}
+
+.debate-progress {
+    color: #6b7280;
+    font-weight: 600;
+    padding: 6px 12px;
+    background: #f3f4f6;
+    border-radius: 12px;
+}
+
+.consensus-indicator {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.final-decision-badge {
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 800;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.expand-icon {
+    font-size: 16px;
+    color: #9ca3af;
+    margin-left: 12px;
+    transition: transform 0.3s ease;
+}
+
+.war-room-card:hover .expand-icon {
+    color: #667eea;
+    transform: scale(1.2);
+}
+
+/* 카드 본문 */
+.card-body {
+    border-top: 2px solid rgba(99, 102, 241, 0.1);
+    background: linear-gradient(180deg, rgba(249, 250, 251, 0.5) 0%, transparent 100%);
+    animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        max-height: 3000px;
+        transform: translateY(0);
+    }
+}
+
+.empty-debate {
+    padding: 60px 20px;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.empty-debate p {
+    margin: 12px 0;
+    font-size: 15px;
+}
+
+.start-time {
+    font-size: 14px;
+    color: #f59e0b;
+    font-weight: 700;
+    background: rgba(251, 191, 36, 0.1);
+    padding: 8px 16px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 18px 20px;
+    }
+
+    .header-right {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .ticker-symbol {
+        font-size: 20px;
+    }
+
+    .status-badge {
+        font-size: 11px;
+        padding: 5px 12px;
+    }
+}

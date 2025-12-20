@@ -1,0 +1,19 @@
+{
+  "request_id": "72b730e2-11e8-4f33-9843-a042cba657e1",
+  "ticker": "INTC",
+  "action": "SELL",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "Losing market share",
+  "consensus_confidence": 0.0,
+  "priority_score": 0.5,
+  "debate_rounds": 0,
+  "approval_level": "SOFT_APPROVAL",
+  "status": "pending",
+  "requested_at": "2025-12-16T20:58:18.959912",
+  "decided_at": null,
+  "auto_approve_after": "2025-12-17T20:58:18.959914",
+  "decided_by": null,
+  "rejection_reason": null,
+  "metadata": {}
+}

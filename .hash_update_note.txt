@@ -1,0 +1,2 @@
+# Backend Constitution check_integrity.py - line 24
+"trading_constraints.py": "cbcb43598c260f85ff49876ba8832b0cd784fd78335867b9d2ce75f097f0b617",

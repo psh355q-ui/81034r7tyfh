@@ -1,0 +1,19 @@
+{
+  "request_id": "d76631f5-9e12-4bbb-9dac-74456d3fc205",
+  "ticker": "TSLA",
+  "action": "BUY",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "EV market leader",
+  "consensus_confidence": 0.0,
+  "priority_score": 0.6,
+  "debate_rounds": 0,
+  "approval_level": "SOFT_APPROVAL",
+  "status": "rejected",
+  "requested_at": "2025-12-16T19:21:11.572879",
+  "decided_at": "2025-12-16T19:21:11.573572",
+  "auto_approve_after": "2025-12-17T19:21:11.572889",
+  "decided_by": "user@example.com",
+  "rejection_reason": "Too volatile",
+  "metadata": {}
+}

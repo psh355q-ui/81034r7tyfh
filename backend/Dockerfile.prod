@@ -1,0 +1,81 @@
+# ============================================================================
+# Production Dockerfile for FastAPI Backend
+# ============================================================================
+
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# ============================================================================
+# Builder Stage - Install dependencies
+# ============================================================================
+FROM base as builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY backend/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Install production server
+RUN pip install --user --no-cache-dir gunicorn uvicorn[standard]
+
+# ============================================================================
+# Runtime Stage - Minimal production image
+# ============================================================================
+FROM base as runtime
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 aitrading && \
+    mkdir -p /var/log/ai-trading /data/sec_filings /data/ai_cache && \
+    chown -R aitrading:aitrading /var/log/ai-trading /data
+
+# Copy Python dependencies from builder
+COPY --from=builder /root/.local /home/aitrading/.local
+
+# Copy application code
+COPY --chown=aitrading:aitrading backend/ /app/backend/
+
+# Set PATH
+ENV PATH=/home/aitrading/.local/bin:$PATH
+
+# Switch to non-root user
+USER aitrading
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Default command (can be overridden in docker-compose)
+CMD ["gunicorn", "backend.main:app", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "300", \
+     "--max-requests", "10000", \
+     "--max-requests-jitter", "1000", \
+     "--access-logfile", "/var/log/ai-trading/access.log", \
+     "--error-logfile", "/var/log/ai-trading/error.log", \
+     "--log-level", "info"]

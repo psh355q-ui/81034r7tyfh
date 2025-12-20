@@ -1,0 +1,186 @@
+# Docker Compose for Synology NAS Deployment
+# Optimized for DS423+, DS920+, DS720+ with limited resources
+
+services:
+  # Redis - L1 Cache (in-memory)
+  redis:
+    image: redis:7-alpine
+    container_name: ai-trading-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ai-trading-net
+
+  # TimescaleDB - L2 Cache (persistent time-series)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: ai-trading-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${TIMESCALE_DATABASE:-ai_trading}
+      - POSTGRES_USER=${TIMESCALE_USER:-postgres}
+      - POSTGRES_PASSWORD=${TIMESCALE_PASSWORD:-CHANGE_THIS_IN_ENV_FILE}
+      - TZ=Asia/Seoul
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-trading-net
+
+  # Backend (FastAPI) - Feature Store & AI Trading Logic
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile.nas
+  #   container_name: ai-trading-backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./backend:/app
+  #     - backend-logs:/app/logs
+  #   environment:
+  #     # Redis
+  #     - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+  #     - REDIS_MAX_CONNECTIONS=${REDIS_MAX_CONNECTIONS:-50}
+  #
+  #     # TimescaleDB
+  #     - TIMESCALE_HOST=${TIMESCALE_HOST:-timescaledb}
+  #     - TIMESCALE_PORT=${TIMESCALE_PORT:-5432}
+  #     - TIMESCALE_DATABASE=${TIMESCALE_DATABASE:-ai_trading}
+  #     - TIMESCALE_USER=${TIMESCALE_USER:-postgres}
+  #     - TIMESCALE_PASSWORD=${TIMESCALE_PASSWORD}
+  #
+  #     # Claude AI API
+  #     - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+  #
+  #     # Feature Store
+  #     - FEATURE_CACHE_TTL_INTRADAY=${FEATURE_CACHE_TTL_INTRADAY:-300}
+  #     - FEATURE_CACHE_TTL_DAILY=${FEATURE_CACHE_TTL_DAILY:-86400}
+  #
+  #     # Application
+  #     - APP_ENV=${APP_ENV:-production}
+  #     - APP_LOG_LEVEL=${APP_LOG_LEVEL:-INFO}
+  #     - APP_HOST=0.0.0.0
+  #     - APP_PORT=8000
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     timescaledb:
+  #       condition: service_healthy
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 512M
+  #   networks:
+  #     - ai-trading-net
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-trading-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+    networks:
+      - ai-trading-net
+
+  # Grafana - Monitoring dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-trading-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3001}
+      - GF_INSTALL_PLUGINS=redis-datasource
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+    depends_on:
+      - prometheus
+    networks:
+      - ai-trading-net
+
+volumes:
+  redis-data:
+    driver: local
+  timescale-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  backend-logs:
+    driver: local
+
+networks:
+  ai-trading-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# NAS-specific optimizations:
+# 1. Resource limits to prevent CPU/memory hogging
+# 2. restart: unless-stopped (safer than always)
+# 3. Named volumes for persistence
+# 4. Health checks for dependency management
+# 5. Reduced memory allocations (256-512MB per service)

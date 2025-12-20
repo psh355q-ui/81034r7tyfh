@@ -1,0 +1,19 @@
+{
+  "request_id": "bc4333ae-0dee-4c85-988c-78ff1acef1d2",
+  "ticker": "MSFT",
+  "action": "BUY",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "Cloud growth",
+  "consensus_confidence": 0.0,
+  "priority_score": 0.5,
+  "debate_rounds": 0,
+  "approval_level": "SOFT_APPROVAL",
+  "status": "auto_approved",
+  "requested_at": "2025-12-16T20:58:18.952308",
+  "decided_at": "2025-12-16T20:58:18.952930",
+  "auto_approve_after": "2025-12-16T19:58:18.952921",
+  "decided_by": "system",
+  "rejection_reason": null,
+  "metadata": {}
+}

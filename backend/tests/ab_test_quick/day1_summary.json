@@ -1,0 +1,29 @@
+{
+  "total_stocks": 10,
+  "agreement_count": 2,
+  "agreement_rate": 0.2,
+  "v1_levels": {
+    "LOW": 8,
+    "MODERATE": 2,
+    "HIGH": 0,
+    "CRITICAL": 0
+  },
+  "v2_levels": {
+    "LOW": 0,
+    "MODERATE": 10,
+    "HIGH": 0,
+    "CRITICAL": 0
+  },
+  "ab_metrics": {
+    "total_comparisons": 10,
+    "agreement_count": 2,
+    "v1_higher": 0,
+    "v2_higher": 10,
+    "avg_difference": 0.4655,
+    "agreement_rate": 0.2,
+    "v1_higher_rate": 0.0,
+    "v2_higher_rate": 1.0,
+    "recommendation": "V2 (Gemini) detects more risks - consider switching"
+  },
+  "timestamp": "2025-11-12T12:47:48.619544"
+}

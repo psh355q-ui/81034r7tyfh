@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  # Redis - L1 Cache (in-memory)
+  redis:
+    image: redis:7-alpine
+    container_name: ai-trading-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+
+  # PostgreSQL - L2 Cache (persistent time-series)
+  timescaledb:
+    image: postgres:15
+    container_name: ai-trading-timescaledb
+    ports:
+      - "5541:5432" # Changed: 5432→5541 to match .env configuration
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=ai_trading
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123
+      - TZ=Asia/Seoul
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - LC_ALL=C
+      - LANG=C
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+
+  # PostgreSQL + pgvector - Knowledge Graph for Deep Reasoning (Phase 14)
+  pgvector:
+    image: ankane/pgvector:latest
+    container_name: ai-trading-pgvector
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+      - ./backend/data/knowledge_graph/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=knowledge_graph
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${PGVECTOR_PASSWORD:-postgres}
+      - TZ=Asia/Seoul
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+
+  # Prometheus - Metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-trading-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+
+  # Grafana - Monitoring dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-trading-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+
+  # MLflow - Model tracking (optional, for Phase 5)
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.9.2
+    container_name: ai-trading-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    command: >
+      mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+  # Backend (FastAPI) - Uncomment when ready
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: ai-trading-backend
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./backend:/app
+  #     - backend-cache:/app/.cache
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - TIMESCALE_HOST=timescaledb
+  #     - TIMESCALE_PORT=5432
+  #     - TIMESCALE_DATABASE=ai_trading
+  #     - TIMESCALE_USER=postgres
+  #     - TIMESCALE_PASSWORD=postgres
+  #   depends_on:
+  #     - redis
+  #     - timescaledb
+  #   restart: unless-stopped
+  #   networks:
+  #     - ai-trading-net
+
+volumes:
+  redis-data:
+    driver: local
+  timescale-data:
+    driver: local
+  pgvector-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  mlflow-data:
+    driver: local
+  backend-cache:
+    driver: local
+
+networks:
+  ai-trading-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

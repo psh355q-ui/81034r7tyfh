@@ -1,0 +1,19 @@
+{
+  "request_id": "eab4ab88-e565-4389-8d80-33c3eee14893",
+  "ticker": "AAPL",
+  "action": "BUY",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "Apple ecosystem growth",
+  "consensus_confidence": 0.85,
+  "priority_score": 0.9,
+  "debate_rounds": 0,
+  "approval_level": "HARD_APPROVAL",
+  "status": "pending",
+  "requested_at": "2025-12-16T19:21:09.576397",
+  "decided_at": null,
+  "auto_approve_after": null,
+  "decided_by": null,
+  "rejection_reason": null,
+  "metadata": {}
+}

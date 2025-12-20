@@ -1,0 +1,253 @@
+# ============================================
+# AI Trading System - Git Ignore (개선 버전)
+# ============================================
+
+# ============================================
+# Environment & Secrets (최우선)
+# ============================================
+.env
+.env.local
+.env.*.local
+*.env
+config/api_keys.json
+credentials.json
+secrets.json
+*_credentials.json
+*_secrets.json
+
+# 브로커 API
+kis_api_key.json
+trading_credentials.json
+
+# SSH/SSL
+*.pem
+*.key
+*.cert
+*.crt
+id_rsa
+id_rsa.pub
+
+# ============================================
+# Python
+# ============================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.venv/
+
+# ============================================
+# Node.js / Frontend
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build outputs
+/frontend/build
+/frontend/dist
+
+# ============================================
+# IDEs
+# ============================================
+# VSCode
+.vscode/
+!.vscode/settings.json.example
+
+# PyCharm
+.idea/
+
+# Claude Code 🆕 추가
+.claude/settings.local.json
+.claude/cache/
+.claude/history/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# ============================================
+# OS
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================
+# Application Specific
+# ============================================
+# Logs
+logs/
+*.log
+
+# Cache
+cache/
+.cache/
+*.cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+db_data/
+postgres_data/
+timescaledb_data/
+redis_data/
+mysql_data/
+
+# Database dumps 🆕 추가
+*.sql
+*.dump
+backup.sql
+database_backup_*.sql
+
+# Data files
+data/*.json
+!data/.gitkeep
+!data/sample*.json       # 샘플 데이터는 허용
+data/*.csv
+data/*.xlsx
+data/*.parquet
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Analysis results
+reports/
+analyses/
+*.analysis.json
+backtests/              # 🆕 추가
+backtest_results_*.json # 🆕 추가
+
+# Trading data 🆕 추가
+portfolio_state.json
+holdings.json
+trades_history.csv
+
+# ============================================
+# Docker
+# ============================================
+*.dockerignore
+docker-compose.override.yml  # 🆕 추가
+docker-compose.local.yml     # 🆕 추가
+volumes/                      # 🆕 추가
+
+# ============================================
+# Testing
+# ============================================
+.coverage
+htmlcov/
+.pytest_cache/
+test-results/
+
+# ============================================
+# Misc
+# ============================================
+# Backup files
+*.bak
+*.backup
+*~
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Keep empty directories
+!.gitkeep
+
+# ============================================
+# Project Specific 🆕 추가
+# ============================================
+# NAS 배포 스크립트 (민감 정보 포함 가능)
+deploy_secrets.sh
+nas_deploy_config.json
+
+# 개인 메모
+PERSONAL_NOTES.md
+TODO_PERSONAL.md

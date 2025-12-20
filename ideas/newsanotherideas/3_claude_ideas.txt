@@ -1,0 +1,1375 @@
+정말 날카로운 지적입니다. "반복 = 확신"이라는 전제 자체가 위험할 수 있어요.
+
+실제로 2021년 GME/AMC 사태, 중국 부동산 관련 뉴스, 특정 기업 IR 캠페인 등에서 **의도적인 뉴스 폭탄**이 시장을 움직인 사례가 많죠.
+
+---
+
+# 🛡️ "확신 강화"의 함정과 방어 메커니즘
+
+## 문제의 본질
+
+```
+일반적 가정: 같은 이야기가 반복됨 → 사실일 가능성 높음 → 확신 증가
+현실:        같은 이야기가 반복됨 → 누군가 의도적으로 퍼뜨림 → 조작 가능성
+```
+
+**실제 사례들**:
+- **Pump & Dump**: 소형주에 긍정 뉴스 폭탄 → 개인 매수 유도 → 세력 매도
+- **FUD 캠페인**: 공매도 세력이 부정 뉴스 반복 → 패닉 셀 유도
+- **정부/기관 내러티브**: 특정 정책 정당화를 위한 조율된 메시지
+
+---
+
+## 🔍 DB 레벨에서 가능한 "의심 지표" 설계
+
+AI Agent 없이 **데이터 패턴만으로** 조작 가능성을 탐지하는 방법:
+
+### 1. **Source Diversity Score (출처 다양성)**
+
+```sql
+-- 같은 주제가 얼마나 다양한 출처에서 나왔는가?
+ALTER TABLE analysis_results ADD COLUMN source_diversity_score FLOAT;
+ALTER TABLE analysis_results ADD COLUMN unique_source_count INT;
+ALTER TABLE analysis_results ADD COLUMN source_concentration FLOAT;  -- 상위 1개 출처 비중
+
+-- 계산 로직
+WITH source_stats AS (
+    SELECT 
+        fingerprint,
+        COUNT(DISTINCT n.source) as unique_sources,
+        COUNT(*) as total_mentions,
+        MAX(source_count)::FLOAT / COUNT(*) as top_source_ratio
+    FROM analysis_results a
+    JOIN news_articles n ON a.article_id = n.id
+    WHERE a.analyzed_at > NOW() - INTERVAL '72 hours'
+    GROUP BY fingerprint
+)
+UPDATE analysis_results a
+SET 
+    source_diversity_score = CASE 
+        WHEN s.unique_sources >= 5 THEN 1.0      -- 5개 이상 출처 = 신뢰
+        WHEN s.unique_sources >= 3 THEN 0.7      -- 3~4개 = 보통
+        WHEN s.unique_sources = 2 THEN 0.4       -- 2개 = 의심
+        ELSE 0.1                                  -- 단일 출처 = 고위험
+    END,
+    unique_source_count = s.unique_sources,
+    source_concentration = s.top_source_ratio
+FROM source_stats s
+WHERE a.fingerprint = s.fingerprint;
+```
+
+**해석**:
+- `source_diversity_score < 0.4` → "에코 챔버" 의심
+- `source_concentration > 0.7` → 단일 출처 주도, 조작 가능성
+
+---
+
+### 2. **Velocity Anomaly (속도 이상치)**
+
+```sql
+-- 뉴스 폭증 속도 추적
+ALTER TABLE analysis_results ADD COLUMN velocity_score FLOAT;
+ALTER TABLE analysis_results ADD COLUMN is_velocity_anomaly BOOLEAN DEFAULT FALSE;
+
+-- 평소 대비 뉴스 증가율
+WITH hourly_counts AS (
+    SELECT 
+        ticker,
+        date_trunc('hour', published_date) as hour,
+        COUNT(*) as news_count
+    FROM news_articles
+    WHERE published_date > NOW() - INTERVAL '30 days'
+    GROUP BY ticker, date_trunc('hour', published_date)
+),
+ticker_baseline AS (
+    SELECT 
+        ticker,
+        AVG(news_count) as avg_hourly,
+        STDDEV(news_count) as std_hourly
+    FROM hourly_counts
+    GROUP BY ticker
+)
+-- 현재 시간대가 평균 + 2σ 초과하면 이상치
+UPDATE analysis_results a
+SET 
+    velocity_score = (current_count - b.avg_hourly) / NULLIF(b.std_hourly, 0),
+    is_velocity_anomaly = (current_count > b.avg_hourly + 2 * b.std_hourly)
+FROM ticker_baseline b
+WHERE a.ticker = b.ticker;
+```
+
+**해석**:
+- `velocity_score > 2.0` → 비정상적 뉴스 폭증 (z-score 2 이상)
+- `is_velocity_anomaly = TRUE` → 확신 강화 일시 중단
+
+---
+
+### 3. **Temporal Pattern (시간 패턴)**
+
+```sql
+-- 조율된 뉴스인지 탐지 (같은 시간대에 몰림)
+ALTER TABLE analysis_results ADD COLUMN temporal_clustering_score FLOAT;
+
+-- 뉴스 발행 시간의 분산이 너무 작으면 의심
+WITH news_timing AS (
+    SELECT 
+        a.fingerprint,
+        STDDEV(EXTRACT(EPOCH FROM n.published_date)) as time_variance,
+        MAX(n.published_date) - MIN(n.published_date) as time_spread,
+        COUNT(*) as news_count
+    FROM analysis_results a
+    JOIN news_articles n ON a.article_id = n.id
+    GROUP BY a.fingerprint
+    HAVING COUNT(*) >= 3  -- 3건 이상일 때만 분석
+)
+UPDATE analysis_results a
+SET temporal_clustering_score = CASE
+    -- 10건 이상 뉴스가 1시간 내 집중 = 매우 의심
+    WHEN t.news_count >= 10 AND t.time_spread < INTERVAL '1 hour' THEN 0.1
+    -- 5건 이상이 2시간 내 = 의심
+    WHEN t.news_count >= 5 AND t.time_spread < INTERVAL '2 hours' THEN 0.3
+    -- 정상적 분포
+    ELSE 0.8
+END
+FROM news_timing t
+WHERE a.fingerprint = t.fingerprint;
+```
+
+**해석**:
+- 10개 뉴스가 1시간 내 쏟아짐 → **조율된 PR/공격 캠페인** 의심
+
+---
+
+### 4. **Historical Credibility (출처 신뢰도 누적)**
+
+```sql
+-- 출처별 과거 정확도 추적
+CREATE TABLE source_credibility (
+    source VARCHAR(100) PRIMARY KEY,
+    total_signals INT DEFAULT 0,
+    correct_signals INT DEFAULT 0,
+    accuracy_rate FLOAT,
+    last_updated TIMESTAMPTZ,
+    credibility_tier INT DEFAULT 3  -- 1(최고)~5(최저)
+);
+
+-- 자동 업데이트 (시그널 결과 확정 시)
+CREATE OR REPLACE FUNCTION update_source_credibility()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE source_credibility
+    SET 
+        total_signals = total_signals + 1,
+        correct_signals = correct_signals + CASE WHEN NEW.outcome = 'CORRECT' THEN 1 ELSE 0 END,
+        accuracy_rate = (correct_signals + CASE WHEN NEW.outcome = 'CORRECT' THEN 1 ELSE 0 END)::FLOAT 
+                       / (total_signals + 1),
+        last_updated = NOW()
+    WHERE source = NEW.primary_source;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**해석**:
+- 특정 출처가 과거에 **자주 틀렸으면** → 해당 출처 뉴스의 확신 강화 가중치 하향
+
+---
+
+## 🧮 통합: "조정된 확신 강화" 공식
+
+```python
+# backend/database/reinforcement.py
+
+def calculate_adjusted_reinforcement(
+    base_reinforcement: float,  # 기본 +10%
+    source_diversity: float,     # 0.0~1.0
+    velocity_score: float,       # z-score
+    temporal_clustering: float,  # 0.0~1.0
+    source_credibility: float,   # 0.0~1.0
+) -> tuple[float, str]:
+    """
+    조작 가능성을 고려한 확신 강화 계산
+    
+    Returns:
+        (adjusted_reinforcement, warning_message)
+    """
+    
+    # 🚨 Hard Block 조건 (확신 강화 완전 차단)
+    if source_diversity < 0.2:
+        return 0.0, "BLOCKED: 단일 출처 에코 챔버 의심"
+    
+    if velocity_score > 3.0:
+        return 0.0, "BLOCKED: 비정상적 뉴스 폭증 (3σ 초과)"
+    
+    if temporal_clustering < 0.2:
+        return 0.0, "BLOCKED: 조율된 PR 캠페인 의심"
+    
+    # ⚠️ 감점 요소들
+    penalties = []
+    
+    # 출처 다양성 부족
+    diversity_penalty = max(0, (0.5 - source_diversity) * 0.5)
+    if diversity_penalty > 0:
+        penalties.append(f"출처 집중 -{diversity_penalty:.1%}")
+    
+    # 속도 이상
+    velocity_penalty = max(0, (velocity_score - 1.5) * 0.1)
+    if velocity_penalty > 0:
+        penalties.append(f"속도 이상 -{velocity_penalty:.1%}")
+    
+    # 시간 클러스터링
+    temporal_penalty = max(0, (0.5 - temporal_clustering) * 0.3)
+    if temporal_penalty > 0:
+        penalties.append(f"시간 집중 -{temporal_penalty:.1%}")
+    
+    # 출처 신뢰도 낮음
+    credibility_penalty = max(0, (0.6 - source_credibility) * 0.4)
+    if credibility_penalty > 0:
+        penalties.append(f"출처 신뢰도 -{credibility_penalty:.1%}")
+    
+    total_penalty = diversity_penalty + velocity_penalty + temporal_penalty + credibility_penalty
+    
+    # 최종 계산
+    adjusted = base_reinforcement * (1 - min(total_penalty, 0.9))  # 최대 90% 감점
+    
+    warning = "; ".join(penalties) if penalties else "정상"
+    
+    return adjusted, warning
+```
+
+---
+
+## 📊 DB 스키마 최종 버전
+
+```sql
+-- analysis_results 테이블 확장 (조작 탐지 필드 추가)
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS fingerprint VARCHAR(32);
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS reinforcement_count INT DEFAULT 1;
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS raw_reinforcement FLOAT DEFAULT 0.1;
+
+-- 🛡️ 조작 탐지 필드들
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS source_diversity_score FLOAT;
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS velocity_score FLOAT;
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS temporal_clustering_score FLOAT;
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS source_credibility_avg FLOAT;
+
+-- 🎯 최종 조정된 값
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS adjusted_reinforcement FLOAT;
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS manipulation_warning TEXT;
+ALTER TABLE analysis_results ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+
+-- 인덱스
+CREATE INDEX idx_analysis_manipulation ON analysis_results(is_blocked, manipulation_warning);
+```
+
+---
+
+## 🔄 전체 흐름
+
+```
+뉴스 수집 → 분석 → 중복 체크
+                     ↓
+              [중복 발견!]
+                     ↓
+         ┌──────────────────────┐
+         │  조작 탐지 4가지 체크  │
+         │  1. 출처 다양성       │
+         │  2. 속도 이상치       │
+         │  3. 시간 클러스터링   │
+         │  4. 출처 신뢰도       │
+         └──────────────────────┘
+                     ↓
+         ┌──────────────────────┐
+         │  Hard Block 조건?    │
+         │  → YES: 확신 강화 0  │
+         │  → NO: 감점 계산     │
+         └──────────────────────┘
+                     ↓
+         최종 adjusted_reinforcement 저장
+                     ↓
+         트레이딩 시그널에 반영
+```
+
+---
+
+## 💡 추가 아이디어: "냉각 기간" 도입
+
+```python
+# 급격한 뉴스 폭증 시 "냉각 기간" 적용
+COOLING_PERIOD_HOURS = 24
+
+async def should_apply_cooling(ticker: str, db: AsyncSession) -> bool:
+    """
+    최근 24시간 내 velocity_anomaly가 있었으면
+    해당 종목의 모든 확신 강화를 일시 중단
+    """
+    result = await db.execute(
+        select(func.count())
+        .where(AnalysisResult.ticker == ticker)
+        .where(AnalysisResult.is_velocity_anomaly == True)
+        .where(AnalysisResult.analyzed_at > datetime.now() - timedelta(hours=COOLING_PERIOD_HOURS))
+    )
+    anomaly_count = result.scalar()
+    
+    return anomaly_count > 0  # 이상치가 1건이라도 있으면 냉각
+```
+
+**효과**: 세력이 뉴스 폭탄을 터뜨려도 24시간 동안 시스템이 "관망" 상태 유지
+
+---
+
+이 방식이면 AI Agent 없이도 **DB 레벨에서 조작 의심 신호를 자동 탐지**할 수 있습니다.
+
+어떻게 생각하세요? 특정 부분을 더 강화하거나, 다른 조작 패턴을 추가할 수도 있어요.
+
+
+훌륭한 논의입니다. 세 AI의 아이디어를 통합하고, Ho가 추가한 **"엠바고"** 엣지 케이스까지 반영해서 최종 설계를 정리해 드릴게요.
+
+---
+
+# 🛡️ 최종 통합: "Consensus Integrity System"
+
+## 핵심 철학 (세 AI + Ho의 통합)
+
+```
+❌ 기존: 많이 나왔다 = 확신 증가
+✅ 최종: 독립적으로, 다양한 곳에서, 다른 논리로 같은 결론 = 확신 증가
+```
+
+| 출처 | 핵심 기여 |
+|------|----------|
+| **Claude** | DB 레벨 지표 (diversity, velocity, clustering) |
+| **ChatGPT** | Source Entropy, Narrative Lock-in, Counterfactual Storage |
+| **Gemini** | Copy-Paste Ratio, Skeptic Agent 트리거, 출처 계층화 |
+| **Ho** | 엠바고 예외 처리, 세력 작전 현실 인식 |
+
+---
+
+## 📊 통합 DB 스키마
+
+```sql
+-- ═══════════════════════════════════════════════════════════════
+-- 1. 뉴스 클러스터 (유사 뉴스 그룹)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE news_clusters (
+    id SERIAL PRIMARY KEY,
+    fingerprint VARCHAR(32) UNIQUE NOT NULL,  -- 주제 해시
+    ticker VARCHAR(20),
+    theme VARCHAR(200),
+    
+    -- 기본 카운트
+    hit_count INT DEFAULT 1,
+    first_seen_at TIMESTAMPTZ NOT NULL,
+    last_seen_at TIMESTAMPTZ NOT NULL,
+    
+    -- ═══ 출처 다양성 (Claude + ChatGPT + Gemini) ═══
+    unique_source_count INT DEFAULT 1,
+    source_list JSONB DEFAULT '[]',           -- ["Bloomberg", "Reuters", ...]
+    source_entropy FLOAT DEFAULT 0.0,         -- Shannon entropy
+    major_source_count INT DEFAULT 0,         -- 메이저 언론사 수
+    source_tier_breakdown JSONB DEFAULT '{}', -- {"tier1": 2, "tier2": 5, "tier3": 10}
+    
+    -- ═══ 시간 패턴 (Claude + Gemini) ═══
+    velocity_score FLOAT DEFAULT 0.0,         -- z-score 기반 폭증 감지
+    temporal_spread_minutes FLOAT,            -- 첫 뉴스~마지막 뉴스 시간 차이
+    is_clean_timestamp BOOLEAN DEFAULT FALSE, -- 정각/30분 단위 시작
+    burst_detected BOOLEAN DEFAULT FALSE,
+    
+    -- ═══ 내용 분석 (ChatGPT + Gemini) ═══
+    avg_text_similarity FLOAT DEFAULT 0.0,    -- 뉴스 간 평균 유사도
+    copy_paste_ratio FLOAT DEFAULT 0.0,       -- 90% 이상 동일 비율
+    narrative_lock_score FLOAT DEFAULT 0.0,   -- 프레이밍 단일화 정도
+    
+    -- ═══ 엠바고/이벤트 매칭 (Ho 추가) ═══
+    matched_calendar_event VARCHAR(200),      -- "FOMC Minutes", "NVDA Earnings"
+    is_scheduled_event BOOLEAN DEFAULT FALSE,
+    event_importance INT,                     -- 1(최고)~5(낮음)
+    
+    -- ═══ 최종 판정 ═══
+    cluster_verdict VARCHAR(30) DEFAULT 'PENDING',
+    -- 'VALID_CONSENSUS': 진짜 합의
+    -- 'EMBARGO_LIFT': 엠바고 해제 (신뢰)
+    -- 'SCHEDULED_EVENT': 예정된 이벤트 (신뢰)
+    -- 'MANIPULATION_SUSPECTED': 작전 의심
+    -- 'BOT_ATTACK': 봇 공격 확정
+    -- 'VIRAL_ORGANIC': 자연 확산
+    -- 'QUARANTINE': 격리 중 (30분 대기)
+    
+    verdict_reason TEXT,
+    verdict_confidence FLOAT,
+    
+    -- 메타
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_cluster_ticker ON news_clusters(ticker);
+CREATE INDEX idx_cluster_verdict ON news_clusters(cluster_verdict);
+CREATE INDEX idx_cluster_time ON news_clusters(first_seen_at DESC);
+
+-- ═══════════════════════════════════════════════════════════════
+-- 2. 출처 신뢰도 (누적 학습)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE source_credibility (
+    source VARCHAR(100) PRIMARY KEY,
+    
+    -- 계층 분류
+    tier INT DEFAULT 3,  -- 1: 최상위 (Bloomberg, Reuters, WSJ)
+                         -- 2: 주요 (CNBC, FT, 연합)
+                         -- 3: 일반
+                         -- 4: 마이너/불확실
+                         -- 5: 블랙리스트
+    
+    -- 성과 추적
+    total_signals INT DEFAULT 0,
+    correct_signals INT DEFAULT 0,
+    accuracy_rate FLOAT,
+    
+    -- 조작 이력
+    manipulation_flags INT DEFAULT 0,  -- 작전에 연루된 횟수
+    last_manipulation_at TIMESTAMPTZ,
+    
+    -- 가중치
+    credibility_weight FLOAT DEFAULT 1.0,
+    
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 초기 Tier 1 언론사 설정
+INSERT INTO source_credibility (source, tier, credibility_weight) VALUES
+('Bloomberg', 1, 2.0),
+('Reuters', 1, 2.0),
+('WSJ', 1, 2.0),
+('Financial Times', 1, 2.0),
+('CNBC', 2, 1.5),
+('SEC Filing', 1, 2.5),  -- 공식 공시는 최고 신뢰
+('Company PR', 3, 0.8)   -- 기업 보도자료는 감점
+ON CONFLICT (source) DO NOTHING;
+
+-- ═══════════════════════════════════════════════════════════════
+-- 3. 경제 캘린더 (엠바고 판단용)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE economic_calendar (
+    id SERIAL PRIMARY KEY,
+    event_name VARCHAR(200) NOT NULL,
+    event_type VARCHAR(50),  -- 'FOMC', 'CPI', 'EARNINGS', 'PRODUCT_LAUNCH'
+    ticker VARCHAR(20),      -- 특정 기업 이벤트면 티커
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    importance INT DEFAULT 3, -- 1(최고)~5(낮음)
+    
+    -- 엠바고 정보
+    embargo_lift_time TIMESTAMPTZ,
+    expected_news_burst BOOLEAN DEFAULT TRUE,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_calendar_time ON economic_calendar(scheduled_at);
+CREATE INDEX idx_calendar_ticker ON economic_calendar(ticker);
+
+-- ═══════════════════════════════════════════════════════════════
+-- 4. Counterfactual 기록 (ChatGPT 제안: 사후 Devil's Advocate)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE counterfactual_flags (
+    id SERIAL PRIMARY KEY,
+    cluster_id INT REFERENCES news_clusters(id),
+    signal_id INT,  -- 해당 클러스터로 생성된 시그널
+    
+    flag_type VARCHAR(50),
+    -- 'OPPOSING_NEWS': 반대 뉴스 등장
+    -- 'PRICE_DIVERGENCE': 가격이 반대로 움직임
+    -- 'REGIME_SHIFT': 매크로 환경 변화
+    -- 'SOURCE_DISCREDITED': 출처가 나중에 신뢰도 하락
+    
+    description TEXT,
+    severity FLOAT,  -- 0.0~1.0
+    detected_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+## 🧮 통합 판정 로직
+
+```python
+# backend/intelligence/consensus_validator.py
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+from datetime import datetime, timedelta
+import math
+
+class ClusterVerdict(Enum):
+    VALID_CONSENSUS = "VALID_CONSENSUS"         # 진짜 합의 → 확신 강화
+    EMBARGO_LIFT = "EMBARGO_LIFT"               # 엠바고 해제 → 긴급 분석
+    SCHEDULED_EVENT = "SCHEDULED_EVENT"         # 예정 이벤트 → 신뢰
+    VIRAL_ORGANIC = "VIRAL_ORGANIC"             # 자연 확산 → 보통 신뢰
+    QUARANTINE = "QUARANTINE"                   # 30분 격리 → 대기
+    MANIPULATION_SUSPECTED = "MANIPULATION_SUSPECTED"  # 의심 → 확신 감점
+    BOT_ATTACK = "BOT_ATTACK"                   # 확정 공격 → 무시
+
+@dataclass
+class ValidationResult:
+    verdict: ClusterVerdict
+    confidence: float
+    reason: str
+    confidence_multiplier: float  # 확신 강화에 적용할 배수
+    should_quarantine: bool
+    quarantine_until: Optional[datetime]
+
+
+class ConsensusValidator:
+    """뉴스 클러스터의 진위를 판별하는 통합 검증기"""
+    
+    # 출처 Tier별 가중치
+    TIER_WEIGHTS = {1: 2.0, 2: 1.5, 3: 1.0, 4: 0.5, 5: 0.0}
+    
+    # 메이저 언론사 목록
+    TIER1_SOURCES = {"Bloomberg", "Reuters", "WSJ", "Financial Times", "SEC Filing"}
+    TIER2_SOURCES = {"CNBC", "FT", "AP", "연합뉴스", "Yahoo Finance"}
+    
+    def validate(self, cluster: dict, calendar_events: list) -> ValidationResult:
+        """
+        클러스터 검증 메인 로직
+        
+        판정 우선순위:
+        1. 엠바고/이벤트 매칭 → 신뢰
+        2. 봇 공격 패턴 → 차단
+        3. 작전 의심 패턴 → 감점
+        4. 자연 확산 → 보통
+        5. 진짜 합의 → 강화
+        """
+        
+        # ═══ STEP 1: 엠바고/이벤트 체크 (Ho 추가) ═══
+        embargo_result = self._check_embargo_lift(cluster, calendar_events)
+        if embargo_result:
+            return embargo_result
+        
+        # ═══ STEP 2: 봇 공격 탐지 ═══
+        if self._is_bot_attack(cluster):
+            return ValidationResult(
+                verdict=ClusterVerdict.BOT_ATTACK,
+                confidence=0.95,
+                reason="1분 내 대량 복붙 뉴스 감지",
+                confidence_multiplier=0.0,  # 완전 무시
+                should_quarantine=False,
+                quarantine_until=None
+            )
+        
+        # ═══ STEP 3: 작전 의심 체크 ═══
+        manipulation_score = self._calculate_manipulation_score(cluster)
+        
+        if manipulation_score > 0.7:
+            return ValidationResult(
+                verdict=ClusterVerdict.MANIPULATION_SUSPECTED,
+                confidence=manipulation_score,
+                reason=self._get_manipulation_reason(cluster),
+                confidence_multiplier=0.1,  # 90% 감점
+                should_quarantine=True,
+                quarantine_until=datetime.now() + timedelta(minutes=30)
+            )
+        
+        # ═══ STEP 4: 격리 필요성 체크 ═══
+        if self._needs_quarantine(cluster):
+            return ValidationResult(
+                verdict=ClusterVerdict.QUARANTINE,
+                confidence=0.5,
+                reason="추가 검증 필요 - 30분 대기",
+                confidence_multiplier=0.0,
+                should_quarantine=True,
+                quarantine_until=datetime.now() + timedelta(minutes=30)
+            )
+        
+        # ═══ STEP 5: 진짜 합의 vs 자연 확산 구분 ═══
+        consensus_score = self._calculate_consensus_score(cluster)
+        
+        if consensus_score > 0.7:
+            return ValidationResult(
+                verdict=ClusterVerdict.VALID_CONSENSUS,
+                confidence=consensus_score,
+                reason="다양한 독립 출처에서 동일 결론",
+                confidence_multiplier=1.0 + (consensus_score - 0.7),  # 최대 1.3배
+                should_quarantine=False,
+                quarantine_until=None
+            )
+        else:
+            return ValidationResult(
+                verdict=ClusterVerdict.VIRAL_ORGANIC,
+                confidence=consensus_score,
+                reason="자연적 확산으로 판단",
+                confidence_multiplier=0.8,  # 약간 보수적
+                should_quarantine=False,
+                quarantine_until=None
+            )
+    
+    def _check_embargo_lift(
+        self, 
+        cluster: dict, 
+        calendar_events: list
+    ) -> Optional[ValidationResult]:
+        """엠바고 해제 / 예정 이벤트 체크 (Ho 아이디어)"""
+        
+        first_seen = cluster['first_seen_at']
+        
+        # 1. Clean Timestamp 체크 (정각 또는 30분 단위)
+        is_clean = (first_seen.second < 5 and first_seen.minute % 30 < 3)
+        
+        # 2. 캘린더 매칭
+        matched_event = None
+        for event in calendar_events:
+            event_time = event['scheduled_at']
+            time_diff = abs((first_seen - event_time).total_seconds())
+            
+            # 이벤트 시간 ±5분 이내
+            if time_diff < 300:
+                # 티커 매칭 또는 매크로 이벤트
+                if event.get('ticker') == cluster.get('ticker') or event.get('ticker') is None:
+                    matched_event = event
+                    break
+        
+        # 3. 엠바고 판정
+        if matched_event and is_clean:
+            # 내용 다양성 체크 (복붙이 아닌지)
+            if cluster['avg_text_similarity'] < 0.7:
+                return ValidationResult(
+                    verdict=ClusterVerdict.EMBARGO_LIFT,
+                    confidence=0.9,
+                    reason=f"엠바고 해제: {matched_event['event_name']}",
+                    confidence_multiplier=1.5,  # 강력 신뢰
+                    should_quarantine=False,
+                    quarantine_until=None
+                )
+            else:
+                # 이벤트 시간이지만 내용이 복붙 → 보도자료 단순 배포
+                return ValidationResult(
+                    verdict=ClusterVerdict.SCHEDULED_EVENT,
+                    confidence=0.7,
+                    reason=f"예정 이벤트: {matched_event['event_name']} (보도자료 기반)",
+                    confidence_multiplier=1.0,
+                    should_quarantine=False,
+                    quarantine_until=None
+                )
+        
+        # 캘린더 매칭만 됨 (시간은 불규칙)
+        if matched_event:
+            return ValidationResult(
+                verdict=ClusterVerdict.SCHEDULED_EVENT,
+                confidence=0.6,
+                reason=f"이벤트 관련: {matched_event['event_name']}",
+                confidence_multiplier=0.9,
+                should_quarantine=False,
+                quarantine_until=None
+            )
+        
+        return None  # 엠바고/이벤트 아님
+    
+    def _is_bot_attack(self, cluster: dict) -> bool:
+        """봇 공격 패턴 탐지"""
+        # 1분 내 30건 이상 + 유사도 95% 이상
+        if cluster['hit_count'] >= 30:
+            if cluster['temporal_spread_minutes'] < 1:
+                if cluster['avg_text_similarity'] > 0.95:
+                    return True
+        return False
+    
+    def _calculate_manipulation_score(self, cluster: dict) -> float:
+        """작전 의심 점수 계산 (0.0~1.0)"""
+        score = 0.0
+        
+        # 1. 출처 다양성 부족 (가중치 30%)
+        if cluster['source_entropy'] < 1.0:
+            score += 0.3 * (1.0 - cluster['source_entropy'])
+        
+        # 2. 메이저 출처 부재 (가중치 25%)
+        if cluster['major_source_count'] == 0:
+            score += 0.25
+        elif cluster['major_source_count'] == 1 and cluster['hit_count'] > 20:
+            score += 0.1
+        
+        # 3. 복붙 비율 높음 (가중치 25%)
+        if cluster['copy_paste_ratio'] > 0.5:
+            score += 0.25 * cluster['copy_paste_ratio']
+        
+        # 4. 속도 이상 (가중치 20%)
+        if cluster['velocity_score'] > 2.0:
+            score += 0.2 * min(cluster['velocity_score'] / 5.0, 1.0)
+        
+        return min(score, 1.0)
+    
+    def _calculate_consensus_score(self, cluster: dict) -> float:
+        """진짜 합의 점수 계산 (0.0~1.0)"""
+        score = 0.0
+        
+        # 1. 출처 다양성 (가중치 35%)
+        entropy_score = min(cluster['source_entropy'] / 2.0, 1.0)
+        score += 0.35 * entropy_score
+        
+        # 2. Tier 1 출처 비중 (가중치 30%)
+        tier1_ratio = cluster.get('source_tier_breakdown', {}).get('tier1', 0) / max(cluster['hit_count'], 1)
+        score += 0.30 * min(tier1_ratio * 3, 1.0)  # 33% 이상이면 만점
+        
+        # 3. 내용 다양성 (가중치 20%)
+        content_diversity = 1.0 - cluster['avg_text_similarity']
+        score += 0.20 * content_diversity
+        
+        # 4. 시간 분산 (가중치 15%)
+        if cluster['temporal_spread_minutes'] > 60:
+            score += 0.15  # 1시간 이상 분산
+        elif cluster['temporal_spread_minutes'] > 10:
+            score += 0.10
+        
+        return min(score, 1.0)
+    
+    def _needs_quarantine(self, cluster: dict) -> bool:
+        """격리 필요 여부 판단"""
+        # 애매한 상황: 빠른 폭증 + 출처 불분명
+        if cluster['velocity_score'] > 1.5:
+            if cluster['major_source_count'] < 2:
+                if cluster['avg_text_similarity'] > 0.6:
+                    return True
+        return False
+    
+    def _get_manipulation_reason(self, cluster: dict) -> str:
+        """작전 의심 사유 생성"""
+        reasons = []
+        
+        if cluster['source_entropy'] < 1.0:
+            reasons.append(f"출처 편중 (entropy={cluster['source_entropy']:.2f})")
+        if cluster['major_source_count'] == 0:
+            reasons.append("메이저 언론 미참여")
+        if cluster['copy_paste_ratio'] > 0.5:
+            reasons.append(f"복붙율 {cluster['copy_paste_ratio']:.0%}")
+        if cluster['velocity_score'] > 2.0:
+            reasons.append(f"비정상 속도 (z={cluster['velocity_score']:.1f})")
+        
+        return "; ".join(reasons) if reasons else "복합 의심 패턴"
+```
+
+---
+
+## 📈 최종 확신 강화 공식
+
+```python
+def calculate_final_confidence(
+    base_confidence: float,
+    hit_count: int,
+    validation_result: ValidationResult
+) -> tuple[float, str]:
+    """
+    최종 확신 계산
+    
+    기존: confidence += 0.1 * hit_count (위험!)
+    최종: confidence = base + α * log(hits) * validation_multiplier
+    """
+    
+    # 차단된 경우
+    if validation_result.verdict in [ClusterVerdict.BOT_ATTACK, ClusterVerdict.QUARANTINE]:
+        return base_confidence, f"강화 차단: {validation_result.reason}"
+    
+    # 로그 스케일로 hit_count 영향 완화 (100건이나 10건이나 큰 차이 없음)
+    hit_factor = math.log(max(hit_count, 1) + 1) / 5.0  # 최대 ~1.0
+    
+    # Validation 결과에 따른 배수
+    multiplier = validation_result.confidence_multiplier
+    
+    # 최종 강화량
+    reinforcement = 0.1 * hit_factor * multiplier
+    
+    final_confidence = min(0.95, base_confidence + reinforcement)
+    
+    log_msg = (
+        f"{validation_result.verdict.value}: "
+        f"hits={hit_count}, factor={hit_factor:.2f}, "
+        f"multiplier={multiplier:.2f}, "
+        f"reinforcement={reinforcement:.3f}"
+    )
+    
+    return final_confidence, log_msg
+```
+
+---
+
+## 🔄 전체 흐름 다이어그램
+
+```
+뉴스 수집
+    ↓
+클러스터링 (fingerprint 기반)
+    ↓
+┌─────────────────────────────────────────┐
+│         ConsensusValidator              │
+│                                         │
+│  1. 엠바고/캘린더 체크 ──→ 매칭? ──→ 신뢰 │
+│           ↓ (매칭 안됨)                  │
+│  2. 봇 공격 체크 ────→ 공격? ──→ 차단    │
+│           ↓ (공격 아님)                  │
+│  3. 작전 의심 점수 ───→ >0.7? ──→ 감점   │
+│           ↓ (<0.7)                      │
+│  4. 격리 필요? ──────→ 필요? ──→ 30분 대기│
+│           ↓ (불필요)                     │
+│  5. 합의 점수 ───────→ >0.7? ──→ 강화    │
+│           ↓ (<0.7)                      │
+│  6. 자연 확산 ───────→ 보통 신뢰         │
+└─────────────────────────────────────────┘
+    ↓
+확신 강화/감점 적용
+    ↓
+트레이딩 시그널 생성
+```
+
+---
+
+## 📋 구현 우선순위
+
+| 순서 | 작업 | 난이도 | 효과 |
+|------|------|--------|------|
+| 1 | `news_clusters` 테이블 생성 | 쉬움 | 기반 구조 |
+| 2 | `source_credibility` 초기 데이터 | 쉬움 | 출처 계층화 |
+| 3 | `economic_calendar` 연동 | 중간 | 엠바고 판별 |
+| 4 | `ConsensusValidator` 구현 | 중간 | 핵심 로직 |
+| 5 | 텍스트 유사도 계산 추가 | 중간 | 복붙 탐지 |
+| 6 | Counterfactual 기록 | 낮음 | 사후 학습 |
+
+---
+
+이 구조면 **세력 작전도 막고, 진짜 엠바고 뉴스는 놓치지 않는** 균형 잡힌 시스템이 됩니다.
+
+바로 구현 스크립트를 만들어 드릴까요?
+
+
+완벽한 통합입니다. ChatGPT의 정리가 핵심을 정확히 짚었어요.
+
+---
+
+# 🎯 최종 통합: 4-Signal Consensus Framework
+
+## 핵심 전환점
+
+ChatGPT가 정확히 말한 것처럼:
+
+> **"뉴스를 믿을지 말지"가 아니라 "언제 행동하고 언제 관망할지"를 판단하는 시스템**
+
+이건 트레이딩 AI의 **인지 계층(Cognitive Layer)**입니다.
+
+---
+
+## 📊 4개 Core Signal로 압축
+
+기존의 복잡한 지표들을 **4개의 독립적 신호**로 통합:
+
+| Signal | 의미 | 범위 | 통합 대상 |
+|--------|------|------|----------|
+| **DI** (Diversity Integrity) | 독립적 출처에서 나왔는가? | 0.0~1.0 | source_entropy, unique_count, major_ratio |
+| **TN** (Temporal Naturalness) | 자연스러운 확산 속도인가? | -1.0~+1.0 | velocity, burst, clustering |
+| **NI** (Narrative Independence) | 각자 생각해서 쓴 글인가? | 0.0~1.0 | text_similarity, copy_paste_ratio |
+| **EL** (Event Legitimacy) | 예정된 공개인가? | Bool + Conf | calendar_match, clean_timestamp |
+
+---
+
+## 🧮 최종 스키마 (단순화)
+
+```sql
+-- ═══════════════════════════════════════════════════════════════
+-- 뉴스 클러스터 테이블 (4-Signal 버전)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE news_clusters (
+    id SERIAL PRIMARY KEY,
+    fingerprint VARCHAR(32) UNIQUE NOT NULL,
+    ticker VARCHAR(20),
+    theme VARCHAR(200),
+    
+    -- 기본 정보
+    hit_count INT DEFAULT 1,
+    first_seen_at TIMESTAMPTZ NOT NULL,
+    last_seen_at TIMESTAMPTZ NOT NULL,
+    source_list JSONB DEFAULT '[]',
+    
+    -- ═══ 4 Core Signals ═══
+    di_score FLOAT DEFAULT 0.5,       -- Diversity Integrity (0~1)
+    tn_score FLOAT DEFAULT 0.0,       -- Temporal Naturalness (-1~+1)
+    ni_score FLOAT DEFAULT 0.5,       -- Narrative Independence (0~1)
+    el_matched BOOLEAN DEFAULT FALSE, -- Event Legitimacy (bool)
+    el_confidence FLOAT DEFAULT 0.0,  -- Event Legitimacy (0~1)
+    el_event_name VARCHAR(200),       -- 매칭된 이벤트명
+    
+    -- ═══ 최종 판정 ═══
+    verdict VARCHAR(30) DEFAULT 'PENDING',
+    -- 'EMBARGO_EVENT': 엠바고 해제 (신뢰)
+    -- 'ORGANIC_CONSENSUS': 진짜 합의 (강화)
+    -- 'MANIPULATION_ATTACK': 작전 (차단)
+    -- 'PR_CAMPAIGN': PR 캠페인 (강화 금지)
+    -- 'NOISE': 노이즈 (무시)
+    -- 'WATCH': 관망 (냉각)
+    
+    verdict_reason TEXT,
+    confidence_multiplier FLOAT DEFAULT 1.0,
+    
+    -- ═══ 냉각 기간 ═══
+    cooling_intensity FLOAT DEFAULT 0.0,
+    cooling_until TIMESTAMPTZ,
+    
+    -- 메타
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_cluster_verdict ON news_clusters(verdict);
+CREATE INDEX idx_cluster_ticker_time ON news_clusters(ticker, first_seen_at DESC);
+```
+
+---
+
+## 🧠 Signal 계산 로직
+
+```python
+# backend/intelligence/four_signal_calculator.py
+
+import math
+from dataclasses import dataclass
+from typing import List, Optional
+from datetime import datetime, timedelta
+
+
+@dataclass
+class FourSignals:
+    """4개 핵심 신호"""
+    di: float  # Diversity Integrity (0~1)
+    tn: float  # Temporal Naturalness (-1~+1)
+    ni: float  # Narrative Independence (0~1)
+    el: bool   # Event Legitimacy (matched?)
+    el_confidence: float  # Event Legitimacy confidence (0~1)
+    el_event_name: Optional[str] = None
+
+
+class FourSignalCalculator:
+    """4-Signal 계산기"""
+    
+    # 출처 Tier 정의
+    TIER1_SOURCES = {"Bloomberg", "Reuters", "WSJ", "FT", "SEC Filing", "AP"}
+    TIER2_SOURCES = {"CNBC", "Yahoo Finance", "MarketWatch", "연합뉴스"}
+    
+    def calculate(
+        self,
+        sources: List[str],
+        timestamps: List[datetime],
+        text_similarities: List[float],
+        calendar_events: List[dict],
+        first_seen: datetime
+    ) -> FourSignals:
+        """4개 신호 계산"""
+        
+        di = self._calc_diversity_integrity(sources)
+        tn = self._calc_temporal_naturalness(timestamps, first_seen)
+        ni = self._calc_narrative_independence(text_similarities)
+        el, el_conf, el_name = self._calc_event_legitimacy(first_seen, calendar_events)
+        
+        return FourSignals(
+            di=di, tn=tn, ni=ni,
+            el=el, el_confidence=el_conf, el_event_name=el_name
+        )
+    
+    def _calc_diversity_integrity(self, sources: List[str]) -> float:
+        """DI: 출처 다양성 + 품질"""
+        if not sources:
+            return 0.0
+        
+        unique_sources = set(sources)
+        n = len(unique_sources)
+        
+        # Shannon Entropy (정규화)
+        from collections import Counter
+        counts = Counter(sources)
+        total = len(sources)
+        entropy = 0.0
+        for count in counts.values():
+            p = count / total
+            if p > 0:
+                entropy -= p * math.log2(p)
+        max_entropy = math.log2(n) if n > 1 else 1
+        normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0
+        
+        # Tier 가중치
+        tier1_count = sum(1 for s in unique_sources if s in self.TIER1_SOURCES)
+        tier2_count = sum(1 for s in unique_sources if s in self.TIER2_SOURCES)
+        tier_bonus = (tier1_count * 0.15 + tier2_count * 0.05)
+        
+        # 최종 DI
+        base_di = min(n / 10, 1.0) * 0.4 + normalized_entropy * 0.4
+        di = min(base_di + tier_bonus + 0.2, 1.0)
+        
+        return round(di, 3)
+    
+    def _calc_temporal_naturalness(
+        self, 
+        timestamps: List[datetime],
+        first_seen: datetime
+    ) -> float:
+        """TN: 시간 패턴의 자연스러움 (-1~+1)"""
+        if len(timestamps) < 2:
+            return 0.0
+        
+        # 시간 분포 계산
+        sorted_ts = sorted(timestamps)
+        spread_minutes = (sorted_ts[-1] - sorted_ts[0]).total_seconds() / 60
+        
+        # 간격의 표준편차 (균등하면 자연적)
+        intervals = []
+        for i in range(1, len(sorted_ts)):
+            intervals.append((sorted_ts[i] - sorted_ts[i-1]).total_seconds())
+        
+        if intervals:
+            mean_interval = sum(intervals) / len(intervals)
+            variance = sum((x - mean_interval) ** 2 for x in intervals) / len(intervals)
+            std_interval = math.sqrt(variance)
+            cv = std_interval / mean_interval if mean_interval > 0 else 0  # 변동계수
+        else:
+            cv = 0
+        
+        # 판정
+        # 1분 내 30건 이상 = 확실한 봇
+        if spread_minutes < 1 and len(timestamps) >= 30:
+            return -1.0
+        
+        # 5분 내 폭발 = 의심
+        if spread_minutes < 5 and len(timestamps) >= 20:
+            return -0.7
+        
+        # 균등 분포 (cv < 0.5) = 자연적
+        if cv < 0.5 and spread_minutes > 30:
+            return 0.8
+        
+        # 기본값
+        tn = 0.0
+        tn += min(spread_minutes / 120, 0.5)  # 2시간 분산이면 +0.5
+        tn -= max(0, (len(timestamps) - 10) / 50)  # 많으면 감점
+        tn += 0.3 if cv < 1.0 else -0.2
+        
+        return round(max(-1.0, min(1.0, tn)), 3)
+    
+    def _calc_narrative_independence(self, similarities: List[float]) -> float:
+        """NI: 내용의 독립성"""
+        if not similarities:
+            return 0.5
+        
+        avg_similarity = sum(similarities) / len(similarities)
+        
+        # 유사도가 낮을수록 독립적
+        # 0.9 이상 = 복붙
+        # 0.5 이하 = 완전 독립
+        ni = 1.0 - avg_similarity
+        
+        # Copy-paste ratio (90% 이상 유사한 쌍의 비율)
+        copy_paste_count = sum(1 for s in similarities if s > 0.9)
+        copy_paste_ratio = copy_paste_count / len(similarities) if similarities else 0
+        
+        # 복붙이 많으면 추가 감점
+        ni -= copy_paste_ratio * 0.3
+        
+        return round(max(0.0, min(1.0, ni)), 3)
+    
+    def _calc_event_legitimacy(
+        self,
+        first_seen: datetime,
+        calendar_events: List[dict]
+    ) -> tuple[bool, float, Optional[str]]:
+        """EL: 엠바고/이벤트 매칭"""
+        
+        # Clean Timestamp 체크 (정각 또는 30분 단위)
+        is_clean = (first_seen.second < 10 and first_seen.minute % 30 < 5)
+        
+        # 캘린더 매칭
+        for event in calendar_events:
+            event_time = event.get('scheduled_at')
+            if not event_time:
+                continue
+            
+            time_diff = abs((first_seen - event_time).total_seconds())
+            
+            # ±10분 이내 매칭
+            if time_diff < 600:
+                confidence = 0.9 if is_clean else 0.6
+                
+                # 이벤트 중요도에 따른 조정
+                importance = event.get('importance', 3)
+                confidence *= (6 - importance) / 5  # importance 1이면 1.0, 5면 0.2
+                
+                return True, round(confidence, 3), event.get('event_name')
+        
+        return False, 0.0, None
+```
+
+---
+
+## 🎯 Classification Matrix (핵심 판정 로직)
+
+```python
+# backend/intelligence/verdict_classifier.py
+
+from enum import Enum
+from dataclasses import dataclass
+from typing import Optional
+from datetime import datetime, timedelta
+
+
+class Verdict(Enum):
+    EMBARGO_EVENT = "EMBARGO_EVENT"           # 엠바고 해제 → 즉시 분석
+    ORGANIC_CONSENSUS = "ORGANIC_CONSENSUS"   # 진짜 합의 → 확신 강화
+    MANIPULATION_ATTACK = "MANIPULATION_ATTACK"  # 작전 → 차단
+    PR_CAMPAIGN = "PR_CAMPAIGN"               # PR 캠페인 → 강화 금지
+    NOISE = "NOISE"                           # 노이즈 → 무시
+    WATCH = "WATCH"                           # 관망 → 냉각
+
+
+@dataclass
+class VerdictResult:
+    verdict: Verdict
+    reason: str
+    confidence_multiplier: float  # 확신 강화에 적용할 배수
+    cooling_intensity: float      # 냉각 강도 (0~1)
+    cooling_hours: float          # 냉각 시간
+
+
+class VerdictClassifier:
+    """4-Signal 기반 최종 판정"""
+    
+    BASE_COOLING_HOURS = 6.0
+    
+    def classify(self, signals: 'FourSignals') -> VerdictResult:
+        """
+        Classification Matrix (ChatGPT 제안 기반)
+        
+        우선순위:
+        1. 엠바고/이벤트 (EL=True, NI>0.6)
+        2. 작전 공격 (EL=False, TN<-0.5, NI<0.3)
+        3. PR 캠페인 (DI<0.3, NI<0.4)
+        4. 진짜 합의 (DI>0.6, NI>0.6, TN>0)
+        5. 그 외 = NOISE 또는 WATCH
+        """
+        
+        di, tn, ni = signals.di, signals.tn, signals.ni
+        el, el_conf = signals.el, signals.el_confidence
+        
+        # ═══ Rule 1: 엠바고/이벤트 ═══
+        if el and ni > 0.6:
+            return VerdictResult(
+                verdict=Verdict.EMBARGO_EVENT,
+                reason=f"엠바고 해제: {signals.el_event_name} (NI={ni:.2f})",
+                confidence_multiplier=1.5,  # 50% 강화
+                cooling_intensity=0.0,
+                cooling_hours=0.0
+            )
+        
+        # ═══ Rule 2: 작전 공격 ═══
+        if not el and tn < -0.5 and ni < 0.3:
+            return VerdictResult(
+                verdict=Verdict.MANIPULATION_ATTACK,
+                reason=f"작전 의심: TN={tn:.2f}, NI={ni:.2f}",
+                confidence_multiplier=0.0,  # 완전 차단
+                cooling_intensity=1.0,
+                cooling_hours=24.0
+            )
+        
+        # ═══ Rule 3: PR 캠페인 ═══
+        if di < 0.3 and ni < 0.4:
+            return VerdictResult(
+                verdict=Verdict.PR_CAMPAIGN,
+                reason=f"PR 캠페인 의심: DI={di:.2f}, NI={ni:.2f}",
+                confidence_multiplier=0.2,  # 80% 감점
+                cooling_intensity=0.5,
+                cooling_hours=6.0
+            )
+        
+        # ═══ Rule 4: 진짜 합의 ═══
+        if di > 0.6 and ni > 0.6 and tn > 0:
+            bonus = min((di - 0.6) + (ni - 0.6), 0.3)  # 최대 30% 추가
+            return VerdictResult(
+                verdict=Verdict.ORGANIC_CONSENSUS,
+                reason=f"유기적 합의: DI={di:.2f}, NI={ni:.2f}, TN={tn:.2f}",
+                confidence_multiplier=1.0 + bonus,
+                cooling_intensity=0.0,
+                cooling_hours=0.0
+            )
+        
+        # ═══ Rule 5: 경계 케이스 ═══
+        # TN이 부정적이면 관망
+        if tn < 0:
+            cooling = abs(tn) * (1 - di)  # ChatGPT 공식
+            return VerdictResult(
+                verdict=Verdict.WATCH,
+                reason=f"관망: TN={tn:.2f}, DI={di:.2f}",
+                confidence_multiplier=0.5,
+                cooling_intensity=cooling,
+                cooling_hours=self.BASE_COOLING_HOURS * cooling
+            )
+        
+        # ═══ Rule 6: 나머지 = 노이즈 ═══
+        return VerdictResult(
+            verdict=Verdict.NOISE,
+            reason=f"약한 신호: DI={di:.2f}, NI={ni:.2f}, TN={tn:.2f}",
+            confidence_multiplier=0.7,  # 약간 보수적
+            cooling_intensity=0.0,
+            cooling_hours=0.0
+        )
+```
+
+---
+
+## 📈 최종 확신 계산
+
+```python
+# backend/intelligence/confidence_adjuster.py
+
+import math
+
+def calculate_adjusted_confidence(
+    base_confidence: float,
+    hit_count: int,
+    verdict_result: 'VerdictResult'
+) -> tuple[float, str]:
+    """
+    최종 확신 계산
+    
+    공식: confidence = base + α × log(hits) × multiplier
+    """
+    
+    # 차단된 경우
+    if verdict_result.confidence_multiplier == 0.0:
+        return base_confidence, f"차단: {verdict_result.reason}"
+    
+    # 냉각 중인 경우
+    if verdict_result.verdict == Verdict.WATCH:
+        return base_confidence, f"관망 중: {verdict_result.reason}"
+    
+    # 로그 스케일 (100건이나 10건이나 큰 차이 없음)
+    hit_factor = math.log(max(hit_count, 1) + 1) / 5.0
+    
+    # 강화량 계산
+    reinforcement = 0.1 * hit_factor * verdict_result.confidence_multiplier
+    
+    # 최종 확신 (상한 95%)
+    final = min(0.95, base_confidence + reinforcement)
+    
+    log_msg = (
+        f"{verdict_result.verdict.value}: "
+        f"base={base_confidence:.2f}, hits={hit_count}, "
+        f"mult={verdict_result.confidence_multiplier:.2f}, "
+        f"final={final:.2f}"
+    )
+    
+    return final, log_msg
+```
+
+---
+
+## 🔄 전체 흐름 (단순화)
+
+```
+뉴스 수집 → 클러스터링
+              ↓
+    ┌─────────────────────┐
+    │ FourSignalCalculator │
+    │                     │
+    │  DI ← 출처 분석     │
+    │  TN ← 시간 분석     │
+    │  NI ← 텍스트 분석   │
+    │  EL ← 캘린더 매칭   │
+    └─────────────────────┘
+              ↓
+    ┌─────────────────────┐
+    │ VerdictClassifier   │
+    │                     │
+    │  EL+NI → EMBARGO    │
+    │  TN+NI → ATTACK     │
+    │  DI+NI → PR         │
+    │  DI+NI+TN → CONSENSUS│
+    └─────────────────────┘
+              ↓
+    확신 조정 / 냉각 적용
+              ↓
+    트레이딩 시그널 생성
+```
+
+---
+
+## 📋 Q&A 답변
+
+### Q1: 4개 Signal을 벡터로 만들어 임베딩으로 쓸 수 있나?
+
+**가능하고 유용합니다.**
+
+```python
+# 뉴스 신뢰도 벡터 [DI, TN_normalized, NI, EL_conf]
+trust_vector = [
+    signals.di,
+    (signals.tn + 1) / 2,  # -1~+1 → 0~1 정규화
+    signals.ni,
+    signals.el_confidence
+]
+
+# 클러스터링으로 "비슷한 패턴의 뉴스" 그룹화 가능
+# 과거 작전 패턴과의 유사도 계산 가능
+```
+
+### Q2: GME, SVB, Evergrande 백테스트 방법?
+
+```python
+# 과거 데이터로 시뮬레이션
+async def backtest_verdict_system(ticker: str, date_range: tuple):
+    """특정 사건의 뉴스 패턴 재현"""
+    
+    news_data = await load_historical_news(ticker, date_range)
+    
+    for day in date_range:
+        clusters = cluster_news_by_fingerprint(news_data[day])
+        
+        for cluster in clusters:
+            signals = calculator.calculate(...)
+            verdict = classifier.classify(signals)
+            
+            # 실제 가격 변동과 비교
+            actual_move = get_price_change(ticker, day, day+1)
+            
+            log_result(
+                date=day,
+                verdict=verdict,
+                actual=actual_move,
+                would_have_traded=verdict.confidence_multiplier > 0.5
+            )
+```
+
+### Q3: 뉴스는 강한데 가격이 안 움직일 때?
+
+**TN (Temporal Naturalness)이 가장 먼저 경고합니다.**
+
+```
+뉴스 폭발 + 가격 무반응 = 시장이 "이미 알고 있음" 또는 "가짜로 판단"
+
+→ TN이 비정상적으로 높은데 (빠른 확산)
+→ 가격 변동이 없으면
+→ "정보가 아닌 노이즈" 신호
+
+추가 지표: Price-News Divergence
+price_reaction = get_price_change(ticker, t, t+1h)
+if abs(price_reaction) < 0.5% and hit_count > 20:
+    flag_as_NOISE_OR_PRICED_IN
+```
+
+---
+
+## ✅ 최종 구현 우선순위
+
+| 순서 | 작업 | 파일 |
+|------|------|------|
+| 1 | 스키마 생성 | `migrations/xxx_four_signal_schema.sql` |
+| 2 | Signal 계산기 | `backend/intelligence/four_signal_calculator.py` |
+| 3 | Verdict 분류기 | `backend/intelligence/verdict_classifier.py` |
+| 4 | 확신 조정기 | `backend/intelligence/confidence_adjuster.py` |
+| 5 | 캘린더 연동 | `backend/data/economic_calendar.py` |
+| 6 | 통합 테스트 | `tests/test_consensus_system.py` |
+
+---
+
+이 구조면 **세력 작전도 막고, 엠바고도 놓치지 않는** 진짜 기관급 시스템입니다.
+
+바로 마이그레이션 스크립트와 구현 코드를 생성해 드릴까요?

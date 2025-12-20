@@ -1,0 +1,287 @@
+{
+  "id": "10599526-e6ab-4302-9337-8a1ad446bfa7",
+  "name": "Backtest 2025. 12. 17.",
+  "description": "",
+  "config": {
+    "start_date": "2024-01-01",
+    "end_date": "2025-12-17",
+    "initial_capital": 100000.0,
+    "commission_rate": 0.00015,
+    "slippage_bps": 1.0,
+    "max_holding_days": 60,
+    "stop_loss_pct": 2.0,
+    "take_profit_pct": 5.0,
+    "base_position_size": 0.05,
+    "max_position_size": 0.1,
+    "min_sentiment_threshold": 0.7,
+    "min_relevance_score": 70,
+    "min_confidence": 0.7,
+    "max_daily_trades": 10,
+    "daily_loss_limit_pct": 2.0
+  },
+  "result": {
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-30",
+    "initial_capital": 100000.0,
+    "final_value": 99856.09941653388,
+    "total_return_pct": -0.14390058346611667,
+    "sharpe_ratio": -1.396729298252785,
+    "max_drawdown_pct": -0.24331953311063542,
+    "win_rate": 0.0,
+    "total_trades": 1,
+    "winning_trades": 0,
+    "losing_trades": 1,
+    "avg_win_pct": 0,
+    "avg_loss_pct": -3.1327546096565184,
+    "profit_factor": 0.0,
+    "total_signals": 117,
+    "executed_signals": 13,
+    "rejected_signals": 104,
+    "best_day_pct": 0.11944477523035957,
+    "worst_day_pct": -0.17546654381693783,
+    "avg_daily_return_pct": -0.00478523157176336,
+    "parameters": {
+      "initial_capital": 100000.0,
+      "commission_rate": 0.00015,
+      "slippage_bps": 1.0,
+      "max_holding_days": 60,
+      "stop_loss_pct": 2.0,
+      "take_profit_pct": 5.0,
+      "min_confidence": 0.7,
+      "max_position_size": 0.1,
+      "min_sentiment_threshold": 0.7
+    },
+    "daily_values": [
+      {
+        "date": "2024-01-01",
+        "value": 100000.0,
+        "cash": 100000.0,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-02",
+        "value": 100000.0,
+        "cash": 100000.0,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-03",
+        "value": 99998.86144540817,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": -0.0011385545918285445
+      },
+      {
+        "date": "2024-01-04",
+        "value": 99912.10144540817,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": -0.08676098782121056
+      },
+      {
+        "date": "2024-01-05",
+        "value": 99992.56144540818,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": 0.08053078539638214
+      },
+      {
+        "date": "2024-01-06",
+        "value": 100099.66144540817,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": 0.10710796728461425
+      },
+      {
+        "date": "2024-01-07",
+        "value": 99979.96144540817,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": -0.11958082402234727
+      },
+      {
+        "date": "2024-01-08",
+        "value": 99912.28144540818,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": -0.06769356481193256
+      },
+      {
+        "date": "2024-01-09",
+        "value": 100031.62144540818,
+        "cash": 95448.82144540818,
+        "positions": 1,
+        "daily_pnl_pct": 0.11944477523035957
+      },
+      {
+        "date": "2024-01-10",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": -0.17546654381693783
+      },
+      {
+        "date": "2024-01-11",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-12",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-13",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-14",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-15",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-16",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-17",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-18",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-19",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-20",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-21",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-22",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-23",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-24",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-25",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-26",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-27",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-28",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-29",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      },
+      {
+        "date": "2024-01-30",
+        "value": 99856.09941653388,
+        "cash": 99856.09941653388,
+        "positions": 0,
+        "daily_pnl_pct": 0.0
+      }
+    ],
+    "trades": [
+      {
+        "id": "trade_TSLA_20240103000000",
+        "timestamp": "2024-01-03 00:00:00",
+        "ticker": "TSLA",
+        "action": "BUY",
+        "quantity": 18,
+        "entry_price": 252.805278,
+        "exit_price": 244.885509,
+        "exit_timestamp": "2024-01-10 00:00:00",
+        "pnl": -143.90058346612477,
+        "pnl_pct": -3.1327546096565184,
+        "commission": 1.3447414661257735,
+        "slippage": 0.895842,
+        "signal_id": "sig_analysis_016_20251217011157",
+        "is_open": false
+      }
+    ]
+  },
+  "created_at": "2025-12-17T01:11:57.493974",
+  "completed_at": "2025-12-17T01:11:57.496502"
+}

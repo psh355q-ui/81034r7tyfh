@@ -1,0 +1,19 @@
+{
+  "request_id": "71118bda-5ed5-483d-81da-5dc8cbf554b6",
+  "ticker": "NVDA",
+  "action": "BUY",
+  "quantity": null,
+  "target_price": null,
+  "ai_reasoning": "AI chips",
+  "consensus_confidence": 0.0,
+  "priority_score": 0.9,
+  "debate_rounds": 0,
+  "approval_level": "HARD_APPROVAL",
+  "status": "pending",
+  "requested_at": "2025-12-16T20:58:18.958390",
+  "decided_at": null,
+  "auto_approve_after": null,
+  "decided_by": null,
+  "rejection_reason": null,
+  "metadata": {}
+}

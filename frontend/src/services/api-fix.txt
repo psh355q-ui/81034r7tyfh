@@ -1,0 +1,14 @@
+// Named exports for convenience (with proper binding)
+export const analyzeTicker = apiClient.analyzeTicker.bind(apiClient);
+export const analyzeBatch = apiClient.analyzeBatch.bind(apiClient);
+export const executeTrade = apiClient.executeTrade.bind(apiClient);
+export const getPortfolio = apiClient.getPortfolio.bind(apiClient);
+export const getDailyPortfolio = apiClient.getDailyPortfolio.bind(apiClient);
+export const getRiskStatus = apiClient.getRiskStatus.bind(apiClient);
+export const activateKillSwitch = apiClient.activateKillSwitch.bind(apiClient);
+export const deactivateKillSwitch = apiClient.deactivateKillSwitch.bind(apiClient);
+export const getAlerts = apiClient.getAlerts.bind(apiClient);
+export const sendAlert = apiClient.sendAlert.bind(apiClient);
+export const getSystemInfo = apiClient.getSystemInfo.bind(apiClient);
+export const getHealth = apiClient.getHealth.bind(apiClient);
+export const getMetrics = apiClient.getMetrics.bind(apiClient);

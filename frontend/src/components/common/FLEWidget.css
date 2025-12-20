@@ -1,0 +1,217 @@
+/* FLE Widget - 간단한 반응형 */
+.fle-widget {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 20px;
+    color: white;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+    border-left: 4px solid #10b981;
+    transition: all 0.3s ease;
+}
+
+.fle-widget:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+}
+
+/* Header */
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.widget-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Content - 기본은 세로 */
+.fle-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* 큰 화면에서 가로로 */
+@media (min-width: 1200px) {
+    .fle-content {
+        flex-direction: row;
+        align-items: center;
+        gap: 20px;
+    }
+}
+
+/* FLE Amount */
+.fle-main {
+    text-align: center;
+}
+
+@media (min-width: 1200px) {
+    .fle-main {
+        text-align: left;
+        min-width: 180px;
+        border-right: 2px solid rgba(255, 255, 255, 0.3);
+        padding-right: 20px;
+    }
+}
+
+.fle-amount {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.fle-subtitle {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+/* Middle Section */
+.fle-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+}
+
+@media (min-width: 1200px) {
+    .fle-middle {
+        flex-direction: row;
+        gap: 20px;
+    }
+}
+
+/* Metrics */
+.fle-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+@media (min-width: 1200px) {
+    .fle-metrics {
+        flex: 0 0 auto;
+        min-width: 220px;
+    }
+}
+
+.metric {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.metric-label {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.metric-value {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.metric-value.negative {
+    color: #fca5a5;
+}
+
+/* Breakdown */
+.fle-breakdown {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+@media (min-width: 1200px) {
+    .fle-breakdown {
+        flex: 0 0 auto;
+        min-width: 280px;
+    }
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.breakdown-item:last-child {
+    border-bottom: none;
+}
+
+.breakdown-item.negative {
+    color: #fca5a5;
+}
+
+/* Alert */
+.alert-status {
+    padding: 12px 16px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+@media (min-width: 1200px) {
+    .alert-status {
+        min-width: 160px;
+    }
+}
+
+.alert-icon {
+    font-size: 20px;
+}
+
+.alert-text {
+    font-size: 14px;
+}
+
+/* Loading & Error */
+.loading-spinner,
+.error-message {
+    text-align: center;
+    padding: 40px;
+    font-size: 16px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .fle-amount {
+        font-size: 24px;
+    }
+
+    .fle-widget {
+        padding: 16px;
+    }
+}
