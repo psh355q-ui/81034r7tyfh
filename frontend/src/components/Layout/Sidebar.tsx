@@ -4,7 +4,7 @@ import {
   LayoutDashboard, TrendingUp, Activity, Newspaper, Rss, FileText,
   FileSearch, Settings, X, MessageSquare, TrendingDown, BarChart3,
   LineChart, Brain, Zap, PieChart, TestTube2, Wallet, Globe,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, DollarSign
 } from 'lucide-react';
 
 interface NavItem {
