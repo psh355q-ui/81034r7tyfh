@@ -50,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
         { path: '/global-macro', icon: Globe, label: 'Global Macro' },
         { path: '/ceo-analysis', icon: MessageSquare, label: 'CEO Analysis' },
         { path: '/analysis', icon: TrendingUp, label: 'Analysis' },
+        { path: '/cost-report', icon: DollarSign, label: 'Emergency Cost' },
         { path: '/advanced-analytics', icon: LineChart, label: 'Advanced Analytics' },
         { path: '/ai-review', icon: FileText, label: 'AI Review' },
       ]
