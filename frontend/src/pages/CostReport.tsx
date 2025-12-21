@@ -66,7 +66,7 @@ export const CostReport: React.FC = () => {
                         <div>
                             <p className="text-sm text-gray-600">Total Cost</p>
                             <p className="text-2xl font-bold">
-                                ${report?.total_cost_usd.toFixed(2) || '0.00'}
+                                ${report?.total_cost_usd?.toFixed(2) || '0.00'}
                             </p>
                         </div>
                     </div>
@@ -79,7 +79,7 @@ export const CostReport: React.FC = () => {
                             <p className="text-sm text-gray-600">Total Searches</p>
                             <p className="text-2xl font-bold">{report?.total_searches || 0}</p>
                             <p className="text-xs text-gray-500">
-                                Avg: {report?.daily_average.toFixed(1) || 0}/day
+                                Avg: {report?.daily_average?.toFixed(1) || 0}/day
                             </p>
                         </div>
                     </div>
@@ -104,10 +104,10 @@ export const CostReport: React.FC = () => {
                         <div>
                             <p className="text-sm text-gray-600">Budget Remaining</p>
                             <p className={`text-2xl font-bold ${getBudgetColor(report?.budget_used_pct || 0)}`}>
-                                ${report?.budget_remaining.toFixed(2) || '10.00'}
+                                ${report?.budget_remaining?.toFixed(2) || '10.00'}
                             </p>
                             <p className="text-xs text-gray-500">
-                                Used: {report?.budget_used_pct.toFixed(0) || 0}%
+                                Used: {report?.budget_used_pct?.toFixed(0) || 0}%
                             </p>
                         </div>
                     </div>
@@ -118,22 +118,22 @@ export const CostReport: React.FC = () => {
             <Card title="💳 Monthly Budget ($10.00)">
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span>Used: ${report?.total_cost_usd.toFixed(2) || '0.00'}</span>
-                        <span>Remaining: ${report?.budget_remaining.toFixed(2) || '10.00'}</span>
+                        <span>Used: ${report?.total_cost_usd?.toFixed(2) || '0.00'}</span>
+                        <span>Remaining: ${report?.budget_remaining?.toFixed(2) || '10.00'}</span>
                     </div>
                     <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
                         <div
                             className={`h-full transition-all ${(report?.budget_used_pct || 0) >= 90
-                                    ? 'bg-red-500'
-                                    : (report?.budget_used_pct || 0) >= 70
-                                        ? 'bg-yellow-500'
-                                        : 'bg-green-500'
+                                ? 'bg-red-500'
+                                : (report?.budget_used_pct || 0) >= 70
+                                    ? 'bg-yellow-500'
+                                    : 'bg-green-500'
                                 }`}
                             style={{ width: `${Math.min(report?.budget_used_pct || 0, 100)}%` }}
                         />
                     </div>
                     <p className="text-xs text-gray-500 text-center">
-                        {report?.budget_used_pct.toFixed(1) || 0}% of budget used
+                        {report?.budget_used_pct?.toFixed(1) || 0}% of budget used
                     </p>
                 </div>
             </Card>
