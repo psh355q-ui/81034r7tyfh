@@ -1,21 +1,22 @@
 """
 War Room API Router
 
-7-Agent War Room Debate System:
-- Trader Agent (15%) - 기술적 분석
-- Risk Agent (20%) - 리스크 관리 (최고 권한)
-- Analyst Agent (15%) - 펀더멘털 분석
-- Macro Agent (10%) - 거시경제
-- Institutional Agent (10%) - 스마트머니 추적
-- News Agent (10%) - 뉴스 분석
-- PM Agent (20%) - 최종 중재자
+8-Agent War Room Debate System:
+- Trader Agent (14%) - 기술적 분석
+- Risk Agent (18%) - 리스크 관리
+- Analyst Agent (13%) - 펀더멘털 분석
+- Macro Agent (16%) - 거시경제
+- Institutional Agent (15%) - 스마트머니 추적
+- News Agent (14%) - 뉴스 분석
+- Chip War Agent (12%) - 반도체 경쟁 분석 (NEW)
+- PM Agent (18%) - 최종 중재자
 
 API Endpoints:
 - POST /api/war-room/debate - War Room 토론 실행
 - GET /api/war-room/sessions - 세션 히스토리 조회
 
 Author: AI Trading System
-Date: 2025-12-21
+Date: 2025-12-23 (Phase 24: ChipWarAgent added)
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -28,13 +29,14 @@ import logging
 from backend.database.models import AIDebateSession, TradingSignal
 from backend.database.repository import get_sync_session
 
-# Import all 7 agents
+# Import all 8 agents
 from backend.ai.debate.news_agent import NewsAgent
 from backend.ai.debate.trader_agent import TraderAgent
 from backend.ai.debate.risk_agent import RiskAgent
 from backend.ai.debate.analyst_agent import AnalystAgent
 from backend.ai.debate.macro_agent import MacroAgent
 from backend.ai.debate.institutional_agent import InstitutionalAgent
+from backend.ai.debate.chip_war_agent import ChipWarAgent
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +75,10 @@ class DebateResponse(BaseModel):
 # ============================================================================
 
 class WarRoomEngine:
-    """7-Agent War Room Debate Engine"""
-    
+    """8-Agent War Room Debate Engine"""
+
     def __init__(self):
-        """Initialize all 7 agents"""
+        """Initialize all 8 agents"""
         # Initialize real agents
         self.trader_agent = TraderAgent()
         self.risk_agent = RiskAgent()
@@ -84,19 +86,21 @@ class WarRoomEngine:
         self.macro_agent = MacroAgent()
         self.institutional_agent = InstitutionalAgent()
         self.news_agent = NewsAgent()
+        self.chip_war_agent = ChipWarAgent()  # NEW: Phase 24
         # PM agent is internal (weighted voting logic)
-        
+
         self.vote_weights = {
-            "trader": 0.15,
-            "risk": 0.20,  # 최고 권한
-            "analyst": 0.15,
-            "macro": 0.10,
-            "institutional": 0.10,
-            "news": 0.10,
-            "pm": 0.20  # 중재자
+            "trader": 0.14,
+            "risk": 0.18,
+            "analyst": 0.13,
+            "macro": 0.16,
+            "institutional": 0.15,
+            "news": 0.14,
+            "chip_war": 0.12,  # NEW: Phase 24
+            "pm": 0.18  # 중재자
         }
-        
-        logger.info("WarRoomEngine initialized with 7 agents")
+
+        logger.info("WarRoomEngine initialized with 8 agents (including ChipWarAgent)")
     
     async def run_debate(self, ticker: str, context: Dict[str, Any] = None) -> tuple[List[Dict], Dict]:
         """
@@ -112,57 +116,65 @@ class WarRoomEngine:
         logger.info(f"🏛️ War Room debate starting for {ticker}")
         
         votes = []
-        
-        # Collect votes from all 6 agents (順序: 중요도 순)
-        # 1. Risk Agent (20% - highest authority)
+
+        # Collect votes from all 7 agents (順서: 중요도 순)
+        # 1. Risk Agent (18%)
         try:
             risk_vote = await self.risk_agent.analyze(ticker, context)
             votes.append(risk_vote)
             logger.info(f"🛡️ Risk Agent: {risk_vote['action']} ({risk_vote['confidence']:.0%})")
         except Exception as e:
             logger.error(f"❌ Risk Agent failed: {e}")
-        
-        # 2. Trader Agent (15%)
-        try:
-            trader_vote = await self.trader_agent.analyze(ticker, context)
-            votes.append(trader_vote)
-            logger.info(f"📈 Trader Agent: {trader_vote['action']} ({trader_vote['confidence']:.0%})")
-        except Exception as e:
-            logger.error(f"❌ Trader Agent failed: {e}")
-        
-        # 3. Analyst Agent (15%)
-        try:
-            analyst_vote = await self.analyst_agent.analyze(ticker, context)
-            votes.append(analyst_vote)
-            logger.info(f"📊 Analyst Agent: {analyst_vote['action']} ({analyst_vote['confidence']:.0%})")
-        except Exception as e:
-            logger.error(f"❌ Analyst Agent failed: {e}")
-        
-        # 4. Macro Agent (10%)
+
+        # 2. Macro Agent (16%)
         try:
             macro_vote = await self.macro_agent.analyze(ticker, context)
             votes.append(macro_vote)
             logger.info(f"🌏 Macro Agent: {macro_vote['action']} ({macro_vote['confidence']:.0%})")
         except Exception as e:
             logger.error(f"❌ Macro Agent failed: {e}")
-        
-        # 5. Institutional Agent (10%)
+
+        # 3. Institutional Agent (15%)
         try:
             institutional_vote = await self.institutional_agent.analyze(ticker, context)
             votes.append(institutional_vote)
             logger.info(f"🏦 Institutional Agent: {institutional_vote['action']} ({institutional_vote['confidence']:.0%})")
         except Exception as e:
             logger.error(f"❌ Institutional Agent failed: {e}")
-        
-        # 6. News Agent (10%)
+
+        # 4. Trader Agent (14%)
+        try:
+            trader_vote = await self.trader_agent.analyze(ticker, context)
+            votes.append(trader_vote)
+            logger.info(f"📈 Trader Agent: {trader_vote['action']} ({trader_vote['confidence']:.0%})")
+        except Exception as e:
+            logger.error(f"❌ Trader Agent failed: {e}")
+
+        # 5. News Agent (14%)
         try:
             news_vote = await self.news_agent.analyze(ticker, context)
             votes.append(news_vote)
             logger.info(f"📰 News Agent: {news_vote['action']} ({news_vote['confidence']:.0%})")
         except Exception as e:
             logger.error(f"❌ News Agent failed: {e}")
-        
-        # 7. PM Agent 최종 결정
+
+        # 6. Analyst Agent (13%)
+        try:
+            analyst_vote = await self.analyst_agent.analyze(ticker, context)
+            votes.append(analyst_vote)
+            logger.info(f"📊 Analyst Agent: {analyst_vote['action']} ({analyst_vote['confidence']:.0%})")
+        except Exception as e:
+            logger.error(f"❌ Analyst Agent failed: {e}")
+
+        # 7. Chip War Agent (12%) - NEW: Phase 24
+        try:
+            chip_war_vote = await self.chip_war_agent.analyze(ticker, context)
+            votes.append(chip_war_vote)
+            logger.info(f"🎮 Chip War Agent: {chip_war_vote['action']} ({chip_war_vote['confidence']:.0%})")
+        except Exception as e:
+            logger.error(f"❌ Chip War Agent failed: {e}")
+
+        # 8. PM Agent 최종 결정 (18%)
         pm_decision = self._pm_arbitrate(votes)
         
         logger.info(f"👔 PM Decision: {pm_decision['consensus_action']} "
@@ -269,7 +281,8 @@ async def run_war_room_debate(request: DebateRequest):
             analyst_vote=next((v["action"] for v in votes if v["agent"] == "analyst"), None),
             macro_vote=next((v["action"] for v in votes if v["agent"] == "macro"), None),
             institutional_vote=next((v["action"] for v in votes if v["agent"] == "institutional"), None),
-            news_vote=next((v["action"] for v in votes if v["agent"] == "news"), None),  # 🆕
+            news_vote=next((v["action"] for v in votes if v["agent"] == "news"), None),
+            chip_war_vote=next((v["action"] for v in votes if v["agent"] == "chip_war"), None),  # 🆕 Phase 24
             pm_vote=pm_decision["consensus_action"],
             debate_transcript=json.dumps(votes, ensure_ascii=False),
             constitutional_valid=True,  # TODO: Constitution Validator 통합
@@ -363,7 +376,8 @@ async def get_debate_sessions(
                     "analyst": s.analyst_vote,
                     "macro": s.macro_vote,
                     "institutional": s.institutional_vote,
-                    "news": s.news_vote,  # 🆕
+                    "news": s.news_vote,
+                    "chip_war": s.chip_war_vote,  # 🆕 Phase 24
                     "pm": s.pm_vote
                 },
                 "created_at": s.created_at.isoformat() if s.created_at else None,
@@ -387,7 +401,8 @@ async def war_room_health():
         engine = get_war_room_engine()
         return {
             "status": "healthy",
-            "agents_loaded": 7,  # TODO: 실제 로드된 Agent 수
+            "agents_loaded": 8,  # Phase 24: ChipWarAgent added
+            "agents": ["trader", "risk", "analyst", "macro", "institutional", "news", "chip_war", "pm"],
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:

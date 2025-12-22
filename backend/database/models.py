@@ -258,25 +258,26 @@ class SignalPerformance(Base):
 
 
 class AIDebateSession(Base):
-    """War Room AI Debate 세션 기록 (7 agents)"""
+    """War Room AI Debate 세션 기록 (8 agents)"""
     __tablename__ = 'ai_debate_sessions'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    
+
     # Debate context
     ticker = Column(String(10), nullable=False, index=True)
-    
+
     # Consensus result
     consensus_action = Column(String(10), nullable=False)  # BUY, SELL, HOLD
     consensus_confidence = Column(Float, nullable=False)  # 0.0-1.0
-    
+
     # Individual agent votes
     trader_vote = Column(String(10), nullable=True)
     risk_vote = Column(String(10), nullable=True)
     analyst_vote = Column(String(10), nullable=True)
     macro_vote = Column(String(10), nullable=True)
     institutional_vote = Column(String(10), nullable=True)
-    news_vote = Column(String(10), nullable=True)  # 🆕 7th agent
+    news_vote = Column(String(10), nullable=True)  # 7th agent
+    chip_war_vote = Column(String(10), nullable=True)  # 🆕 8th agent (Phase 24)
     pm_vote = Column(String(10), nullable=True)
     
     # Debate details
