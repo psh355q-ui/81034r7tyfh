@@ -13,8 +13,13 @@ import './WarRoomList.css';
 type StatusFilter = 'all' | 'active' | 'completed' | 'pending';
 
 const WarRoomList: React.FC = () => {
+    // State for new debate
+    const [newDebateTicker, setNewDebateTicker] = useState('');
+    const [isRunningDebate, setIsRunningDebate] = useState(false);
+    const [debateError, setDebateError] = useState<string | null>(null);
+
     // Fetch real War Room sessions from API
-    const { data: apiSessions, isLoading, error } = useQuery({
+    const { data: apiSessions, isLoading, error, refetch } = useQuery({
         queryKey: ['war-room-sessions'],
         queryFn: () => warRoomApi.getSessions({ limit: 20 }),
         refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
@@ -82,6 +87,38 @@ const WarRoomList: React.FC = () => {
         setExpandedCardId(null);
     };
 
+    // 새로운 토론 시작
+    const handleRunDebate = async () => {
+        if (!newDebateTicker.trim()) {
+            setDebateError('티커를 입력해주세요');
+            return;
+        }
+
+        setIsRunningDebate(true);
+        setDebateError(null);
+
+        try {
+            const result = await warRoomApi.runDebate(newDebateTicker.toUpperCase());
+            console.log('Debate result:', result);
+
+            // 성공: 세션 목록 갱신
+            await refetch();
+
+            // 입력 초기화
+            setNewDebateTicker('');
+
+            // 알림
+            alert(`✅ ${result.ticker} War Room 토론 완료!\n결과: ${result.consensus.action} (${(result.consensus.confidence * 100).toFixed(0)}%)`);
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            setDebateError(errorMessage);
+            console.error('Debate error:', err);
+        } finally {
+            setIsRunningDebate(false);
+        }
+    };
+
     // Loading state
     if (isLoading) {
         return (
@@ -108,6 +145,68 @@ const WarRoomList: React.FC = () => {
 
     return (
         <div className="war-room-list">
+            {/* 새로운 토론 시작 섹션 */}
+            <div className="new-debate-section" style={{
+                marginBottom: '24px',
+                padding: '20px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '12px',
+                color: 'white'
+            }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
+                    🚀 새로운 토론 시작
+                </h3>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <input
+                        type="text"
+                        value={newDebateTicker}
+                        onChange={(e) => setNewDebateTicker(e.target.value.toUpperCase())}
+                        onKeyPress={(e) => e.key === 'Enter' && handleRunDebate()}
+                        placeholder="티커 입력 (예: AAPL, TSLA)"
+                        disabled={isRunningDebate}
+                        style={{
+                            flex: 1,
+                            padding: '12px 16px',
+                            fontSize: '16px',
+                            border: '2px solid rgba(255,255,255,0.3)',
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.15)',
+                            color: 'white',
+                            fontWeight: 'bold'
+                        }}
+                    />
+                    <button
+                        onClick={handleRunDebate}
+                        disabled={isRunningDebate || !newDebateTicker.trim()}
+                        style={{
+                            padding: '12px 24px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            border: 'none',
+                            borderRadius: '8px',
+                            background: isRunningDebate ? '#999' : 'white',
+                            color: '#667eea',
+                            cursor: isRunningDebate ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            opacity: !newDebateTicker.trim() ? 0.5 : 1
+                        }}
+                    >
+                        {isRunningDebate ? '🔄 실행중...' : '🎭 토론 시작'}
+                    </button>
+                </div>
+                {debateError && (
+                    <div style={{
+                        marginTop: '12px',
+                        padding: '8px 12px',
+                        background: 'rgba(244, 67, 54, 0.2)',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                    }}>
+                        ⚠️ {debateError}
+                    </div>
+                )}
+            </div>
+
             {/* 검색 & 필터 */}
             <div className="list-controls">
                 <div className="search-section">

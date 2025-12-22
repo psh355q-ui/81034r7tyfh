@@ -69,21 +69,30 @@ class NewsAgent:
                 .limit(5)\
                 .all()
             
-            # 2. 일반 뉴스 조회 (최근 24시간)
-            # TODO: NewsArticle에 related_tickers 관계가 없으면 title/content 검색
+            # 2. 일반 뉴스 조회 (최근 24시간) - Phase 20 real-time news
+            # Priority: tickers field > title/content search
             recent_news = db.query(NewsArticle)\
                 .filter(
                     NewsArticle.published_date >= cutoff
                 )\
                 .order_by(NewsArticle.published_date.desc())\
-                .limit(20)\
+                .limit(50)\
                 .all()
-            
-            # 티커 필터링 (제목이나 내용에 티커 포함)
-            recent_news = [
-                n for n in recent_news 
-                if ticker.upper() in n.title.upper() or ticker.upper() in n.content.upper()
-            ][:10]
+
+            # 티커 필터링 (우선순위: tickers 배열 > 제목/내용)
+            ticker_news = []
+            for n in recent_news:
+                # Check tickers array first (from Phase 20)
+                if n.tickers and ticker.upper() in [t.upper() for t in n.tickers]:
+                    ticker_news.append(n)
+                # Fallback: title/content search
+                elif ticker.upper() in n.title.upper() or ticker.upper() in (n.content or '').upper():
+                    ticker_news.append(n)
+
+                if len(ticker_news) >= 10:
+                    break
+
+            recent_news = ticker_news
             
             # 3. 뉴스 요약 생성
             news_summaries = []
@@ -98,10 +107,18 @@ class NewsAgent:
                 })
             
             for article in recent_news:
+                # Use Phase 20 sentiment_score if available
+                sentiment = article.sentiment_score if hasattr(article, 'sentiment_score') and article.sentiment_score else 0.0
+
+                # Add tags for context (from Phase 20 auto-tagging)
+                tags_str = ', '.join(article.tags[:3]) if hasattr(article, 'tags') and article.tags else ''
+
                 news_summaries.append({
                     "type": "REGULAR",
                     "title": article.title,
-                    "sentiment": 0.0  # TODO: Add sentiment_score to NewsArticle model
+                    "sentiment": sentiment,  # Phase 20 sentiment
+                    "tags": tags_str,        # Phase 20 tags
+                    "source": article.source if hasattr(article, 'source') else 'Unknown'
                 })
             
             # 뉴스가 없으면 중립 투표
@@ -226,14 +243,19 @@ class NewsAgent:
             }
     
     def _format_news_for_prompt(self, news_summaries: List[Dict]) -> str:
-        """뉴스를 프롬프트 형식으로 변환"""
+        """뉴스를 프롬프트 형식으로 변환 (Phase 20 enhanced)"""
         lines = []
         for i, news in enumerate(news_summaries, 1):
             if news['type'] == 'EMERGENCY':
                 lines.append(f"{i}. [긴급 {news['urgency']}] {news['content']}")
             else:
-                lines.append(f"{i}. {news['title']}")
-        
+                # Include sentiment and tags from Phase 20
+                sentiment_emoji = "📈" if news.get('sentiment', 0) > 0.3 else "📉" if news.get('sentiment', 0) < -0.3 else "➖"
+                tags_info = f" [{news.get('tags', '')}]" if news.get('tags') else ""
+                source_info = f" ({news.get('source', 'Unknown')})"
+
+                lines.append(f"{i}. {sentiment_emoji} {news['title']}{tags_info}{source_info}")
+
         return "\n".join(lines)
     
     def _decide_action(
