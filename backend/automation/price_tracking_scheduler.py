@@ -401,11 +401,84 @@ async def evaluate_agent_votes_tracking():
         conn.rollback()
 
     finally:
-        cursor.close()
         conn.close()
 
 
+async def daily_learning_cycle():
+    """
+    일일 학습 사이클 - Phase 25.4
+    
+    실행 순서:
+    1. 24시간 후 성과 평가 (Consensus + Agent Votes)
+    2. 가중치 재계산
+    3. 경고 체크 (저성과/오버컨피던트)
+    
+    실행 시점: 매일 자정 (cron: 0 0 * * *)
+    """
+    logger.info("=" * 80)
+    logger.info("🧠 Daily Learning Cycle - Phase 25.4")
+    logger.info("=" * 80)
+    logger.info(f"Started at: {datetime.now().isoformat()}")
+    logger.info("")
+    
+    # Step 1: 24시간 후 성과 평가
+    logger.info("Step 1/3: Evaluating 24h performance...")
+    logger.info("")
+    
+    await evaluate_pending_tracking()  # Consensus
+    await evaluate_agent_votes_tracking()  # Individual agents
+    
+    logger.info("")
+    
+    # Step 2: 가중치 재계산
+    logger.info("Step 2/3: Recalculating agent weights...")
+    logger.info("")
+    
+    try:
+        import sys
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        
+        from ai.learning.agent_weight_adjuster import AgentWeightAdjuster
+        
+        adjuster = AgentWeightAdjuster()
+        results = await adjuster.recalculate_all_weights(lookback_days=30, save_to_db=True)
+        
+        logger.info("✅ Weight recalculation completed")
+        for agent, data in results.items():
+            logger.info(
+                f"  {agent}: {data['old_weight']:.3f} → {data['new_weight']:.3f} "
+                f"({data['reason']})"
+            )
+    
+    except Exception as e:
+        logger.error(f"❌ Failed to recalculate weights: {e}")
+    
+    logger.info("")
+    
+    # Step 3: 경고 체크
+    logger.info("Step 3/3: Checking for alerts...")
+    logger.info("")
+    
+    try:
+        from ai.learning.agent_alert_system import AgentAlertSystem
+        
+        alert_system = AgentAlertSystem()
+        alerts = await alert_system.check_all_alerts(lookback_days=30)
+        
+        logger.info(f"✅ Alert check completed")
+        logger.info(f"  Underperformance alerts: {len(alerts['underperformance'])}")
+        logger.info(f"  Overconfidence alerts: {len(alerts['overconfidence'])}")
+    
+    except Exception as e:
+        logger.error(f"❌ Failed to check alerts: {e}")
+    
+    logger.info("")
+    logger.info("=" * 80)
+    logger.info("✅ Daily Learning Cycle Completed")
+    logger.info(f"Finished at: {datetime.now().isoformat()}")
+    logger.info("=" * 80)
+
+
 if __name__ == "__main__":
-    # Run both evaluations
-    asyncio.run(evaluate_pending_tracking())  # Consensus
-    asyncio.run(evaluate_agent_votes_tracking())  # Individual agents
+    # Run daily learning cycle (all steps)
+    asyncio.run(daily_learning_cycle())

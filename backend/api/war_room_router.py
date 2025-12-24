@@ -2,21 +2,21 @@
 War Room API Router
 
 8-Agent War Room Debate System:
-- Trader Agent (14%) - 기술적 분석
-- Risk Agent (18%) - 리스크 관리
-- Analyst Agent (13%) - 펀더멘털 분석
-- Macro Agent (16%) - 거시경제
-- Institutional Agent (15%) - 스마트머니 추적
+- Trader Agent (16%) - 기술적 분석  
+- Risk Agent (16%) - 리스크 관리
+- Macro Agent (14%) - 거시경제
+- Institutional Agent (14%) - 스마트머니 추적
 - News Agent (14%) - 뉴스 분석
-- Chip War Agent (12%) - 반도체 경쟁 분석 (NEW)
-- PM Agent (18%) - 최종 중재자
+- Chip War Agent (14%) - 반도체 경쟁 분석 ✨
+- Analyst Agent (12%) - 펀더멘털 분석
+- PM Agent (Weighted Voting) - 최종 중재자
 
 API Endpoints:
 - POST /api/war-room/debate - War Room 토론 실행
 - GET /api/war-room/sessions - 세션 히스토리 조회
 
 Author: AI Trading System
-Date: 2025-12-23 (Phase 24: ChipWarAgent added)
+Date: 20 25-12-25 (Phase 24+: ChipWarAgent weight increased to 14%)
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -94,14 +94,14 @@ class WarRoomEngine:
         # PM agent is internal (weighted voting logic)
 
         self.vote_weights = {
-            "trader": 0.14,
-            "risk": 0.18,
-            "analyst": 0.13,
-            "macro": 0.16,
-            "institutional": 0.15,
-            "news": 0.14,
-            "chip_war": 0.12,  # NEW: Phase 24
-            "pm": 0.18  # 중재자
+            "trader": 0.16,       # 14% → 16% (technical analysis boost)
+            "risk": 0.16,         # 18% → 16% (risk remains important)
+            "analyst": 0.12,      # 13% → 12% (fundamental analysis)
+            "macro": 0.14,        # 16% → 14% (macro economics)
+            "institutional": 0.14, # 15% → 14% (smart money tracking)
+            "news": 0.14,         # 14% → 14% (news sentiment)
+            "chip_war": 0.14,     # 12% → 14% ✨ INCREASED (semiconductor competition)
+            "pm": 0.00            # PM uses weighted voting, no direct weight
         }
 
         logger.info("WarRoomEngine initialized with 8 agents (including ChipWarAgent)")

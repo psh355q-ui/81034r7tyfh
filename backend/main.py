@@ -366,6 +366,12 @@ if SIGNALS_AVAILABLE:    # Phase 4: Trading Signals
     from backend.api.performance_router import router as performance_router
     app.include_router(performance_router)
     logger.info("Performance router registered")
+    
+    # 🆕 Weight Adjustment API (Phase 25.4: Self-Learning System)
+    from backend.api.weight_adjustment_router import router as weight_router, alerts_router
+    app.include_router(weight_router)
+    app.include_router(alerts_router)
+    logger.info("Weight Adjustment & Alerts routers registered")
 if NOTIFICATIONS_AVAILABLE:
     app.include_router(notifications_router)
     logger.info("Notifications router registered")
