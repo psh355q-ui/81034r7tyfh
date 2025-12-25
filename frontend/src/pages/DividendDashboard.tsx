@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Tabs, message, Spin } from 'antd';
-import {
-    DollarOutlined,
-    CalendarOutlined,
-    RiseOutlined,
-    SafetyOutlined,
-    PlusCircleOutlined,
-    TrophyOutlined
-} from '@ant-design/icons';
+import { DollarSign, Calendar, TrendingUp, Shield, PlusCircle, Trophy } from 'lucide-react';
+import { Card } from '../components/common/Card';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import DividendSummaryCards from '../components/Dividend/DividendSummaryCards';
 import DividendCalendar from '../components/Dividend/DividendCalendar';
 import CompoundSimulator from '../components/Dividend/CompoundSimulator';
@@ -15,9 +9,10 @@ import RiskScoreTable from '../components/Dividend/RiskScoreTable';
 import CashInjectionSlider from '../components/Dividend/CashInjectionSlider';
 import AristocratsTable from '../components/Dividend/AristocratsTable';
 
-const { TabPane } = Tabs;
+type TabType = 'calendar' | 'drip' | 'risk' | 'injection' | 'aristocrats';
 
 const DividendDashboard: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<TabType>('calendar');
     const [loading, setLoading] = useState(false);
     const [portfolioIncome, setPortfolioIncome] = useState<any>(null);
 
@@ -43,7 +38,7 @@ const DividendDashboard: React.FC = () => {
             const data = await response.json();
             setPortfolioIncome(data);
         } catch (error: any) {
-            message.error(`배당 수입 조회 실패: ${error.message}`);
+            console.error('Failed to fetch portfolio income:', error.message);
         } finally {
             setLoading(false);
         }
@@ -53,117 +48,107 @@ const DividendDashboard: React.FC = () => {
         fetchPortfolioIncome();
     }, []);
 
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'calendar':
+                return <DividendCalendar />;
+            case 'drip':
+                return <CompoundSimulator />;
+            case 'risk':
+                return <RiskScoreTable />;
+            case 'injection':
+                return <CashInjectionSlider portfolioIncome={portfolioIncome} />;
+            case 'aristocrats':
+                return <AristocratsTable />;
+            default:
+                return <DividendCalendar />;
+        }
+    };
+
     return (
-        <div style={{ padding: '24px', background: '#0a0e27', minHeight: '100vh' }}>
-            {/* 헤더 */}
-            <div style={{ marginBottom: '24px' }}>
-                <h1 style={{
-                    color: '#fff',
-                    fontSize: '28px',
-                    fontWeight: 'bold',
-                    marginBottom: '8px'
-                }}>
-                    <DollarOutlined style={{ marginRight: '12px', color: '#52c41a' }} />
+        <div className="space-y-6 p-6">
+            {/* Header */}
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <DollarSign className="text-green-600" size={32} />
                     배당 인텔리전스
                 </h1>
-                <p style={{ color: '#8c8c8c', fontSize: '14px' }}>
-                    미국 배당주 포트폴리오 분석 및 시뮬레이션
-                </p>
+                <p className="text-gray-600 mt-1">미국 배당주 포트폴리오 분석 및 시뮬레이션</p>
             </div>
 
-            {/* 요약 카드 */}
+            {/* Summary Cards */}
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <Spin size="large" />
+                <div className="flex justify-center items-center py-12">
+                    <LoadingSpinner size="lg" />
                 </div>
             ) : (
                 <DividendSummaryCards portfolioIncome={portfolioIncome} />
             )}
 
-            {/* 탭 컨텐츠 */}
-            <Card
-                style={{
-                    background: 'linear-gradient(135deg, #1a1f3a 0%, #0f1729 100%)',
-                    border: '1px solid #2d3748',
-                    borderRadius: '12px',
-                    marginTop: '24px'
-                }}
-                bodyStyle={{ padding: '24px' }}
-            >
-                <Tabs
-                    defaultActiveKey="calendar"
-                    type="card"
-                    tabBarStyle={{
-                        borderBottom: '1px solid #2d3748',
-                        marginBottom: '24px'
-                    }}
-                >
-                    {/* 배당 캘린더 */}
-                    <TabPane
-                        tab={
-                            <span>
-                                <CalendarOutlined />
+            {/* Tabs and Content */}
+            <div className="space-y-6">
+                <Card>
+                    <div className="flex items-center justify-between mb-6 border-b pb-4">
+                        <h2 className="text-xl font-semibold text-gray-800">배당 분석 도구</h2>
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setActiveTab('calendar')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'calendar'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <Calendar size={16} />
                                 배당 캘린더
-                            </span>
-                        }
-                        key="calendar"
-                    >
-                        <DividendCalendar />
-                    </TabPane>
-
-                    {/* 복리 시뮬레이션 */}
-                    <TabPane
-                        tab={
-                            <span>
-                                <RiseOutlined />
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('drip')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'drip'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <TrendingUp size={16} />
                                 복리 시뮬레이션
-                            </span>
-                        }
-                        key="drip"
-                    >
-                        <CompoundSimulator />
-                    </TabPane>
-
-                    {/* 리스크 분석 */}
-                    <TabPane
-                        tab={
-                            <span>
-                                <SafetyOutlined />
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('risk')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'risk'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <Shield size={16} />
                                 리스크 분석
-                            </span>
-                        }
-                        key="risk"
-                    >
-                        <RiskScoreTable />
-                    </TabPane>
-
-                    {/* 예수금 추가 */}
-                    <TabPane
-                        tab={
-                            <span>
-                                <PlusCircleOutlined />
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('injection')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'injection'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <PlusCircle size={16} />
                                 예수금 추가
-                            </span>
-                        }
-                        key="injection"
-                    >
-                        <CashInjectionSlider portfolioIncome={portfolioIncome} />
-                    </TabPane>
-
-                    {/* 배당 귀족주 */}
-                    <TabPane
-                        tab={
-                            <span>
-                                <TrophyOutlined />
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('aristocrats')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'aristocrats'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <Trophy size={16} />
                                 배당 귀족주
-                            </span>
-                        }
-                        key="aristocrats"
-                    >
-                        <AristocratsTable />
-                    </TabPane>
-                </Tabs>
-            </Card>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="min-h-[400px]">
+                        {renderTabContent()}
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 };

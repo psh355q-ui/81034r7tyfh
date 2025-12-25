@@ -1,11 +1,5 @@
 import React from 'react';
-import { Card, Row, Col, Statistic } from 'antd';
-import {
-    DollarOutlined,
-    RiseOutlined,
-    CalendarOutlined,
-    SafetyOutlined
-} from '@ant-design/icons';
+import { DollarSign, Calendar, TrendingUp, Shield } from 'lucide-react';
 
 interface DividendSummaryCardsProps {
     portfolioIncome: any;
@@ -18,70 +12,50 @@ const DividendSummaryCards: React.FC<DividendSummaryCardsProps> = ({ portfolioIn
             value: portfolioIncome?.annual_net_krw || 0,
             prefix: '₩',
             suffix: '',
-            icon: <DollarOutlined style={{ color: '#52c41a', fontSize: '32px' }} />,
-            color: '#1a1f3a'
+            icon: <DollarSign className="text-green-600" size={24} />
         },
         {
             title: '월평균 배당금',
             value: portfolioIncome?.monthly_avg_krw || 0,
             prefix: '₩',
             suffix: '/월',
-            icon: <CalendarOutlined style={{ color: '#13c2c2', fontSize: '32px' }} />,
-            color: '#1a1f3a'
+            icon: <Calendar className="text-cyan-600" size={24} />
         },
         {
             title: 'YOC (Yield on Cost)',
             value: portfolioIncome?.yoc || 0,
             prefix: '',
             suffix: '%',
-            icon: <RiseOutlined style={{ color: '#faad14', fontSize: '32px' }} />,
-            color: '#1a1f3a'
+            icon: <TrendingUp className="text-orange-600" size={24} />
         },
         {
             title: '실효 세율',
             value: portfolioIncome?.effective_tax_rate || 0,
             prefix: '',
             suffix: '%',
-            icon: <SafetyOutlined style={{ color: '#eb2f96', fontSize: '32px' }} />,
-            color: '#1a1f3a'
+            icon: <Shield className="text-pink-600" size={24} />
         }
     ];
 
     return (
-        <Row gutter={[16, 16]}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {cards.map((card, index) => (
-                <Col xs={24} sm={12} lg={6} key={index}>
-                    <Card
-                        style={{
-                            background: `linear-gradient(135deg, ${card.color} 0%, #0f1729 100%)`,
-                            border: '1px solid #2d3748',
-                            borderRadius: '12px'
-                        }}
-                        bodyStyle={{ padding: '20px' }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ color: '#8c8c8c', fontSize: '12px', marginBottom: '8px' }}>
-                                    {card.title}
-                                </div>
-                                <Statistic
-                                    value={card.value}
-                                    precision={0}
-                                    prefix={card.prefix}
-                                    suffix={card.suffix}
-                                    valueStyle={{
-                                        color: '#fff',
-                                        fontSize: '24px',
-                                        fontWeight: 'bold'
-                                    }}
-                                />
-                            </div>
-                            <div>{card.icon}</div>
+                <div
+                    key={index}
+                    className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-600 mb-2">{card.title}</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                                {card.prefix}{card.value.toLocaleString()}{card.suffix}
+                            </p>
                         </div>
-                    </Card>
-                </Col>
+                        <div className="p-3 bg-gray-50 rounded-full">{card.icon}</div>
+                    </div>
+                </div>
             ))}
-        </Row>
+        </div>
     );
 };
 

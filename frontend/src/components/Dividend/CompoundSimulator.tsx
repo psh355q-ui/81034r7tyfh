@@ -1,25 +1,33 @@
 import React, { useState } from 'react';
-import { Card, Form, InputNumber, Switch, Button, message } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { RiseOutlined } from '@ant-design/icons';
+import { TrendingUp } from 'lucide-react';
 
 const CompoundSimulator: React.FC = () => {
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        initial: 100000,
+        monthly: 1000,
+        years: 10,
+        cagr: 7,
+        yield: 4,
+        reinvest: true
+    });
 
-    const onFinish = async (values: any) => {
+    const onSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
         setLoading(true);
         try {
             const response = await fetch('http://localhost:8001/api/dividend/simulate/drip', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    initial_usd: values.initial || 100000,
-                    monthly_contribution_usd: values.monthly || 1000,
-                    years: values.years || 10,
-                    cagr: values.cagr || 7,
-                    dividend_yield: values.yield || 4,
-                    reinvest: values.reinvest !== false
+                    initial_usd: formData.initial,
+                    monthly_contribution_usd: formData.monthly,
+                    years: formData.years,
+                    cagr: formData.cagr,
+                    dividend_yield: formData.yield,
+                    reinvest: formData.reinvest
                 })
             });
 
@@ -27,76 +35,116 @@ const CompoundSimulator: React.FC = () => {
 
             const data = await response.json();
             setResults(data.results || []);
-            message.success(`${values.years}년 시뮬레이션 완료!`);
         } catch (error: any) {
-            message.error(`시뮬레이션 실패: ${error.message}`);
+            console.error('Simulation failed:', error.message);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div>
-            <div style={{ marginBottom: '16px' }}>
-                <h3 style={{ color: '#fff', marginBottom: '8px' }}>
-                    <RiseOutlined style={{ marginRight: '8px' }} />
+        <div className="space-y-6">
+            <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
+                    <TrendingUp size={20} className="text-green-600" />
                     DRIP 복리 시뮬레이터
                 </h3>
-                <p style={{ color: '#8c8c8c', fontSize: '13px' }}>
-                    배당 재투자 시 포트폴리오 성장 예측
-                </p>
+                <p className="text-sm text-gray-600">배당 재투자 시 포트폴리오 성장 예측</p>
             </div>
 
-            <Card style={{ background: '#1a1f3a', border: '1px solid #2d3748' }}>
-                <Form
-                    layout="inline"
-                    onFinish={onFinish}
-                    initialValues={{ initial: 100000, monthly: 1000, years: 10, cagr: 7, yield: 4, reinvest: true }}
-                >
-                    <Form.Item label={<span style={{ color: '#fff' }}>초기 투자</span>} name="initial">
-                        <InputNumber min={0} step={10000} addonAfter="USD" style={{ width: 150 }} />
-                    </Form.Item>
-                    <Form.Item label={<span style={{ color: '#fff' }}>월 적립</span>} name="monthly">
-                        <InputNumber min={0} step={100} addonAfter="USD" style={{ width: 150 }} />
-                    </Form.Item>
-                    <Form.Item label={<span style={{ color: '#fff' }}>기간</span>} name="years">
-                        <InputNumber min={1} max={30} addonAfter="년" style={{ width: 120 }} />
-                    </Form.Item>
-                    <Form.Item label={<span style={{ color: '#fff' }}>CAGR</span>} name="cagr">
-                        <InputNumber min={0} max={20} step={0.5} addonAfter="%" style={{ width: 120 }} />
-                    </Form.Item>
-                    <Form.Item label={<span style={{ color: '#fff' }}>배당률</span>} name="yield">
-                        <InputNumber min={0} max={15} step={0.5} addonAfter="%" style={{ width: 120 }} />
-                    </Form.Item>
-                    <Form.Item label={<span style={{ color: '#fff' }}>재투자</span>} name="reinvest" valuePropName="checked">
-                        <Switch />
-                    </Form.Item>
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={loading}>
-                            시뮬레이션
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Card>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <form onSubmit={onSubmit} className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">초기 투자 (USD)</label>
+                        <input
+                            type="number"
+                            value={formData.initial}
+                            onChange={(e) => setFormData({ ...formData, initial: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            step="10000"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">월 적립 (USD)</label>
+                        <input
+                            type="number"
+                            value={formData.monthly}
+                            onChange={(e) => setFormData({ ...formData, monthly: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            step="100"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">기간 (년)</label>
+                        <input
+                            type="number"
+                            value={formData.years}
+                            onChange={(e) => setFormData({ ...formData, years: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            min="1"
+                            max="30"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">CAGR (%)</label>
+                        <input
+                            type="number"
+                            value={formData.cagr}
+                            onChange={(e) => setFormData({ ...formData, cagr: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            step="0.5"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">배당률 (%)</label>
+                        <input
+                            type="number"
+                            value={formData.yield}
+                            onChange={(e) => setFormData({ ...formData, yield: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            step="0.5"
+                        />
+                    </div>
+                    <div className="flex items-end">
+                        <label className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                checked={formData.reinvest}
+                                onChange={(e) => setFormData({ ...formData, reinvest: e.target.checked })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">배당 재투자</span>
+                        </label>
+                    </div>
+                    <div className="col-span-full">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                        >
+                            {loading ? '시뮬레이션 중...' : '시뮬레이션'}
+                        </button>
+                    </div>
+                </form>
+            </div>
 
             {results.length > 0 && (
-                <Card style={{ background: '#1a1f3a', border: '1px solid #2d3748', marginTop: '24px' }}>
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <ResponsiveContainer width="100%" height={400}>
                         <LineChart data={results}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" />
-                            <XAxis dataKey="year" stroke="#8c8c8c" label={{ value: 'Year', position: 'insideBottom', offset: -5 }} />
-                            <YAxis stroke="#8c8c8c" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="year" stroke="#6b7280" />
+                            <YAxis stroke="#6b7280" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
                             <Tooltip
-                                contentStyle={{ background: '#1a1f3a', border: '1px solid #2d3748' }}
-                                labelStyle={{ color: '#fff' }}
+                                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
                                 formatter={(value: any) => `$${value.toLocaleString()}`}
                             />
                             <Legend />
-                            <Line type="monotone" dataKey="portfolio_value_usd" stroke="#52c41a" name="Portfolio Value" strokeWidth={2} />
-                            <Line type="monotone" dataKey="cumulative_dividends_usd" stroke="#1890ff" name="Cumulative Dividends" strokeWidth={2} />
+                            <Line type="monotone" dataKey="portfolio_value_usd" stroke="#10b981" name="Portfolio Value" strokeWidth={2} />
+                            <Line type="monotone" dataKey="cumulative_dividends_usd" stroke="#3b82f6" name="Cumulative Dividends" strokeWidth={2} />
                         </LineChart>
                     </ResponsiveContainer>
-                </Card>
+                </div>
             )}
         </div>
     );
