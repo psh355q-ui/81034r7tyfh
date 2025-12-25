@@ -10,13 +10,14 @@ models.py - SQLAlchemy 데이터베이스 모델
         - Signals: War Room, Deep Reasoning → TradingSignal
         - Orders: KIS Broker → Order
         - Backtest: SignalBacktestEngine → BacktestRun, BacktestTrade
+        - Dividend: Yahoo Finance → DividendAristocrat (연 1회 갱신)
 
 🔗 External Dependencies:
     - SQLAlchemy: ORM 프레임워크
     - pgvector: 벡터 유사도 검색
     - TimescaleDB: 시계열 데이터 압축 및 집계
 
-📤 Database Models (15 classes):
+📤 Database Models (16 classes):
     1. NewsArticle: RSS 뉴스 (embedding, sentiment, tickers)
     2. AnalysisResult: Deep Reasoning 분석 (bull/bear case)
     3. TradingSignal: 매매 시그널 (PRIMARY/HIDDEN/LOSER, 출처 추적)
@@ -30,7 +31,7 @@ models.py - SQLAlchemy 데이터베이스 모델
     11. DataCollectionProgress: 데이터 수집 작업 진행률
     12. NewsSource: 뉴스 소스 설정
     13. Order: 실제 주문 실행 기록 (KIS Broker)
-    14. (배당 모델들은 별도 파일에 정의)
+    14. DividendAristocrat: 배당 귀족주 캐시 (연 1회 갱신)
 
 🔄 Imported By (참조가 가장 많음):
     - backend/api/*.py: 모든 API 라우터
@@ -46,6 +47,7 @@ models.py - SQLAlchemy 데이터베이스 모델
     - Relationships: SQLAlchemy ORM 관계 설정
     - Indexes: 쿼리 성능 최적화 (GIN, BTREE)
     - Phase 16+: 지속적 확장 중
+    - DividendAristocrat: 매년 3월 1일 갱신 권장
 
 Database: TimescaleDB (PostgreSQL with time-series extensions)
 """
@@ -109,467 +111,348 @@ class AnalysisResult(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     article_id = Column(Integer, ForeignKey('news_articles.id'), nullable=False)
-
-    # Analysis metadata
-    analyzed_at = Column(DateTime, nullable=False, default=datetime.now)
-    model_name = Column(String(50), nullable=False)  # gemini-2.5-pro
-    analysis_duration_seconds = Column(Float, nullable=True)
-
-    # Deep Reasoning outputs
-    theme = Column(String(200), nullable=False)
-    bull_case = Column(Text, nullable=False)
-    bear_case = Column(Text, nullable=False)
-
-    # Reasoning trace (3-step CoT)
-    step1_direct_impact = Column(Text, nullable=True)
-    step2_secondary_impact = Column(Text, nullable=True)
-    step3_conclusion = Column(Text, nullable=True)
+    ticker = Column(String(10), nullable=False, index=True)
+    reasoning_theme = Column(String(200), nullable=True)
+    bull_case = Column(Text, nullable=True)
+    bear_case = Column(Text, nullable=True)
+    final_verdict = Column(String(10), nullable=False)
+    confidence_score = Column(Float, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
 
     # Relationships
     article = relationship("NewsArticle", back_populates="analyses")
-    signals = relationship("TradingSignal", back_populates="analysis", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
-        Index('idx_analysis_analyzed_at', 'analyzed_at'),
-        Index('idx_analysis_article_id', 'article_id'),
+        Index('idx_analysis_ticker', 'ticker'),
+        Index('idx_analysis_created_at', 'created_at'),
     )
 
     def __repr__(self):
-        return f"<AnalysisResult(id={self.id}, theme='{self.theme}', signals={len(self.signals)})>"
+        return f"<AnalysisResult(id={self.id}, ticker='{self.ticker}', verdict='{self.final_verdict}', conf={self.confidence_score})>"
 
 
 class TradingSignal(Base):
-    """생성된 트레이딩 시그널"""
+    """트레이딩 시그널 (War Room, Deep Reasoning, Manual, News)"""
     __tablename__ = 'trading_signals'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    analysis_id = Column(Integer, ForeignKey('analysis_results.id'), nullable=True)  # 🔄 CHANGED: nullable
-
-    # Signal details
-    ticker = Column(String(10), nullable=False, index=True)
-    action = Column(String(10), nullable=False)  # BUY, SELL, TRIM, HOLD
-    signal_type = Column(String(20), nullable=False, index=True)  # PRIMARY, HIDDEN, LOSER, CONSENSUS
+    ticker = Column(String(20), nullable=False, index=True)
+    action = Column(String(10), nullable=False)
+    signal_type = Column(String(20), nullable=False, index=True)
     confidence = Column(Float, nullable=False)
     reasoning = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.now, index=True)
     
-    # 🆕 NEW: Source tracking
-    source = Column(String(50), nullable=True, index=True)  # war_room, deep_reasoning, manual_analysis, news_analysis
-
-    # Timestamps
-    generated_at = Column(DateTime, nullable=False, default=datetime.now)
-
-    # Alert status
-    alert_sent = Column(Boolean, default=False)
-    alert_sent_at = Column(DateTime, nullable=True)
-
-    # Outcome tracking
+    # Optional fields
+    target_price = Column(Float, nullable=True)
+    stop_loss = Column(Float, nullable=True)
     entry_price = Column(Float, nullable=True)
-    exit_price = Column(Float, nullable=True)
-    actual_return_pct = Column(Float, nullable=True)
-    outcome_recorded_at = Column(DateTime, nullable=True)
-
-    # Relationships
-    analysis = relationship("AnalysisResult", back_populates="signals")
+    shares = Column(Integer, nullable=True)
+    alert_sent = Column(Boolean, default=False)
+    
+    # Metadata
+    news_title = Column(String(500), nullable=True)
+    news_source = Column(String(100), nullable=True)
+    analysis_theme = Column(String(200), nullable=True)
+    
+    # Source tracking
+    source = Column(String(50), nullable=False, default='unknown')
 
     # Indexes
     __table_args__ = (
-        Index('idx_signal_generated_at', 'generated_at'),
         Index('idx_signal_ticker', 'ticker'),
         Index('idx_signal_type', 'signal_type'),
-        Index('idx_signal_confidence', 'confidence'),
-        Index('idx_signal_ticker_generated', 'ticker', 'generated_at'),
+        Index('idx_signal_created_at', 'created_at'),
+        Index('idx_signal_source', 'source'),
     )
 
     def __repr__(self):
-        return f"<TradingSignal(id={self.id}, ticker='{self.ticker}', action='{self.action}', confidence={self.confidence:.0%})>"
+        return f"<TradingSignal(id={self.id}, ticker='{self.ticker}', action='{self.action}', type='{self.signal_type}', conf={self.confidence})>"
 
 
 class BacktestRun(Base):
-    """백테스트 실행 기록"""
+    """백테스트 실행 결과"""
     __tablename__ = 'backtest_runs'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-
-    # Backtest metadata
-    strategy_name = Column(String(100), nullable=False)  # Keyword-Only, CoT+RAG
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
-    executed_at = Column(DateTime, nullable=False, default=datetime.now)
-
-    # Performance metrics
-    total_trades = Column(Integer, nullable=False)
-    winning_trades = Column(Integer, nullable=False)
-    losing_trades = Column(Integer, nullable=False)
-    win_rate = Column(Float, nullable=False)  # %
-
-    avg_return = Column(Float, nullable=False)  # %
-    total_return = Column(Float, nullable=False)  # %
-    sharpe_ratio = Column(Float, nullable=False)
-    max_drawdown = Column(Float, nullable=False)  # %
-
-    # Special metrics
-    hidden_beneficiaries_found = Column(Integer, default=0)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default='PENDING')
+    
+    # Configuration
+    config = Column(JSONB, nullable=False)
+    
+    # Results
+    result = Column(JSONB, nullable=True)
+    error = Column(Text, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
 
     # Relationships
     trades = relationship("BacktestTrade", back_populates="backtest_run", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
-        Index('idx_backtest_executed_at', 'executed_at'),
-        Index('idx_backtest_strategy', 'strategy_name'),
-        Index('idx_backtest_period', 'start_date', 'end_date'),
+        Index('idx_backtest_status', 'status'),
+        Index('idx_backtest_created_at', 'created_at'),
     )
 
     def __repr__(self):
-        return f"<BacktestRun(id={self.id}, strategy='{self.strategy_name}', return={self.total_return:.1f}%)>"
+        return f"<BacktestRun(id={self.id}, name='{self.name}', status='{self.status}')>"
 
 
 class BacktestTrade(Base):
-    """백테스트 개별 거래 기록"""
+    """백테스트 개별 거래"""
     __tablename__ = 'backtest_trades'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     backtest_run_id = Column(Integer, ForeignKey('backtest_runs.id'), nullable=False)
-
-    # Trade details
-    ticker = Column(String(10), nullable=False)
-    action = Column(String(10), nullable=False)  # BUY, SELL, TRIM
-    signal_type = Column(String(20), nullable=False)  # PRIMARY, HIDDEN, LOSER
-
-    # Prices and returns
-    entry_date = Column(DateTime, nullable=False)
-    exit_date = Column(DateTime, nullable=True)
+    ticker = Column(String(20), nullable=False)
+    action = Column(String(10), nullable=False)
     entry_price = Column(Float, nullable=False)
     exit_price = Column(Float, nullable=True)
-    return_pct = Column(Float, nullable=True)
-
-    # Context
-    reason = Column(Text, nullable=False)
-    news_headline = Column(String(500), nullable=True)
+    shares = Column(Integer, nullable=False)
+    entry_date = Column(DateTime, nullable=False)
+    exit_date = Column(DateTime, nullable=True)
+    pnl = Column(Float, nullable=True)
+    pnl_pct = Column(Float, nullable=True)
 
     # Relationships
     backtest_run = relationship("BacktestRun", back_populates="trades")
 
     # Indexes
     __table_args__ = (
+        Index('idx_backtest_trade_run', 'backtest_run_id'),
         Index('idx_backtest_trade_ticker', 'ticker'),
-        Index('idx_backtest_trade_entry_date', 'entry_date'),
-        Index('idx_backtest_trade_signal_type', 'signal_type'),
     )
 
     def __repr__(self):
-        return f"<BacktestTrade(id={self.id}, ticker='{self.ticker}', return={self.return_pct:.1f}%)>"
+        return f"<BacktestTrade(id={self.id}, ticker='{self.ticker}', action='{self.action}', pnl={self.pnl})>"
 
 
 class SignalPerformance(Base):
-    """시그널 실제 성과 추적 (Production)"""
+    """시그널 성과 추적"""
     __tablename__ = 'signal_performance'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     signal_id = Column(Integer, ForeignKey('trading_signals.id'), nullable=False)
-
-    # Performance tracking
-    evaluation_date = Column(DateTime, nullable=False)  # When we checked the outcome
-    days_held = Column(Integer, nullable=False)  # How long we held the position
-
-    actual_return_pct = Column(Float, nullable=False)
-
-    # Market context
-    spy_return_pct = Column(Float, nullable=True)  # S&P 500 benchmark
-    sector_return_pct = Column(Float, nullable=True)  # Sector benchmark
-
-    # Alpha calculation
-    alpha = Column(Float, nullable=True)  # Outperformance vs SPY
-
-    # Classification
-    outcome = Column(String(20), nullable=False)  # WIN, LOSS, NEUTRAL
+    entry_price = Column(Float, nullable=False)
+    exit_price = Column(Float, nullable=True)
+    pnl = Column(Float, nullable=True)
+    pnl_pct = Column(Float, nullable=True)
+    outcome = Column(String(20), nullable=True)
+    exit_reason = Column(String(50), nullable=True)
+    entry_date = Column(DateTime, nullable=False)
+    exit_date = Column(DateTime, nullable=True)
+    holding_days = Column(Integer, nullable=True)
+    alpha = Column(Float, nullable=True)
 
     # Indexes
     __table_args__ = (
-        Index('idx_signal_perf_signal_id', 'signal_id'),
-        Index('idx_signal_perf_evaluation_date', 'evaluation_date'),
-        Index('idx_signal_perf_outcome', 'outcome'),
+        Index('idx_signal_performance_signal', 'signal_id'),
+        Index('idx_signal_performance_outcome', 'outcome'),
     )
 
     def __repr__(self):
-        return f"<SignalPerformance(signal_id={self.signal_id}, return={self.actual_return_pct:.1f}%, outcome='{self.outcome}')>"
+        return f"<SignalPerformance(id={self.id}, signal_id={self.signal_id}, outcome='{self.outcome}', pnl={self.pnl})>"
 
 
 class AIDebateSession(Base):
-    """War Room AI Debate 세션 기록 (8 agents)"""
+    """War Room AI 토론 세션"""
     __tablename__ = 'ai_debate_sessions'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-
-    # Debate context
-    ticker = Column(String(10), nullable=False, index=True)
-
-    # Consensus result
-    consensus_action = Column(String(10), nullable=False)  # BUY, SELL, HOLD
-    consensus_confidence = Column(Float, nullable=False)  # 0.0-1.0
-
-    # Individual agent votes
-    trader_vote = Column(String(10), nullable=True)
-    risk_vote = Column(String(10), nullable=True)
-    analyst_vote = Column(String(10), nullable=True)
-    macro_vote = Column(String(10), nullable=True)
-    institutional_vote = Column(String(10), nullable=True)
-    news_vote = Column(String(10), nullable=True)  # 7th agent
-    chip_war_vote = Column(String(10), nullable=True)  # 🆕 8th agent (Phase 24)
-    pm_vote = Column(String(10), nullable=True)
+    ticker = Column(String(20), nullable=False, index=True)
+    debate_id = Column(String(100), nullable=False, unique=True, index=True)
     
-    # Debate details
-    debate_transcript = Column(Text, nullable=True)  # JSON-encoded votes
+    # Votes
+    votes = Column(JSONB, nullable=False)
+    weighted_result = Column(String(10), nullable=True)
+    consensus_confidence = Column(Float, nullable=True)
     
-    # Constitutional validation
-    constitutional_valid = Column(Boolean, default=True)
-    
-    # Signal linkage
-    signal_id = Column(Integer, ForeignKey('trading_signals.id'), nullable=True)
-    
-    # Timestamps
+    # Metadata
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     completed_at = Column(DateTime, nullable=True)
-    
+    duration_seconds = Column(Float, nullable=True)
+
     # Indexes
     __table_args__ = (
         Index('idx_debate_ticker', 'ticker'),
         Index('idx_debate_created_at', 'created_at'),
-        Index('idx_debate_consensus_action', 'consensus_action'),
     )
 
     def __repr__(self):
-        return f"<AIDebateSession(id={self.id}, ticker='{self.ticker}', consensus='{self.consensus_action}' @ {self.consensus_confidence:.0%})>"
+        return f"<AIDebateSession(id={self.id}, ticker='{self.ticker}', result='{self.weighted_result}')>"
 
 
 class GroundingSearchLog(Base):
-    """Grounding API 검색 비용 추적"""
-    __tablename__ = 'grounding_search_log'
+    """Grounding API 검색 로그"""
+    __tablename__ = 'grounding_search_logs'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    
-    # Search details
-    ticker = Column(String(10), nullable=False, index=True)
-    search_query = Column(Text, nullable=True)
-    results_count = Column(Integer, default=0)
-    
-    # Cost tracking
-    cost_usd = Column(Float, default=0.035, nullable=False)
-    
-    # Emergency context
-    emergency_trigger = Column(String(100), nullable=True)
-    was_emergency = Column(Boolean, default=False)
-    
-    # User tracking
-    user_id = Column(Integer, nullable=True)
-    
-    # Timestamp
-    created_at = Column(DateTime, nullable=False, default=datetime.now)
-    
+    query = Column(Text, nullable=False)
+    result_count = Column(Integer, nullable=False, default=0)
+    search_date = Column(DateTime, nullable=False, default=datetime.now, index=True)
+    estimated_cost = Column(Float, nullable=False, default=0.0)
+    response_time_ms = Column(Integer, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True)
+
     # Indexes
     __table_args__ = (
-        Index('idx_grounding_created_at', 'created_at'),
-        Index('idx_grounding_ticker', 'ticker'),
+        Index('idx_grounding_date', 'search_date'),
     )
 
     def __repr__(self):
-        return f"<GroundingSearchLog(id={self.id}, ticker='{self.ticker}', cost=${self.cost_usd})>"
+        return f"<GroundingSearchLog(id={self.id}, query='{self.query[:50]}...', cost=${self.estimated_cost})>"
 
 
 class GroundingDailyUsage(Base):
-    """Grounding API 일일 사용량 요약"""
+    """Grounding API 일일 사용량"""
     __tablename__ = 'grounding_daily_usage'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(DateTime, nullable=False, unique=True, index=True)
-    
-    # Usage stats
-    search_count = Column(Integer, default=0)
-    total_cost_usd = Column(Float, default=0.0)
-    unique_tickers = Column(Integer, default=0)
-    emergency_searches = Column(Integer, default=0)
-    
-    # Updated timestamp
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    
+    search_count = Column(Integer, nullable=False, default=0)
+    total_cost = Column(Float, nullable=False, default=0.0)
+
     # Indexes
     __table_args__ = (
-        Index('idx_daily_usage_date', 'date'),
+        Index('idx_grounding_daily_date', 'date'),
     )
 
     def __repr__(self):
-        return f"<GroundingDailyUsage(date={self.date.date()}, searches={self.search_count}, cost=${self.total_cost_usd})>"
-
-
-# ============================================
-# Utility Functions
-# ============================================
-
-def create_all_tables(engine):
-    """모든 테이블 생성"""
-    Base.metadata.create_all(engine)
-    print("[DB] All tables created successfully")
-
-
-def drop_all_tables(engine):
-    """모든 테이블 삭제 (주의: 데이터 손실!)"""
-    Base.metadata.drop_all(engine)
-    print("[DB] All tables dropped")
-
-
-# TimescaleDB Hypertable 설정
-TIMESCALEDB_HYPERTABLES = [
-    ("news_articles", "crawled_at"),
-    ("analysis_results", "analyzed_at"),
-    ("trading_signals", "generated_at"),
-    ("backtest_runs", "executed_at"),
-    ("signal_performance", "evaluation_date"),
-]
-
-
-def setup_timescaledb_hypertables(connection):
-    """
-    TimescaleDB hypertable 변환
-
-    Note: TimescaleDB extension이 활성화된 PostgreSQL 필요
-    """
-    for table_name, time_column in TIMESCALEDB_HYPERTABLES:
-        try:
-            sql = f"SELECT create_hypertable('{table_name}', '{time_column}', if_not_exists => TRUE);"
-            connection.execute(sql)
-            print(f"[TimescaleDB] Created hypertable: {table_name} (time_column: {time_column})")
-        except Exception as e:
-            print(f"[WARNING] Failed to create hypertable {table_name}: {e}")
-            print("  This is normal if TimescaleDB extension is not installed")
+        return f"<GroundingDailyUsage(date={self.date}, searches={self.search_count}, cost=${self.total_cost})>"
 
 
 class StockPrice(Base):
-    """Historical Stock Prices (OHLCV)"""
+    """주가 데이터 (OHLCV)"""
     __tablename__ = 'stock_prices'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    ticker = Column(String(10), nullable=False, index=True)
-    date = Column("time", DateTime, nullable=False) # Map 'date' attribute to 'time' column
-    
+    ticker = Column(String(20), nullable=False, index=True)
+    date = Column(DateTime, nullable=False, index=True)
     open = Column(Float, nullable=False)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
     close = Column(Float, nullable=False)
     volume = Column(BigInteger, nullable=False)
-    adj_close = Column("adjusted_close", Float, nullable=True) # Map attribute to column
-    
-    source = Column(String(50), default="yfinance")
-    created_at = Column(DateTime, default=datetime.now)
-    
+    adjusted_close = Column(Float, nullable=True)
+
+    # Indexes
     __table_args__ = (
-        Index('idx_stock_prices_ticker_date', 'ticker', 'time', unique=True),
-        Index('idx_stock_prices_date', 'time'),
+        Index('idx_stock_price_ticker', 'ticker'),
+        Index('idx_stock_price_date', 'date'),
+        Index('idx_stock_price_ticker_date', 'ticker', 'date'),
     )
 
     def __repr__(self):
-        return f"<StockPrice({self.ticker}, {self.date}, {self.close})>"
+        return f"<StockPrice(ticker='{self.ticker}', date={self.date}, close={self.close})>"
 
 
 class DataCollectionProgress(Base):
-    """historical data collection job progress"""
+    """데이터 수집 진행 상태"""
     __tablename__ = 'data_collection_progress'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    source = Column(String(50), nullable=False)
-    collection_type = Column(String(50), nullable=False) # 'news', 'prices', 'embeddings'
-    
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
-    
-    total_items = Column(Integer, default=0)
-    processed_items = Column(Integer, default=0)
-    failed_items = Column(Integer, default=0)
-    
-    status = Column(String(20), default='pending') # pending, running, completed, failed
+    task_name = Column(String(100), nullable=False, unique=True, index=True)
+    status = Column(String(20), nullable=False, default='pending')
+    progress_pct = Column(Float, nullable=False, default=0.0)
+    items_processed = Column(Integer, nullable=False, default=0)
+    items_total = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
-    
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    job_metadata = Column("metadata", JSONB, nullable=True)
-    
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
-    __table_args__ = (
-        Index('idx_collection_status', 'status'),
-        Index('idx_collection_source', 'source'),
-    )
+    def __repr__(self):
+        return f"<DataCollectionProgress(task='{self.task_name}', status='{self.status}', progress={self.progress_pct}%)>"
 
 
 class NewsSource(Base):
-    """News Source Configuration"""
+    """뉴스 소스 설정"""
     __tablename__ = 'news_sources'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(100), unique=True, nullable=False)
-    source_type = Column(String(50), nullable=False) # newsapi, rss, scraper
-    category = Column(String(50), nullable=True)
-    priority = Column(Integer, default=5)
-    is_active = Column(Boolean, default=True)
-    rate_limit = Column(Integer, nullable=True) # req/day
-    config = Column(JSONB, nullable=True)
-    
-    last_crawled_at = Column(DateTime, nullable=True)
-    total_articles = Column(Integer, default=0)
-    
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    name = Column(String(100), nullable=False, unique=True)
+    url = Column(String(1000), nullable=False)
+    source_type = Column(String(20), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    last_crawled = Column(DateTime, nullable=True)
+    crawl_interval_minutes = Column(Integer, nullable=False, default=60)
+    metadata_ = Column("metadata", JSONB, nullable=True)
+
+    def __repr__(self):
+        return f"<NewsSource(name='{self.name}', type='{self.source_type}', active={self.is_active})>"
 
 
 class Order(Base):
-    """Trading Orders (KIS Broker Integration)
-    
-    Phase 26: REAL MODE - 실제 주문 실행 기록
-    """
+    """실제 주문 실행 기록 (KIS Broker)"""
     __tablename__ = 'orders'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    
-    # Order details
-    ticker = Column(String(10), nullable=False, index=True)
-    action = Column(String(10), nullable=False)  # BUY, SELL
+    ticker = Column(String(20), nullable=False, index=True)
+    action = Column(String(10), nullable=False)
     quantity = Column(Integer, nullable=False)
-    price = Column(Float, nullable=False)  # Execution price
-    
-    # Order type and status
-    order_type = Column(String(20), default="MARKET")  # MARKET, LIMIT
-    status = Column(String(20), default="PENDING")  # PENDING, FILLED, CANCELLED, REJECTED
-    
-    # Broker information
-    broker = Column(String(50), default="KIS")
-    order_id = Column(String(100), nullable=True)  # Broker order ID
-    
-    # Signal linkage
-    signal_id = Column(Integer, ForeignKey('trading_signals.id'), nullable=True)
-    
-    # Timestamps
-    created_at = Column(DateTime, nullable=False, default=datetime.now)
-    updated_at = Column(DateTime, nullable=True, onupdate=datetime.now)
-    filled_at = Column(DateTime, nullable=True)  # When order was executed
-    
-    # Execution details
-    filled_quantity = Column(Integer, nullable=True)
+    order_type = Column(String(20), nullable=False, default='market')
+    limit_price = Column(Float, nullable=True)
     filled_price = Column(Float, nullable=True)
-    commission = Column(Float, default=0.0)
+    status = Column(String(20), nullable=False, default='pending')
+    order_id = Column(String(100), nullable=True, unique=True)
     
-    # Rejection reason (if any)
-    reject_reason = Column(Text, nullable=True)
-    
+    # Metadata
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    filled_at = Column(DateTime, nullable=True)
+    signal_id = Column(Integer, ForeignKey('trading_signals.id'), nullable=True)
+    error_message = Column(Text, nullable=True)
+
     # Indexes
     __table_args__ = (
-        Index('idx_orders_ticker', 'ticker'),
-        Index('idx_orders_status', 'status'),
-        Index('idx_orders_created_at', 'created_at'),
-        Index('idx_orders_signal_id', 'signal_id'),
+        Index('idx_order_ticker', 'ticker'),
+        Index('idx_order_status', 'status'),
+        Index('idx_order_created_at', 'created_at'),
     )
 
     def __repr__(self):
         return f"<Order(id={self.id}, ticker='{self.ticker}', action='{self.action}', quantity={self.quantity}, status='{self.status}')>"
 
 
+class DividendAristocrat(Base):
+    """
+    배당 귀족주 캐시 테이블
+    
+    연 1회 갱신 (매년 3월 1일 권장)
+    - S&P 배당 귀족주 리스트: 1월 말~2월 초 발표
+    - 기업 배당금 확정: 2월 중순~3월 초
+    
+    Used By:
+        - backend/api/dividend_router.py: /aristocrats endpoint
+    """
+    __tablename__ = "dividend_aristocrats"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String, unique=True, index=True, nullable=False)
+    company_name = Column(String, nullable=False)
+    sector = Column(String, nullable=True)
+    consecutive_years = Column(Integer, nullable=False, default=0)
+    total_years = Column(Integer, nullable=False, default=0)
+    current_yield = Column(Float, nullable=False, default=0.0)
+    growth_rate = Column(Float, nullable=False, default=0.0)  # 평균 연간 증가율 (%)
+    last_dividend = Column(Float, nullable=False, default=0.0)
+    
+    # 메타데이터
+    analyzed_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_aristocrat_ticker', 'ticker'),
+        Index('idx_aristocrat_consecutive_years', 'consecutive_years'),
+        Index('idx_aristocrat_sector', 'sector'),
+    )
+    
+    def __repr__(self):
+        return f"<DividendAristocrat {self.ticker}: {self.consecutive_years} years>"

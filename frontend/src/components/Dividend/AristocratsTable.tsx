@@ -1,8 +1,50 @@
+/**
+ * AristocratsTable.tsx - 배당 귀족주 테이블
+ * 
+ * 📊 Data Sources:
+ *   - API: GET /api/dividend/aristocrats
+ *     - Returns: aristocrats[], last_updated, next_update, data_source
+ *   - Yahoo Finance 분석 데이터 (DB 캐시)
+ * 
+ * 🔗 Dependencies:
+ *   - react: useState, useEffect
+ *   - lucide-react: Trophy 아이콘
+ * 
+ * 📤 Components Used:
+ *   - None (leaf component)
+ * 
+ * 🔄 Used By:
+ *   - pages/DividendDashboard.tsx (aristocrats tab)
+ * 
+ * 📝 Notes:
+ *   - DB cached data (연 1회 갱신, 3월 1일 권장)
+ *   - Shows last_updated date (기준일)
+ *   - Removed '25년 이상' restriction - shows all dividend growers
+ *   - Mobile responsive table
+ */
+
 import React, { useState, useEffect } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Calendar } from 'lucide-react';
+
+interface AristocratData {
+    ticker: string;
+    company_name: string;
+    sector: string;
+    consecutive_years: number;
+    current_yield: number;
+    growth_rate: number;
+}
+
+interface AristocratsResponse {
+    count: number;
+    aristocrats: AristocratData[];
+    last_updated?: string;  // ISO datetime
+    next_update?: string;   // YYYY-MM-DD
+    data_source?: string;   // "database" or "yahoo_finance"
+}
 
 const AristocratsTable: React.FC = () => {
-    const [aristocrats, setAristocrats] = useState<any[]>([]);
+    const [data, setData] = useState<AristocratsResponse | null>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -15,14 +57,30 @@ const AristocratsTable: React.FC = () => {
             const response = await fetch('http://localhost:8001/api/dividend/aristocrats');
             if (!response.ok) throw new Error('Failed to fetch aristocrats');
 
-            const data = await response.json();
-            setAristocrats(data.aristocrats || []);
+            const responseData = await response.json();
+            setData(responseData);
         } catch (error: any) {
             console.error('Failed to fetch aristocrats:', error.message);
         } finally {
             setLoading(false);
         }
     };
+
+    const formatDate = (isoString?: string) => {
+        if (!isoString) return 'N/A';
+        try {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        } catch {
+            return 'N/A';
+        }
+    };
+
+    const aristocrats = data?.aristocrats || [];
 
     return (
         <div className="space-y-4">
@@ -32,8 +90,23 @@ const AristocratsTable: React.FC = () => {
                     배당 귀족주 (Dividend Aristocrats)
                 </h3>
                 <p className="text-sm text-gray-600">
-                    25년 이상 연속 배당금을 증가시킨 우량 배당주 ({aristocrats.length}개)
+                    연속 배당금을 증가시킨 우량 배당주 ({aristocrats.length}개)
                 </p>
+
+                {/* 기준일 표시 */}
+                {data?.last_updated && (
+                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                        <Calendar size={14} />
+                        <span>
+                            기준일: {formatDate(data.last_updated)}
+                            {data.next_update && (
+                                <span className="ml-2 text-blue-600">
+                                    (다음 갱신: {data.next_update})
+                                </span>
+                            )}
+                        </span>
+                    </div>
+                )}
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
