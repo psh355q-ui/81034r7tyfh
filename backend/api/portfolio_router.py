@@ -200,10 +200,11 @@ async def get_portfolio():
             quantity = pos.get("quantity", 0)
             avg_price = pos.get("avg_price", 0)
             
-            # 배당 정보 조회 (KIS API)
+            # 배당 정보 조회 (KIS API → Yahoo Finance fallback)
             dividend_info = {"annual_dividend": 0.0, "dividend_yield": 0.0, "frequency": "Q", "next_ex_date": ""}
             if symbol:
                 try:
+                    # Try KIS API first
                     from backend.trading import overseas_stock as osf
                     dividend_data = osf.get_dividend_by_ticker(symbol, "US")
                     
@@ -218,7 +219,23 @@ async def get_portfolio():
                             "frequency": dividend_data.get("frequency", "Q"),
                             "next_ex_date": dividend_data.get("next_ex_date", "")
                         }
-                        logger.info(f"📊 {symbol} 배당 정보: ${annual_div:.2f}/year, {div_yield:.2f}% yield")
+                        logger.info(f"📊 {symbol} 배당 정보 (KIS): ${annual_div:.2f}/year, {div_yield:.2f}% yield")
+                    else:
+                        # KIS API failed, try Yahoo Finance
+                        logger.info(f"KIS API returned no dividend data for {symbol}, trying Yahoo Finance...")
+                        from backend.data_sources import yahoo_finance as yf
+                        yahoo_data = yf.get_dividend_info(symbol)
+                        
+                        if yahoo_data and yahoo_data.get("annual_dividend", 0) > 0:
+                            dividend_info = {
+                                "annual_dividend": yahoo_data.get("annual_dividend", 0),
+                                "dividend_yield": yahoo_data.get("dividend_yield", 0),
+                                "frequency": yahoo_data.get("frequency", "Q"),
+                                "next_ex_date": yahoo_data.get("next_ex_date", "")
+                            }
+                            logger.info(f"✅ {symbol} 배당 정보 (Yahoo): ${dividend_info['annual_dividend']:.2f}/year, {dividend_info['dividend_yield']:.2f}% yield")
+                        else:
+                            logger.warning(f"No dividend data found for {symbol} from both KIS and Yahoo Finance")
                 except Exception as e:
                     logger.warning(f"배당 정보 조회 실패 ({symbol}): {e}")
             
