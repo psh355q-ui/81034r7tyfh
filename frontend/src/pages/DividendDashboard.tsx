@@ -83,8 +83,10 @@ const DividendDashboard: React.FC = () => {
                 <div className="md:hidden space-y-3 p-4">
                     {portfolio.positions.map((position: any) => {
                         const annualDividend = position.market_value * 0.03;
-                        const dailyPnL = position.market_value * 0.015; // 임시
-                        const dailyPnLPct = 1.5; // 임시
+                        // 실제 포지션 손익 계산: (현재가 - 평균매수가) / 평균매수가
+                        const positionPnLPct = ((position.current_price - position.avg_price) / position.avg_price) * 100;
+                        const positionPnL = (position.current_price - position.avg_price) * position.quantity;
+
                         return (
                             <div key={position.symbol} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                                 <div className="flex items-center justify-between mb-2">
@@ -104,11 +106,11 @@ const DividendDashboard: React.FC = () => {
                                     </div>
                                     <div>
                                         <span className="text-gray-500">손익</span>
-                                        <p className={`font-semibold ${dailyPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                            {dailyPnLPct >= 0 ? '+' : ''}{dailyPnLPct.toFixed(2)}%
+                                        <p className={`font-semibold ${positionPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                            {positionPnLPct >= 0 ? '+' : ''}{positionPnLPct.toFixed(2)}%
                                         </p>
-                                        <p className={`text-xs ${dailyPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                            {dailyPnLPct >= 0 ? '+' : ''}₩{(dailyPnL * exchangeRate).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}
+                                        <p className={`text-xs ${positionPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                            {positionPnLPct >= 0 ? '+' : ''}₩{(positionPnL * exchangeRate).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}
                                         </p>
                                     </div>
                                     <div className="text-right">
@@ -155,8 +157,9 @@ const DividendDashboard: React.FC = () => {
                         <tbody>
                             {portfolio.positions.map((position: any) => {
                                 const annualDividend = position.market_value * 0.03;
-                                const dailyPnL = position.market_value * 0.015; // 임시 1.5% 상승 가정
-                                const dailyPnLPct = 1.5; // 임시
+                                // 실제 포지션 손익 계산: (현재가 - 평균매수가) / 평균매수가
+                                const positionPnLPct = ((position.current_price - position.avg_price) / position.avg_price) * 100;
+                                const positionPnL = (position.current_price - position.avg_price) * position.quantity;
                                 const totalValueKRW = position.market_value * exchangeRate;
 
                                 return (
@@ -173,11 +176,11 @@ const DividendDashboard: React.FC = () => {
                                             <div className="text-xs text-gray-500">₩{totalValueKRW.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</div>
                                         </td>
                                         <td className="text-right py-3 px-4">
-                                            <div className={`font-semibold text-sm ${dailyPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                                {dailyPnLPct >= 0 ? '+' : ''}{dailyPnLPct.toFixed(2)}%
+                                            <div className={`font-semibold text-sm ${positionPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                                {positionPnLPct >= 0 ? '+' : ''}{positionPnLPct.toFixed(2)}%
                                             </div>
-                                            <div className={`text-xs font-mono ${dailyPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                                {dailyPnLPct >= 0 ? '+' : ''}₩{(dailyPnL * exchangeRate).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}
+                                            <div className={`text-xs font-mono ${positionPnLPct >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                                {positionPnLPct >= 0 ? '+' : ''}₩{(positionPnL * exchangeRate).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}
                                             </div>
                                         </td>
                                         <td className="text-right py-3 px-4">

@@ -58,25 +58,25 @@ const RiskScoreTable: React.FC = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Ticker
+                                    티커
                                 </th>
                                 <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Score
+                                    점수
                                 </th>
                                 <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Level
+                                    등급
                                 </th>
                                 <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Payout Ratio
+                                    배당성향
                                 </th>
                                 <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Debt/Equity
+                                    부채비율
                                 </th>
                                 <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Sector
+                                    섹터
                                 </th>
                                 <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Warnings
+                                    경고
                                 </th>
                             </tr>
                         </thead>
