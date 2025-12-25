@@ -405,21 +405,23 @@ const Portfolio: React.FC = () => {
 
                                             {/* Sector breakdown for stocks */}
                                             {asset.key === 'stocks' && (
-                                                <div className="ml-8 text-xs text-gray-500 space-y-1">
-                                                    <div className="font-semibold text-gray-600">섹터 구분:</div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                                                        <span>Technology</span>
+                                                <div className="ml-8 text-xs text-gray-500">
+                                                    <div className="font-semibold text-gray-600 mb-2">섹터 구분:</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+                                                            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                                                            <span>Technology</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+                                                            <div className="w-3 h-3 bg-green-500 rounded"></div>
+                                                            <span>Finance</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+                                                            <div className="w-3 h-3 bg-red-500 rounded"></div>
+                                                            <span>Healthcare</span>
+                                                        </div>
+                                                        <div className="text-gray-400 px-2 py-1">+ 8 more</div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 bg-green-500 rounded"></div>
-                                                        <span>Finance</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 bg-red-500 rounded"></div>
-                                                        <span>Healthcare</span>
-                                                    </div>
-                                                    <div className="text-gray-400 mt-1">+ 8 more sectors</div>
                                                 </div>
                                             )}
                                         </div>
