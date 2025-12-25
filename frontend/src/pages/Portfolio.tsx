@@ -289,11 +289,11 @@ const Portfolio: React.FC = () => {
                     <div className="flex gap-6">
                         <div className="flex items-center gap-2">
                             <div className="w-4 h-4 bg-green-500 rounded"></div>
-                            <span className="text-sm text-gray-700">투자 중 (${portfolio.invested.toLocaleString('en-US')})</span>
+                            <span className="text-sm text-gray-700">투자 중 (${(portfolio.invested || 0).toLocaleString('en-US')})</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                            <span className="text-sm text-gray-700">현금 (${portfolio.cash.toLocaleString('en-US')})</span>
+                            <span className="text-sm text-gray-700">현금 (${(portfolio.cash || 0).toLocaleString('en-US')})</span>
                         </div>
                     </div>
                 </div>
