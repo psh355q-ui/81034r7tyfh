@@ -34,15 +34,20 @@ export const InteractivePortfolio: React.FC = () => {
                     const totalValue = portfolio.total_value || 1;
                     const portfolioItems = portfolio.positions.map((pos: any, idx: number) => ({
                         id: String(idx + 1),
-                        ticker: pos.ticker,
+                        ticker: pos.symbol || pos.ticker || 'UNKNOWN',  // Use symbol field
                         currentWeight: Math.round((pos.market_value / totalValue) * 100),
                         targetWeight: Math.round((pos.market_value / totalValue) * 100)
                     }));
 
                     setItems(portfolioItems);
+                    setLoading(false);
+                } else {
+                    console.warn('No positions found in portfolio');
+                    setLoading(false);
                 }
             } catch (error) {
                 console.error('Failed to fetch portfolio for rebalance:', error);
+                setLoading(false);
             }
         };
 
