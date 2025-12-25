@@ -191,6 +191,12 @@ class KISBroker:
                                 avg_price = float(row.get('pchs_avg_pric', 0))
                                 current_price = float(row.get('now_pric2', 0))
                                 eval_amt = float(row.get('ovrs_stck_evlu_amt', row.get('frcr_evlu_amt2', 0)))
+                                
+                                # Fallback: Calculate market_value if KIS returns 0
+                                if eval_amt == 0 and current_price > 0:
+                                    eval_amt = current_price * qty
+                                    logger.info(f"{symbol} 시장가 계산: ${eval_amt:.2f} = {current_price} x {qty}")
+                                
                                 profit_loss = float(row.get('frcr_evlu_pfls_amt', 0))
                                 
                                 # Calculate Daily P&L
@@ -219,7 +225,7 @@ class KISBroker:
                                         if last_price > 0:
                                             current_price = last_price
                                             # Recalculate eval_amt based on realtime price
-                                            # eval_amt = current_price * qty
+                                            eval_amt = current_price * qty
                                         
                                         if base_price > 0:
                                             diff = current_price - base_price
