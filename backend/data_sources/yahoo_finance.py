@@ -68,6 +68,18 @@ def get_dividend_info(symbol: str) -> Dict:
         # DEBUG: Log dividend data
         logger.info(f"  Total dividends in dataset: {len(dividends)}")
         logger.info(f"  Recent dividends (last 2 years): {len(recent_divs)}")
+        if len(recent_divs) > 0:
+            logger.info(f"  Recent dividend dates: {[d.strftime('%Y-%m-%d') for d in recent_divs.index]}")
+            logger.info(f"  Recent dividend amounts: {recent_divs.values.tolist()}")
+        
+        # Calculate TTM (Trailing Twelve Months) dividend
+        one_year_ago = today_tz - timedelta(days=365)
+        logger.info(f"  Today (tz-aware): {today_tz}")
+        logger.info(f"  One year ago cutoff: {one_year_ago}")
+        
+        ttm_divs = dividends[dividends.index >= one_year_ago]
+        annual_dividend = float(ttm_divs.sum())
+        
         logger.info(f"  TTM dividends (last 365 days): {len(ttm_divs)}")
         if len(ttm_divs) > 0:
             logger.info(f"  TTM dividend dates: {[d.strftime('%Y-%m-%d') for d in ttm_divs.index[-5:]]}")
