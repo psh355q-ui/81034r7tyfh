@@ -5,6 +5,34 @@
  * Date: 2025-12-25 (Updated to Tailwind CSS)
  */
 
+/**
+ * Portfolio.tsx - 포트폴리오 관리 페이지
+ * 
+ * 📊 Data Sources:
+ *   - API: GET /api/portfolio (KIS + Yahoo Finance)
+ *     - Positions with dividend_info and sector
+ *   - State: portfolio, loading (useState)
+ *   - Refresh: 30초 간격 자동 새로고침
+ * 
+ * 🔗 Dependencies:
+ *   - react: useState, useEffect
+ *   - lucide-react: DollarSign, TrendingUp, PieChart 아이콘
+ * 
+ * 📤 Components Used:
+ *   - Card: 섹션별 카드 래퍼
+ *   - LoadingSpinner: 데이터 로딩 표시
+ * 
+ * 🔄 Used By:
+ *   - App.tsx (route: /portfolio)
+ * 
+ * 📝 Notes:
+ *   - Phase 28: 섹터 정보 통합 (Yahoo Finance)
+ *   - 자산 배분: 주식/ETF/채권/암호화폐/현금
+ *   - 섹터별 색상 매핑 (11개 GICS 섹터)
+ *   - 모바일 반응형: 테이블 → 카드 레이아웃
+ *   - 데스크톱/모바일 dual layout
+ */
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 

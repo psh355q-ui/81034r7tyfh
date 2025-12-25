@@ -4,6 +4,36 @@
  * Main dashboard showing portfolio overview, positions, and performance
  */
 
+/**
+ * Dashboard.tsx - 메인 대시보드 페이지
+ * 
+ * 📊 Data Sources:
+ *   - API: GET /api/portfolio (포트폴리오 요약)
+ *   - API: GET /api/signals (최근 트레이딩 시그널)
+ *   - API: GET /api/performance (성과 지표)
+ *   - State: portfolio, signals, loading
+ * 
+ * 🔗 Dependencies:
+ *   - react: useState, useEffect
+ *   - recharts: LineChart, BarChart, PieChart
+ *   - lucide-react: 아이콘 (TrendingUp, DollarSign, etc.)
+ * 
+ * 📤 Components Used:
+ *   - Card: 섹션별 카드 레이아웃
+ *   - LoadingSpinner: 로딩 상태
+ *   - PortfolioPerformanceChart: 성과 차트
+ *   - SectorHeatmap: 섹터별 히트맵
+ *   - SignalsList: 시그널 목록
+ * 
+ * 🔄 Used By:
+ *   - App.tsx (route: /)
+ * 
+ * 📝 Notes:
+ *   - 30초마다 자동 새로고침
+ *   - 4개 주요 섹션: 성과/실시간/할당/리스크
+ *   - 모바일 반응형 그리드 레이아웃
+ */
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, TrendingDown, DollarSign, Activity, PieChart, Zap, Layers, RefreshCw } from 'lucide-react';

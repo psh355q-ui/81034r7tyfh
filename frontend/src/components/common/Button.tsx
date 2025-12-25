@@ -1,3 +1,32 @@
+/**
+ * Button.tsx - 재사용 가능한 버튼 컴포넌트
+ * 
+ * 📊 Data Sources:
+ *   - Props: variant, size, children, onClick, disabled, etc.
+ * 
+ * 🔗 Dependencies:
+ *   - react: ButtonHTMLAttributes
+ *   - Tailwind CSS: 색상 및 크기 스타일
+ * 
+ * 📤 Props:
+ *   - variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
+ *   - size?: 'sm' | 'md' | 'lg'
+ *   - children: ReactNode
+ *   - onClick?: () => void
+ *   - disabled?: boolean
+ *   - ...props: 기타 button 속성
+ * 
+ * 🔄 Used By:
+ *   - 모든 페이지 (폼, 액션 버튼)
+ *   - Modal 컴포넌트
+ *   - Dashboard, Portfolio, Settings 등
+ * 
+ * 📝 Notes:
+ *   - 4가지 variant (primary, secondary, danger, ghost)
+ *   - 3가지 size (sm, md, lg)
+ *   - hover/disabled 상태 스타일 포함
+ */
+
 import React from 'react';
 
 interface ButtonProps {
@@ -37,9 +66,8 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${
-        disabled ? 'opacity-50 cursor-not-allowed' : ''
-      } ${className}`}
+      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''
+        } ${className}`}
       onClick={onClick}
       disabled={disabled}
     >
