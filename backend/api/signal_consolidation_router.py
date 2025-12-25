@@ -21,11 +21,22 @@ from fastapi import APIRouter, Query
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
+import traceback
 
 from backend.database.models import TradingSignal
 from backend.database.repository import get_sync_session
 
+# Agent Logging
+from backend.ai.skills.common.agent_logger import AgentLogger
+from backend.ai.skills.common.log_schema import (
+    ExecutionLog,
+    ErrorLog,
+    ExecutionStatus,
+    ErrorImpact
+)
+
 logger = logging.getLogger(__name__)
+agent_logger = AgentLogger("signal-consolidation", "system")
 
 router = APIRouter(prefix="/api/consolidated-signals", tags=["consolidated-signals"])
 
@@ -77,6 +88,9 @@ async def get_consolidated_signals(
         ...
     ]
     """
+    start_time = datetime.now()
+    task_id = f"consolidate-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    
     db = get_sync_session()
     
     try:
@@ -130,6 +144,26 @@ async def get_consolidated_signals(
         
         logger.info(f"Consolidated {len(result)} signals (ticker={ticker}, hours={hours})")
         
+        # Log successful execution
+        agent_logger.log_execution(ExecutionLog(
+            timestamp=datetime.now(),
+            agent="system/signal-consolidation",
+            task_id=task_id,
+            status=ExecutionStatus.SUCCESS,
+            duration_ms=int((datetime.now() - start_time).total_seconds() * 1000),
+            input={
+                "ticker": ticker,
+                "source": source,
+                "action": action,
+                "hours": hours,
+                "limit": limit
+            },
+            output={
+                "total_count": len(result),
+                "sources": list(_count_by_source(result).keys())
+            }
+        ))
+        
         return {
             "signals": result,
             "total_count": len(result),
@@ -145,6 +179,25 @@ async def get_consolidated_signals(
     
     except Exception as e:
         logger.error(f"Failed to consolidate signals: {e}")
+        
+        # Log error
+        agent_logger.log_error(ErrorLog(
+            timestamp=datetime.now(),
+            agent="system/signal-consolidation",
+            task_id=task_id,
+            error={
+                "type": type(e).__name__,
+                "message": str(e),
+                "stack": traceback.format_exc(),
+                "context": {
+                    "ticker": ticker,
+                    "hours": hours
+                }
+            },
+            impact=ErrorImpact.HIGH,
+            recovery_attempted=False
+        ))
+        
         return {
             "signals": [],
             "total_count": 0,
