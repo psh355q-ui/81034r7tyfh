@@ -1,16 +1,48 @@
 """
-Dividend Router - 배당 API 엔드포인트
+dividend_router.py - 배당 인텔리전스 API
+
+📊 Data Sources:
+    - DividendCollector: 배당 일정 및 TTM yield
+        - Yahoo Finance API (yfinance): 배당 히스토리, 배당률
+        - PostgreSQL: 배당 캘린더 캐시
+    - DividendAnalyzer: 배당 수익 계산 및 시뮬레이션
+        - 포트폴리오 연간 배당 수익 계산
+        - DRIP 복리 시뮬레이션
+        - 예수금 추가 시뮬레이션
+    - DividendRiskAgent: AI 기반 배당 리스크 분석
+        - 배당 지속성 평가
+        - 섹터별 민감도 분석
+
+🔗 External Dependencies:
+    - fastapi: API 라우팅 및 쿼리 파라미터
+    - pydantic: 요청/응답 모델 검증
+    - backend.data.collectors.dividend_collector: 배당 데이터 수집
+    - backend.analytics.dividend_analyzer: 배당 분석 엔진
+    - backend.intelligence.dividend_risk_agent: AI 리스크 평가
+
+📤 API Endpoints:
+    - GET /api/dividend/calendar: 배당 캘린더 (향후 30일)
+    - POST /api/dividend/portfolio: 포트폴리오 배당 현황
+    - POST /api/dividend/simulate/drip: DRIP 복리 시뮬레이션
+    - POST /api/dividend/simulate/injection: 예수금 추가 시뮬레이션
+    - GET /api/dividend/risk/{ticker}: 종목별 배당 리스크
+    - GET /api/dividend/aristocrats: 배당 귀족주 목록
+    - GET /api/dividend/ttm/{ticker}: TTM Yield 조회
+    - GET /api/dividend/health: 헬스 체크
+
+🔄 Called By:
+    - frontend/src/pages/DividendDashboard.tsx
+    - frontend/src/components/Dividend/DividendCalendar.tsx
+    - frontend/src/components/Dividend/DripSimulator.tsx
+
+📝 Notes:
+    - 배당 데이터는 Yahoo Finance에서 실시간 조회
+    - 귀족주 목록은 현재 하드코딩 (향후 DB화 예정)
+    - TTM Yield는 캐시 우선 전략 사용
+    - 세금 계산은 TaxEngine 통합 예정
 
 Phase 21: Dividend Intelligence Module - Step 1.6
 Date: 2025-12-25
-
-Endpoints:
-- GET  /api/dividend/calendar - 배당 캘린더
-- GET  /api/dividend/portfolio - 내 배당 현황
-- POST /api/dividend/simulate/drip - DRIP 복리 시뮬레이션
-- POST /api/dividend/simulate/injection - 예수금 추가 시뮬레이션
-- GET  /api/dividend/risk/{ticker} - 리스크 점수
-- GET  /api/dividend/aristocrats - 배당 귀족주 목록
 """
 
 from fastapi import APIRouter, HTTPException, Query
