@@ -90,7 +90,7 @@ const AristocratsTable: React.FC = () => {
                     배당 귀족주 (Dividend Aristocrats)
                 </h3>
                 <p className="text-sm text-gray-600">
-                    연속 배당금을 증가시킨 우량 배당주 ({aristocrats.length}개)
+                    연속적으로 배당금을 증가시킨 우량 배당주 ({aristocrats.length}개)
                 </p>
 
                 {/* 기준일 표시 */}
