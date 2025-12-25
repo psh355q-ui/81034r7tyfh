@@ -57,25 +57,25 @@ const RiskScoreTable: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Ticker
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Risk Score
+                                <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Score
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Level
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Payout Ratio
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Debt/Equity
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Sector
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Warnings
                                 </th>
                             </tr>
@@ -92,31 +92,31 @@ const RiskScoreTable: React.FC = () => {
                                     const levelInfo = getRiskLevel(data.risk_level);
                                     return (
                                         <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="font-semibold text-blue-600">{data.ticker}</span>
+                                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                                <span className="font-semibold text-blue-600 text-sm md:text-base">{data.ticker}</span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded ${getRiskColor(data.risk_score)}`}>
+                                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                                <span className={`px-1.5 md:px-2 py-0.5 md:py-1 text-xs font-semibold rounded ${getRiskColor(data.risk_score)}`}>
                                                     {data.risk_score}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded ${levelInfo.color}`}>
+                                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                                <span className={`px-1.5 md:px-2 py-0.5 md:py-1 text-xs font-semibold rounded ${levelInfo.color}`}>
                                                     {levelInfo.text}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {data.metrics?.payout_ratio ? `${data.metrics.payout_ratio.toFixed(1)}%` : 'N/A'}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {data.metrics?.debt_to_equity ? data.metrics.debt_to_equity.toFixed(2) : 'N/A'}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
                                                 <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
                                                     {data.sector || 'N/A'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {data.warnings?.length || 0}
                                             </td>
                                         </tr>

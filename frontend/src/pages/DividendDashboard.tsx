@@ -76,7 +76,57 @@ const DividendDashboard: React.FC = () => {
     // 보유 종목 배당 정보 테이블
     const renderHoldingsTable = () => (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile: Card Layout */}
+            <div className="md:hidden space-y-3 p-4">
+                {portfolio.positions.map((position: any) => {
+                    const annualDividend = position.market_value * 0.03;
+                    return (
+                        <div key={position.symbol} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-lg font-bold text-blue-600">{position.symbol}</span>
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">~3.0%</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <span className="text-gray-500">보유</span>
+                                    <p className="font-semibold">{position.quantity.toLocaleString()}주</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-gray-500">현재가</span>
+                                    <p className="font-semibold">${position.current_price.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">평가액</span>
+                                    <p className="font-semibold font-mono">${position.market_value.toLocaleString('en-US', { minimumFractionDigits: 0 })}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-gray-500">연배당금</span>
+                                    <p className="font-semibold text-green-600">${annualDividend.toFixed(0)}</p>
+                                </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-gray-300 text-xs text-gray-600">
+                                다음 배당일: 2025-03-15
+                            </div>
+                        </div>
+                    );
+                })}
+                {/* Mobile Total */}
+                <div className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200">
+                    <div className="grid grid-cols-2 gap-2 text-sm font-bold">
+                        <div>
+                            <span className="text-gray-700">총 평가액</span>
+                            <p className="text-lg text-gray-900">${portfolio.total_value.toLocaleString('en-US', { minimumFractionDigits: 0 })}</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-gray-700">연 배당금</span>
+                            <p className="text-lg text-green-600">${(portfolio.total_value * 0.03).toFixed(0)}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Desktop: Table Layout */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-gray-200 bg-gray-50">
@@ -91,7 +141,7 @@ const DividendDashboard: React.FC = () => {
                     </thead>
                     <tbody>
                         {portfolio.positions.map((position: any) => {
-                            const annualDividend = position.market_value * 0.03; // 임시 3% 가정
+                            const annualDividend = position.market_value * 0.03;
                             return (
                                 <tr key={position.symbol} className="border-b border-gray-100 hover:bg-gray-50">
                                     <td className="py-3 px-4 font-semibold text-gray-900">{position.symbol}</td>
@@ -132,7 +182,8 @@ const DividendDashboard: React.FC = () => {
                     </tfoot>
                 </table>
             </div>
-            <div className="p-4 bg-blue-50 border-t border-blue-100">
+
+            <div className="hidden md:block p-4 bg-blue-50 border-t border-blue-100">
                 <p className="text-sm text-blue-800">
                     💡 <strong>참고:</strong> 배당률과 배당금은 예상 수치입니다. 실제 배당은 각 기업의 정책에 따라 달라질 수 있습니다.
                 </p>

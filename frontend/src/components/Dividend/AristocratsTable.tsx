@@ -41,19 +41,19 @@ const AristocratsTable: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Ticker
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Company
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    연속 배당 증가
+                                <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    연속증가
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    현재 배당률
+                                <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    배당률
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Sector
                                 </th>
                             </tr>
@@ -68,21 +68,21 @@ const AristocratsTable: React.FC = () => {
                             ) : aristocrats.length > 0 ? (
                                 aristocrats.map((stock, index) => (
                                     <tr key={index} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="font-semibold text-blue-600">{stock.ticker}</span>
+                                        <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                            <span className="font-semibold text-blue-600 text-sm md:text-base">{stock.ticker}</span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {stock.company_name}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded">
+                                        <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                            <span className="px-1.5 md:px-2 py-0.5 md:py-1 text-xs font-semibold bg-green-100 text-green-700 rounded">
                                                 {stock.consecutive_years}년
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-900">
                                             {stock.current_yield ? `${stock.current_yield.toFixed(2)}%` : 'N/A'}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
                                             <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
                                                 {stock.sector}
                                             </span>
