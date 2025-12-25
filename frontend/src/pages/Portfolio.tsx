@@ -2,12 +2,11 @@
  * Portfolio Dashboard - 포트폴리오 현황 대시보드
  *
  * Phase 27: REAL MODE UI
- * Date: 2025-12-23
+ * Date: 2025-12-25 (Updated to Tailwind CSS)
  */
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import './Portfolio.css';
 
 interface Position {
     symbol: string;
@@ -107,10 +106,10 @@ const Portfolio: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="portfolio-page">
-                <div className="loading-state">
-                    <div className="spinner">🔄</div>
-                    <p>포트폴리오 로딩 중...</p>
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">🔄</div>
+                    <p className="text-gray-600">포트폴리오 로딩 중...</p>
                 </div>
             </div>
         );
@@ -118,10 +117,10 @@ const Portfolio: React.FC = () => {
 
     if (error) {
         return (
-            <div className="portfolio-page">
-                <div className="error-state">
-                    <p>⚠️ 포트폴리오를 불러올 수 없습니다</p>
-                    <p style={{ fontSize: '14px', opacity: 0.7 }}>{(error as Error).message}</p>
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <p className="text-lg text-red-600">⚠️ 포트폴리오를 불러올 수 없습니다</p>
+                    <p className="text-sm text-gray-500 mt-2">{(error as Error).message}</p>
                 </div>
             </div>
         );
@@ -131,145 +130,170 @@ const Portfolio: React.FC = () => {
     const cash_pct = (portfolio.cash / portfolio.total_value) * 100;
 
     return (
-        <div className="portfolio-page">
+        <div className="space-y-6 p-6">
             {/* Header */}
-            <div className="page-header">
-                <h1>💼 포트폴리오</h1>
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900">💼 포트폴리오</h1>
+                <p className="text-gray-600 mt-1">Portfolio overview and performance</p>
             </div>
 
             {/* Summary Cards */}
-            <div className="summary-cards">
-                <div className="summary-card total-value">
-                    <div className="card-icon">💰</div>
-                    <div className="card-content">
-                        <div className="card-label">총 자산</div>
-                        <div className="card-value">${portfolio.total_value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                        <div className={`card-change ${portfolio.daily_pnl >= 0 ? 'positive' : 'negative'}`}>
-                            {portfolio.daily_pnl >= 0 ? '+' : ''}${portfolio.daily_pnl.toFixed(2)} ({portfolio.daily_return_pct >= 0 ? '+' : ''}{portfolio.daily_return_pct.toFixed(2)}%)
-                            <span className="change-label">오늘</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total Value */}
+                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">총 자산</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">
+                                ${portfolio.total_value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className={`text-sm mt-1 ${portfolio.daily_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {portfolio.daily_pnl >= 0 ? '+' : ''}${portfolio.daily_pnl.toFixed(2)} ({portfolio.daily_return_pct >= 0 ? '+' : ''}{portfolio.daily_return_pct.toFixed(2)}%)
+                                <span className="text-gray-500 ml-1">오늘</span>
+                            </p>
+                        </div>
+                        <div className="p-3 bg-blue-100 rounded-full">
+                            <span className="text-2xl">💰</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="summary-card invested">
-                    <div className="card-icon">📈</div>
-                    <div className="card-content">
-                        <div className="card-label">투자 금액</div>
-                        <div className="card-value">${portfolio.invested.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                        <div className="card-change neutral">
-                            {allocation_pct.toFixed(1)}% <span className="change-label">배분</span>
+                {/* Invested */}
+                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">투자 금액</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">
+                                ${portfolio.invested.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {allocation_pct.toFixed(1)}% 배분
+                            </p>
+                        </div>
+                        <div className="p-3 bg-green-100 rounded-full">
+                            <span className="text-2xl">📈</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="summary-card cash">
-                    <div className="card-icon">💵</div>
-                    <div className="card-content">
-                        <div className="card-label">현금</div>
-                        <div className="card-value">${portfolio.cash.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                        <div className="card-change neutral">
-                            {cash_pct.toFixed(1)}% <span className="change-label">보유</span>
+                {/* Cash */}
+                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">현금</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">
+                                ${portfolio.cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {cash_pct.toFixed(1)}% 보유
+                            </p>
+                        </div>
+                        <div className="p-3 bg-purple-100 rounded-full">
+                            <span className="text-2xl">💵</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="summary-card pnl">
-                    <div className="card-icon">{portfolio.total_pnl >= 0 ? '🎯' : '📉'}</div>
-                    <div className="card-content">
-                        <div className="card-label">총 손익</div>
-                        <div className={`card-value ${portfolio.total_pnl >= 0 ? 'positive' : 'negative'}`}>
-                            {portfolio.total_pnl >= 0 ? '+' : ''}${portfolio.total_pnl.toFixed(2)}
+                {/* Total P&L */}
+                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">총 손익</p>
+                            <p className={`text-2xl font-bold mt-1 ${portfolio.total_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {portfolio.total_pnl >= 0 ? '+' : ''}${portfolio.total_pnl.toFixed(2)}
+                            </p>
+                            <p className={`text-sm mt-1 ${portfolio.total_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {portfolio.total_pnl_pct >= 0 ? '+' : ''}{portfolio.total_pnl_pct.toFixed(2)}%
+                            </p>
                         </div>
-                        <div className={`card-change ${portfolio.total_pnl >= 0 ? 'positive' : 'negative'}`}>
-                            {portfolio.total_pnl_pct >= 0 ? '+' : ''}{portfolio.total_pnl_pct.toFixed(2)}%
+                        <div className={`p-3 rounded-full ${portfolio.total_pnl >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                            <span className="text-2xl">{portfolio.total_pnl >= 0 ? '🎯' : '📉'}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Positions Table */}
-            <div className="positions-section">
-                <div className="section-header">
-                    <h2>📊 보유 종목 ({portfolio.positions.length})</h2>
-                </div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">📊 보유 종목 ({portfolio.positions.length})</h2>
 
-                <div className="positions-table-container">
-                    {portfolio.positions.length > 0 ? (
-                        <table className="positions-table">
+                {portfolio.positions.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
                             <thead>
-                                <tr>
-                                    <th>티커</th>
-                                    <th className="text-right">수량</th>
-                                    <th className="text-right">평균 단가</th>
-                                    <th className="text-right">현재가</th>
-                                    <th className="text-right">평가액</th>
-                                    <th className="text-right">손익</th>
-                                    <th className="text-right">수익률</th>
-                                    <th className="text-right">일일 손익</th>
-                                    <th className="text-right">일일 수익률</th>
+                                <tr className="border-b border-gray-200">
+                                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">티커</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">수량</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">평균 단가</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">현재가</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">평가액</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">손익</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">수익률</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">일일 손익</th>
+                                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">일일 수익률</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {portfolio.positions.map(position => (
-                                    <tr key={position.symbol}>
-                                        <td className="ticker">{position.symbol}</td>
-                                        <td className="text-right mono">{position.quantity}</td>
-                                        <td className="text-right mono">${position.avg_price.toFixed(2)}</td>
-                                        <td className="text-right mono">${position.current_price.toFixed(2)}</td>
-                                        <td className="text-right mono">${position.market_value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                                        <td className={`text-right mono ${position.profit_loss >= 0 ? 'positive' : 'negative'}`}>
+                                {portfolio.positions.map((position: Position) => (
+                                    <tr key={position.symbol} className="border-b border-gray-100 hover:bg-gray-50">
+                                        <td className="py-3 px-4 font-semibold text-gray-900">{position.symbol}</td>
+                                        <td className="text-right py-3 px-4 font-mono text-sm text-gray-700">{position.quantity}</td>
+                                        <td className="text-right py-3 px-4 font-mono text-sm text-gray-700">${position.avg_price.toFixed(2)}</td>
+                                        <td className="text-right py-3 px-4 font-mono text-sm text-gray-700">${position.current_price.toFixed(2)}</td>
+                                        <td className="text-right py-3 px-4 font-mono text-sm text-gray-700">${position.market_value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                        <td className={`text-right py-3 px-4 font-mono text-sm font-semibold ${position.profit_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {position.profit_loss >= 0 ? '+' : ''}${position.profit_loss.toFixed(2)}
                                         </td>
-                                        <td className={`text-right mono ${position.profit_loss_pct >= 0 ? 'positive' : 'negative'}`}>
+                                        <td className={`text-right py-3 px-4 font-mono text-sm font-semibold ${position.profit_loss_pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {position.profit_loss_pct >= 0 ? '+' : ''}{position.profit_loss_pct.toFixed(2)}%
                                         </td>
-                                        <td className={`text-right mono ${position.daily_pnl >= 0 ? 'positive' : 'negative'}`}>
+                                        <td className={`text-right py-3 px-4 font-mono text-sm ${position.daily_pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {position.daily_pnl >= 0 ? '+' : ''}${position.daily_pnl.toFixed(2)}
                                         </td>
-                                        <td className={`text-right mono ${position.daily_return_pct >= 0 ? 'positive' : 'negative'}`}>
+                                        <td className={`text-right py-3 px-4 font-mono text-sm ${position.daily_return_pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {position.daily_return_pct >= 0 ? '+' : ''}{position.daily_return_pct.toFixed(2)}%
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                    ) : (
-                        <div className="empty-state">
-                            <p>보유 종목이 없습니다</p>
-                            <p className="hint">War Room에서 토론을 시작해보세요</p>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500 text-lg">보유 종목이 없습니다</p>
+                        <p className="text-gray-400 text-sm mt-2">War Room에서 토론을 시작해보세요</p>
+                    </div>
+                )}
             </div>
 
-            {/* Allocation Chart (Placeholder) */}
-            <div className="allocation-section">
-                <div className="section-header">
-                    <h2>📊 자산 배분</h2>
-                </div>
-                <div className="allocation-chart">
-                    <div className="allocation-bar">
+            {/* Allocation Chart */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">📊 자산 배분</h2>
+
+                <div className="space-y-4">
+                    <div className="w-full h-12 bg-gray-200 rounded-lg overflow-hidden flex">
                         <div
-                            className="allocation-invested"
+                            className="bg-green-500 flex items-center justify-center text-white font-semibold text-sm"
                             style={{ width: `${allocation_pct}%` }}
                         >
-                            <span>{allocation_pct.toFixed(1)}%</span>
+                            {allocation_pct > 10 && `${allocation_pct.toFixed(1)}%`}
                         </div>
                         <div
-                            className="allocation-cash"
+                            className="bg-blue-500 flex items-center justify-center text-white font-semibold text-sm"
                             style={{ width: `${cash_pct}%` }}
                         >
-                            <span>{cash_pct.toFixed(1)}%</span>
+                            {cash_pct > 10 && `${cash_pct.toFixed(1)}%`}
                         </div>
                     </div>
-                    <div className="allocation-legend">
-                        <div className="legend-item">
-                            <div className="legend-color invested"></div>
-                            <span>투자 중 (${portfolio.invested.toLocaleString('en-US')})</span>
+
+                    <div className="flex gap-6">
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-green-500 rounded"></div>
+                            <span className="text-sm text-gray-700">투자 중 (${portfolio.invested.toLocaleString('en-US')})</span>
                         </div>
-                        <div className="legend-item">
-                            <div className="legend-color cash"></div>
-                            <span>현금 (${portfolio.cash.toLocaleString('en-US')})</span>
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                            <span className="text-sm text-gray-700">현금 (${portfolio.cash.toLocaleString('en-US')})</span>
                         </div>
                     </div>
                 </div>
