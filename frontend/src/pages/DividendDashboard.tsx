@@ -36,6 +36,11 @@ const DividendDashboard: React.FC = () => {
         fetchPortfolio();
     }, []);
 
+    // 포트폴리오 총 연간 배당 수익 계산
+    const portfolioIncome = portfolio?.positions?.reduce((total: number, pos: any) => {
+        return total + (pos.dividend_info?.annual_dividend || 0) * pos.quantity;
+    }, 0) || 0;
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 'holdings':
