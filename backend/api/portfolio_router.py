@@ -33,12 +33,6 @@ portfolio_router.py - 포트폴리오 조회 API
     - 섹터 정보는 Yahoo Finance에서만 조회
     - 30초마다 자동 갱신 (프론트엔드)
 """
-Date: 2025-12-23
-
-API Endpoints:
-- GET /api/portfolio - 포트폴리오 현황 조회
-- GET /api/portfolio/positions - 보유 종목 조회
-"""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
