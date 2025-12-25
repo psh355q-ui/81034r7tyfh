@@ -227,7 +227,7 @@ async def get_portfolio():
                 quantity=quantity,
                 avg_price=avg_price,
                 current_price=current_price,
-                market_value=pos.get("eval_amt", 0),  # Fixed: eval_amt from KIS broker
+                market_value=pos.get("market_value", 0),  # Fixed: market_value from KIS broker
                 profit_loss=pos.get("profit_loss", 0),
                 profit_loss_pct=(pos.get("profit_loss", 0) / (avg_price * quantity) * 100) if avg_price > 0 and quantity > 0 else 0,
                 daily_pnl=pos.get("daily_pnl", 0),
