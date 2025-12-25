@@ -164,7 +164,7 @@ const Portfolio: React.FC = () => {
                         <div>
                             <p className="text-sm font-medium text-gray-600">투자 금액</p>
                             <p className="text-2xl font-bold text-gray-900 mt-1">
-                                ${portfolio.invested.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ${(portfolio.invested || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                             <p className="text-sm text-gray-600 mt-1">
                                 {allocation_pct.toFixed(1)}% 배분
