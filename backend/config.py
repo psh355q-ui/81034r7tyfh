@@ -1,5 +1,42 @@
 """
-Configuration settings for AI Trading System
+config.py - 시스템 전역 설정 (Pydantic Settings)
+
+📊 Data Sources:
+    - Environment Variables (.env file)
+        - API Keys: CLAUDE_API_KEY, NEWSAPI_KEY, TELEGRAM_BOT_TOKEN
+        - DB Config: TIMESCALE_HOST, POSTGRES_USER, POSTGRES_PASSWORD
+        - Service Config: Redis, Feature Store, etc.
+    - Default Values: Pydantic Field defaults
+
+🔗 External Dependencies:
+    - Pydantic 2.0: Settings management
+    - python-dotenv: .env 파일 로딩 (자동)
+    - os.environ: 환경 변수 읽기
+
+📤 Configuration Sections:
+    1. API Keys: Claude, NewsAPI, Telegram
+    2. AI Models: Claude 모델 선택 및 temperature
+    3. Pre-Check Thresholds: Volatility, Momentum limits
+    4. Post-Check Thresholds: Conviction thresholds
+    5. Risk Management: Position size, Stop loss, Kill switch
+    6. Constitutional AI: Non-standard risk, Supply chain
+    7. Database: TimescaleDB connection
+    8. Cache: Redis TTL 설정
+    9. Notifications: Telegram alerts
+
+🔄 Used By (전체 시스템):
+    - backend/api/*.py: 모든 API 라우터
+    - backend/ai/*.py: AI agents
+    - backend/services/*.py: Background services
+    - backend/data/*.py: Data collectors
+    - get_settings(): Singleton pattern
+
+📝 Notes:
+    - Constitutional AI Rules: Phase 4 Risk Integration
+    - .env file required for production
+    - Singleton: get_settings() returns cached instance
+    - Type validation: Pydantic automatic conversion
+    - Phase 4, Task 7: Non-Standard Risk Integration
 
 Updated for Phase 4, Task 7: Non-Standard Risk Integration
 """

@@ -1,5 +1,41 @@
 """
-Structured JSON Logging Configuration for ELK Stack Integration
+logging_config.py - JSON 구조화 로깅 (ELK Stack)
+
+📊 Data Sources:
+    - Application Events: API requests, Trading actions, AI requests
+    - Log Output: JSON formatted logs → Logstash → Elasticsearch
+    - File & Console: Dual output (file for persistence, console for dev)
+
+🔗 External Dependencies:
+    - logging (stdlib): Python logging framework
+    - json (stdlib): JSON serialization
+    - sys, traceback: Error stack traces
+
+📤 Classes & Functions:
+    - JSONFormatter: Custom JSON log formatter
+        - service_name, environment, timestamp, level, message
+        - Extra fields: ticker, action, duration, cost_usd
+    - StructuredLogger: Wrapper for structured logging
+        - api_request(): API 요청 로깅 (endpoint, method, status, duration)
+        - trading_action(): 거래 로깅 (ticker, quantity, price, order_id)
+        - ai_request(): AI API 로깅 (model, tokens, cost, duration)
+        - database_query(): DB 쿼리 로깅 (query_type, duration, rows_affected)
+        - error(), warning(), info(), debug(): Standard log levels
+    - setup_logging(): Initialize structured logging
+    - get_logger(name): Get StructuredLogger instance
+
+🔄 Used By (전체 시스템):
+    - backend/api/*.py: API request logging
+    - backend/ai/*.py: AI request cost tracking
+    - backend/services/*.py: Background job logging
+    - backend/data/*.py: Data collection logging
+
+📝 Notes:
+    - ELK Stack Integration: JSON → Logstash → Elasticsearch → Kibana
+    - Custom Fields: ticker, action, cost_usd for domain-specific logging
+    - Structured Data: All logs parsable by Elasticsearch
+    - Performance Tracking: duration, tokens, rows_affected
+    - Error Context: exc_info, stack_trace included
 
 This module provides JSON-formatted logging for easy parsing by Logstash/Elasticsearch.
 """
