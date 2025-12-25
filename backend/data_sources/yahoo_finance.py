@@ -5,6 +5,7 @@ yahoo_finance.py - Yahoo Finance 데이터 소스
     - 배당 정보: annual_dividend, dividend_yield, frequency
     - 섹터 정보: sector classification (GICS)
     - 배당 히스토리: 최근 2년간 배당 지급 내역
+    - 배당 증가 연수: consecutive dividend growth years
 
 🔗 External APIs:
     - Yahoo Finance API (via yfinance library)
@@ -13,12 +14,13 @@ yahoo_finance.py - Yahoo Finance 데이터 소스
 
 🔄 Used By:
     - backend/api/portfolio_router.py: KIS API fallback
-    - backend/api/dividend_router.py: 배당 대시보드
+    - backend/api/dividend_router.py: 배당 대시보드, aristocrats
 
 📝 Notes:
     - KIS API에 배당 정보가 없을 때 사용
     - TTM (Trailing Twelve Months) 기준 배당 계산
     - 히스토리가 없으면 최근 2년 데이터로 추정
+    - get_dividend_growth_streak: 연속 배당 증가 연수 분석
 """
 
 import logging
@@ -202,36 +204,113 @@ def _get_default_dividend_info() -> Dict:
     }
 
 
-def get_stock_sector(symbol: str) -> Optional[str]:
+def get_stock_sector(ticker: str) -> str:
     """
-    Fetch stock sector information from Yahoo Finance
+    섹터 정보 조회
+    
+    Data Source: Yahoo Finance ticker.info['sector']
     
     Args:
-        symbol: Stock ticker symbol (e.g., "INTC", "AAPL")
-        
+        ticker: 종목 코드
+    
     Returns:
-        str: Sector name (e.g., "Technology", "Healthcare", "Finance")
-             or None if not available
+        str: Sector name (e.g., "Technology", "Healthcare")
     """
     try:
-        logger.info(f"📊 Fetching sector data from Yahoo Finance: {symbol}")
-        
-        # Create ticker object
-        ticker = yf.Ticker(symbol)
-        
-        # Get company info
-        info = ticker.info
-        
-        # Get sector from info
-        sector = info.get('sector')
-        
-        if sector:
-            logger.info(f"✅ Sector for {symbol}: {sector}")
-            return sector
-        else:
-            logger.warning(f"No sector data found for {symbol}")
-            return None
-            
+        logger.info(f"📊 Fetching sector data from Yahoo Finance: {ticker}")
+        stock = yf.Ticker(ticker)
+        sector = stock.info.get('sector', 'Unknown')
+        logger.info(f"✅ Sector for {ticker}: {sector}")
+        return sector
+    
     except Exception as e:
-        logger.error(f"Error fetching sector for {symbol}: {e}")
-        return None
+        logger.error(f"Failed to get sector for {ticker}: {e}")
+        return "Unknown"
+    
+    return sector
+
+
+def get_dividend_growth_streak(ticker: str) -> dict:
+    """
+    배당금 연속 증가 연수 계산
+    
+    Data Source: Yahoo Finance - ticker.dividends (전체 배당 이력)
+    
+    Args:
+        ticker: 종목 코드
+    
+    Returns:
+        {
+            "ticker": str,
+            "consecutive_years": int,  # 연속 증가 연수
+            "total_years": int,  # 총 배당 지급 연수
+            "is_growing": bool,  # 현재 증가 중인지
+            "last_dividend": float,  # 최근 배당금
+            "growth_rate": float  # 평균 증가율
+        }
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        dividends = stock.dividends
+        
+        if dividends.empty:
+            return {
+                "ticker": ticker,
+                "consecutive_years": 0,
+                "total_years": 0,
+                "is_growing": False,
+                "last_dividend": 0.0,
+                "growth_rate": 0.0
+            }
+        
+        # 연도별 배당금 합계 계산
+        annual_dividends = dividends.resample('Y').sum()
+        annual_dividends = annual_dividends[annual_dividends > 0]  # 0보다 큰 값만
+        
+        if len(annual_dividends) < 2:
+            return {
+                "ticker": ticker,
+                "consecutive_years": 0,
+                "total_years": len(annual_dividends),
+                "is_growing": False,
+                "last_dividend": float(annual_dividends.iloc[-1]) if len(annual_dividends) > 0 else 0.0,
+                "growth_rate": 0.0
+            }
+        
+        # 연속 증가 연수 계산
+        consecutive_years = 0
+        growth_rates = []
+        
+        for i in range(len(annual_dividends) - 1, 0, -1):  # 최근부터 역순으로
+            current = annual_dividends.iloc[i]
+            previous = annual_dividends.iloc[i - 1]
+            
+            if current > previous:
+                consecutive_years += 1
+                if previous > 0:
+                    growth_rate = ((current - previous) / previous) * 100
+                    growth_rates.append(growth_rate)
+            else:
+                break  # 증가가 끊기면 종료
+        
+        avg_growth_rate = sum(growth_rates) / len(growth_rates) if growth_rates else 0.0
+        
+        return {
+            "ticker": ticker,
+            "consecutive_years": consecutive_years,
+            "total_years": len(annual_dividends),
+            "is_growing": consecutive_years > 0,
+            "last_dividend": float(annual_dividends.iloc[-1]),
+            "growth_rate": round(avg_growth_rate, 2)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get dividend growth streak for {ticker}: {e}")
+        return {
+            "ticker": ticker,
+            "consecutive_years": 0,
+            "total_years": 0,
+            "is_growing": False,
+            "last_dividend": 0.0,
+            "growth_rate": 0.0
+        }
