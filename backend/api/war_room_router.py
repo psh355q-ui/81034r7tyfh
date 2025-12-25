@@ -42,7 +42,18 @@ from backend.intelligence.dividend_risk_agent import DividendRiskAgent
 # Constitutional Validator
 from backend.constitution.constitution import Constitution
 
+# Agent Logging
+from backend.ai.skills.common.agent_logger import AgentLogger
+from backend.ai.skills.common.log_schema import (
+    ExecutionLog,
+    ErrorLog,
+    ExecutionStatus,
+    ErrorImpact
+)
+import traceback
+
 logger = logging.getLogger(__name__)
+agent_logger = AgentLogger("war-room-debate", "war-room")
 
 router = APIRouter(prefix="/api/war-room", tags=["war-room"])
 
@@ -576,7 +587,9 @@ async def run_war_room_debate(request: DebateRequest, execute_trade: bool = Fals
             "order_id": str or null  # 🆕 REAL MODE
         }
     """
+    start_time = datetime.now()
     ticker = request.ticker.upper()
+    task_id = f"war-room-{ticker}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
     logger.info(f"🏛️ War Room debate requested for {ticker} (execute_trade={execute_trade})")
 
@@ -712,10 +725,46 @@ async def run_war_room_debate(request: DebateRequest, execute_trade: bool = Fals
             order_id=order_id  # 🆕 REAL MODE
         )
 
+        # Log successful execution
+        agent_logger.log_execution(ExecutionLog(
+            timestamp=datetime.now(),
+            agent="war-room/war-room-debate",
+            task_id=task_id,
+            status=ExecutionStatus.SUCCESS,
+            duration_ms=int((datetime.now() - start_time).total_seconds() * 1000),
+            input={
+                "ticker": ticker,
+                "execute_trade": execute_trade
+            },
+            output={
+                "consensus_action": pm_decision["consensus_action"],
+                "consensus_confidence": pm_decision["consensus_confidence"],
+                "signal_id": signal_id,
+                "agent_votes": len(votes),
+                "constitutional_valid": session.constitutional_valid
+            }
+        ))
+
         return response
 
     except Exception as e:
         logger.error(f"❌ War Room debate failed: {e}", exc_info=True)
+        
+        # Log error
+        agent_logger.log_error(ErrorLog(
+            timestamp=datetime.now(),
+            agent="war-room/war-room-debate",
+            task_id=task_id,
+            error={
+                "type": type(e).__name__,
+                "message": str(e),
+                "stack": traceback.format_exc(),
+                "context": {"ticker": ticker, "execute_trade": execute_trade}
+            },
+            impact=ErrorImpact.CRITICAL,
+            recovery_attempted=False
+        ))
+        
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Debate failed: {str(e)}")
 
