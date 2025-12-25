@@ -271,16 +271,18 @@ def get_dividend_by_ticker(
         url = "/uapi/overseas-price/v1/quotations/rights-by-ice"
         tr_id = "HHDFS78330900"
         
-        # 조회 기간 설정 (과거 6개월 ~ 미래 6개월)
+        # 조회 기간 설정 - KIS API는 빈 문자열일 때 자동으로 ±3개월 조회
+        # (공식 샘플 코드에 따르면 st_ymd="", ed_ymd="" 사용)
         today = datetime.now()
-        start_date = (today - timedelta(days=180)).strftime("%Y%m%d")
-        end_date = (today + timedelta(days=180)).strftime("%Y%m%d")
+        # KIS API 권장: 빈 문자열 사용 시 자동으로 3개월 전 ~ 3개월 후 조회
+        start_date = ""  # 빈 문자열
+        end_date = ""    # 빈 문자열
         
         params = {
             "NCOD": ncod,      # 국가코드
             "SYMB": symb,      # 종목코드
-            "ST_YMD": start_date,  # 시작일
-            "ED_YMD": end_date     # 종료일
+            "ST_YMD": start_date,  # 일자시작일 (빈 문자열: 자동 3개월 전)
+            "ED_YMD": end_date     # 일자종료일 (빈 문자열: 자동 3개월 후)
         }
         
         resp = kc.invoke_api(url, tr_id, params, "GET")
