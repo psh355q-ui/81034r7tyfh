@@ -46,6 +46,7 @@ class DripSimulationRequest(BaseModel):
 
 class CashInjectionRequest(BaseModel):
     inject_amount_usd: float
+    positions: List[PortfolioPosition]
     exchange_rate: Optional[float] = None
 
 class PortfolioPosition(BaseModel):
@@ -179,21 +180,19 @@ async def simulate_drip(request: DripSimulationRequest):
 
 
 @router.post("/simulate/injection")
-async def simulate_cash_injection(
-    request: CashInjectionRequest,
-    positions: List[PortfolioPosition]
-):
+async def simulate_cash_injection(request: CashInjectionRequest):
     """
     예수금 추가 시뮬레이션
     
     Request Body:
         {
             "inject_amount_usd": 10000,
+            "positions": [
+                {"ticker": "JNJ", "shares": 100, "avg_price": 150},
+                {"ticker": "PG", "shares": 50, "avg_price": 145}
+            ],
             "exchange_rate": 1300
         }
-    
-    Positions:
-        [{"ticker": "JNJ", "shares": 100, "avg_price": 150}, ...]
     
     Returns:
         {
@@ -206,7 +205,7 @@ async def simulate_cash_injection(
     analyzer = DividendAnalyzer()
     
     try:
-        positions_dict = [p.dict() for p in positions]
+        positions_dict = [p.dict() for p in request.positions]
         result = await analyzer.simulate_cash_injection(
             current_positions=positions_dict,
             inject_amount_usd=request.inject_amount_usd,

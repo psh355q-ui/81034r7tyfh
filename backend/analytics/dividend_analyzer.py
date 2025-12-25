@@ -84,7 +84,8 @@ class DividendAnalyzer:
                     continue
                 
                 # 최근 12개월 배당금 (연간 배당금 추정)
-                one_year_ago = datetime.now() - timedelta(days=365)
+                # yfinance는 timezone-aware datetime을 반환하므로 비교를 위해 timezone-aware로 변환
+                one_year_ago = datetime.now(dividends.index.tz) - timedelta(days=365)
                 recent_dividends = dividends[dividends.index >= one_year_ago]
                 annual_dividend_per_share = float(recent_dividends.sum())
                 

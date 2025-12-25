@@ -10,33 +10,7 @@ const CashInjectionSlider: React.FC<CashInjectionSliderProps> = ({ portfolioInco
     const [simulationResult, setSimulationResult] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
-    const handleSimulate = async () => {
-        setLoading(true);
-        try {
-            const positions = [
-                { ticker: 'JNJ', shares: 100, avg_price: 150 },
-                { ticker: 'PG', shares: 50, avg_price: 145 },
-                { ticker: 'KO', shares: 150, avg_price: 60 }
-            ];
 
-            const response = await fetch('http://localhost:8001/api/dividend/simulate/injection', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    inject_amount_usd: injectionAmount
-                })
-            });
-
-            if (!response.ok) throw new Error('Failed to simulate injection');
-
-            const data = await response.json();
-            setSimulationResult(data);
-        } catch (error: any) {
-            console.error('Simulation failed:', error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <div className="space-y-6">
