@@ -1,0 +1,68 @@
+# AI Trading System - Cursor Rules
+
+## 필수 읽기
+- `.agent/README.md`: 프로젝트 개요 및 컨텍스트
+- `.agent/coding_standards.md`: 코딩 표준 (반드시 준수)
+- `.agent/workflows/`: 사용 가능한 워크플로우
+
+## 코드 작성 규칙
+
+### 모든 Python 파일
+파일 상단에 다음 형식의 docstring 포함:
+
+```python
+"""
+[파일명] - [설명]
+
+📊 Data Sources:
+    - [데이터 소스 목록]
+
+🔗 External Dependencies:
+    - [라이브러리: 용도]
+
+📤 API Endpoints (해당하는 경우):
+    - [endpoint: 설명]
+
+🔄 Called By:
+    - [사용하는 파일들]
+"""
+```
+
+### 모든 함수
+```python
+def function_name():
+    """
+    함수 설명
+    
+    Data Source: [어디서 데이터를 가져오는지]
+    
+    Args:
+        param: 설명
+        
+    Returns:
+        type: 설명
+    """
+```
+
+### API 호출 시
+```python
+# KIS API: 해외주식 잔고 조회 (TTTS3012R)
+balance = kis.overseas_stock.get_balance(...)
+
+# Yahoo Finance: 섹터 정보 조회
+sector = yf.get_stock_sector(symbol)
+```
+
+## 데이터 소스 우선순위
+1. KIS API (Primary)
+2. Yahoo Finance (Fallback)
+3. PostgreSQL (Cache)
+
+## 금지 사항
+- Data Source 주석 없이 외부 API 호출 ❌
+- Docstring 없는 public 함수 ❌
+- 하드코딩된 credentials ❌
+- 에러 처리 누락 ❌
+
+## 참고
+자세한 내용은 `.agent/coding_standards.md` 참조
