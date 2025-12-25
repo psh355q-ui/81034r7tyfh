@@ -1,0 +1,177 @@
+{
+    "table_name": "dividend_aristocrats",
+    "description": "배당 귀족주 (25+ 연속 배당 증가) - Phase 21 Dividend Intelligence Module",
+    "primary_key": "ticker",
+    "columns": [
+        {
+            "name": "ticker",
+            "type": "VARCHAR(10)",
+            "nullable": false,
+            "description": "종목 코드",
+            "example": "JNJ"
+        },
+        {
+            "name": "company_name",
+            "type": "VARCHAR(200)",
+            "nullable": false,
+            "description": "회사 이름",
+            "example": "Johnson & Johnson"
+        },
+        {
+            "name": "sector",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "섹터 (GICS 분류)",
+            "example": "Healthcare"
+        },
+        {
+            "name": "industry",
+            "type": "VARCHAR(100)",
+            "nullable": true,
+            "description": "산업 분류",
+            "example": "Pharmaceuticals"
+        },
+        {
+            "name": "consecutive_years",
+            "type": "INTEGER",
+            "nullable": false,
+            "description": "연속 배당 증가 연수",
+            "example": 61
+        },
+        {
+            "name": "first_dividend_year",
+            "type": "INTEGER",
+            "nullable": true,
+            "description": "최초 배당 지급 연도",
+            "example": 1963
+        },
+        {
+            "name": "current_yield",
+            "type": "NUMERIC(5,2)",
+            "nullable": true,
+            "description": "현재 배당률 (%)",
+            "example": 2.85
+        },
+        {
+            "name": "payout_ratio",
+            "type": "NUMERIC(5,2)",
+            "nullable": true,
+            "description": "배당 성향 - 배당금/순이익 비율 (%)",
+            "example": 45.20
+        },
+        {
+            "name": "dividend_growth_5y",
+            "type": "NUMERIC(5,2)",
+            "nullable": true,
+            "description": "최근 5년 배당 성장률 (연평균, %)",
+            "example": 5.10
+        },
+        {
+            "name": "dividend_growth_10y",
+            "type": "NUMERIC(5,2)",
+            "nullable": true,
+            "description": "최근 10년 배당 성장률 (연평균, %)",
+            "example": 6.30
+        },
+        {
+            "name": "debt_to_equity",
+            "type": "NUMERIC(10,2)",
+            "nullable": true,
+            "description": "부채비율 (D/E Ratio)",
+            "example": 0.45
+        },
+        {
+            "name": "free_cashflow",
+            "type": "NUMERIC(15,2)",
+            "nullable": true,
+            "description": "잉여현금흐름 (USD)",
+            "example": 15000000000.00
+        },
+        {
+            "name": "market_cap",
+            "type": "NUMERIC(15,2)",
+            "nullable": true,
+            "description": "시가총액 (USD)",
+            "example": 380000000000.00
+        },
+        {
+            "name": "is_sp500",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": 0,
+            "description": "S&P 500 포함 여부 (0=No, 1=Yes)",
+            "example": 1
+        },
+        {
+            "name": "is_reit",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": 0,
+            "description": "REIT 여부 (0=No, 1=Yes)",
+            "example": 0
+        },
+        {
+            "name": "notes",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "특이사항 및 메모",
+            "example": "Dividend King (60+ years of consecutive increases)"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "레코드 생성 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "레코드 최종 수정 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_aristocrat_ticker",
+            "columns": [
+                "ticker"
+            ],
+            "unique": true,
+            "description": "Primary key index"
+        },
+        {
+            "name": "idx_aristocrat_sector",
+            "columns": [
+                "sector"
+            ],
+            "unique": false,
+            "description": "섹터별 조회 최적화"
+        },
+        {
+            "name": "idx_aristocrat_consecutive_years",
+            "columns": [
+                "consecutive_years"
+            ],
+            "unique": false,
+            "order": "DESC",
+            "description": "연속 증가 연수 기준 정렬 최적화"
+        }
+    ],
+    "metadata": {
+        "phase": "Phase 21",
+        "module": "Dividend Intelligence",
+        "created": "2025-12-25",
+        "last_updated": "2025-12-25",
+        "update_frequency": "Annually (March 1)",
+        "data_source": "Yahoo Finance API",
+        "related_files": [
+            "backend/core/models/dividend_models.py",
+            "backend/database/models.py",
+            "backend/api/dividend_router.py",
+            "backend/data_sources/yahoo_finance.py"
+        ],
+        "notes": "S&P 배당 귀족주 리스트는 1월말~2월초 발표, 기업 배당금은 2월중순~3월초 확정되므로 3월 1일 갱신 권장"
+    }
+}
