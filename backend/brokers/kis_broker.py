@@ -1,18 +1,50 @@
 """
-Korea Investment & Securities Broker Integration
+kis_broker.py - 한국투자증권 브로커 연동
 
-Wrapper for KIS Open Trading API for real broker trading.
+📊 Data Sources:
+    - KIS Open Trading API: 실시간 거래 및 계좌 정보
+        - OAuth 2.0 토큰 인증
+        - endpoint: openapi.koreainvestment.com (실전) / openapi.koreainvestment.com:9443 (모의)
+        - 해외주식 체결 (JTTT1002U): NASDAQ, NYSE, AMEX
+        - 해외주식 잔고 조회 (TTTS3012R)
+        - 해외주식 현재가 (HHDFS00000300)
+    - backend.trading.kis_client: KIS API 클라이언트
+        - 토큰 관리
+        - API 요청 래핑
+    - backend.trading.overseas_stock: 해외주식 거래
+        - get_balance: 잔고 조회
+        - get_price: 현재가 조회
+        - buy, sell: 주문 실행
 
-Features:
-- Token-based authentication
-- Overseas stock trading (US markets: NASDAQ, NYSE, AMEX)
-- Account balance queries
-- Real-time price quotes
-- Order execution (market/limit orders)
+🔗 External Dependencies:
+    - backend.trading.kis_client: KIS API 클라이언트
+    - backend.trading.overseas_stock: 해외주식 API
+    - logging: 로깅
+    - os: 환경 변수 (API 키, 계좌번호)
+
+📤 Broker Interface:
+    - get_price(symbol, exchange): 현재가 조회
+    - get_account_balance(): 계좌 잔고 및 매수가능금액
+    - buy_market_order(symbol, quantity, exchange): 시장가 매수
+    - sell_market_order(symbol, quantity, exchange): 시장가 매도
+    - buy_limit_order(symbol, quantity, price, exchange): 지정가 매수
+    - is_market_open(exchange): 시장 개장 여부
+
+🔄 Called By:
+    - backend/api/portfolio_router.py: 포트폴리오 조회
+    - backend/services/auto_trading_service.py: 자동 거래 실행
+    - backend/signals/signal_executor.py: 시그널 자동 실행
+
+📝 Notes:
+    - 환경 변수 필수: KIS_APP_KEY, KIS_APP_SECRET, KIS_ACCOUNT_NUMBER
+    - is_virtual=True: 모의투자 서버 사용
+    - is_virtual=False: 실전투자 서버 사용 (주의!)
+    - 토큰은 24시간 유효, 자동 갱신
+    - 미국 주식만 지원 (국내 주식은 별도)
 
 Based on:
-- KIS Open Trading API (D:\code\open-trading-api-main)
-- Previous KIS integration (D:\code\kis_trading-main)
+- KIS Open Trading API (D:\\code\\open-trading-api-main)
+- Previous KIS integration (D:\\code\\kis_trading-main)
 
 Author: AI Trading System Team
 Date: 2025-11-15

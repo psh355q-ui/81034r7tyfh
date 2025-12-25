@@ -1,6 +1,44 @@
 """
-한국투자증권 Open API 클라이언트
+kis_client.py - KIS Open API 클라이언트
 
+📊 Data Sources:
+    - KIS Open Trading API: 한국투자증권 공식 API
+        - OAuth 2.0 인증: /oauth2/tokenP
+        - 해시키 발급: /uapi/hashkey
+        - 국내주식 시세: /uapi/domestic-stock/v1/*
+        - 해외주식 시세: /uapi/overseas-price/v1/*
+        - 국내주식 주문: /uapi/domestic-stock/v1/trading/*
+        - 해외주식 주문: /uapi/overseas-stock/v1/trading/*
+    - kis_devlp.yaml: 설정 파일
+        - API 키, 시크릿, 계좌번호
+        - 실전/모의 구분
+    - Token Cache: .kis_token_cache.json
+        - 토큰 재사용 (24시간 유효)
+
+🔗 External Dependencies:
+    - requests: HTTP 통신 (TLS 1.2+ 강제)
+    - PyYAML: 설정 파일 파싱
+    - pathlib: 파일 경로 처리
+    - ssl: TLS 버전 제어
+
+📤 API Functions:
+    - auth(svr, product): 인증 초기화
+    - inquire_inquire_price(code): 국내주식 현재가
+    - inquire_daily_price(code, period): 국내주식 일봉
+    - inquire_inquire_psearch(code): 기간별 시세
+    - 해외주식: overseas_stock.py 참조
+
+🔄 Called By:
+    - backend/brokers/kis_broker.py
+    - backend/trading/overseas_stock.py
+    - backend/api/portfolio_router.py
+
+📝 Notes:
+    - 2025.12.12: TLS 1.2+ 강제 (KIS 보안 강화)
+    - kis_devlp.yaml 필수 (샘플: create_sample_config())
+    - 토큰 24시간 유효, 자동 갱신
+    - 공식 GitHub 패턴 기반
+    
 공식 GitHub 저장소 패턴 기반:
 https://github.com/koreainvestment/open-trading-api
 
@@ -8,7 +46,7 @@ https://github.com/koreainvestment/open-trading-api
 - kis_devlp.yaml 기반 설정
 - OAuth 토큰 자동 발급/갱신
 - 국내주식 시세 조회
-- 국내주식 매수/매도 주문
+- 해외주식 거래 (overseas_stock.py)
 - 계좌 잔고 조회
 - 주문 취소/정정
 
