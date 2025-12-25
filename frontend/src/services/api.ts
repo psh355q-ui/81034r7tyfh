@@ -98,13 +98,25 @@ export const getPortfolio = async (): Promise<Portfolio> => {
     daily_return_pct: data.daily_return_pct || 0,
     total_return_pct: data.total_pnl_pct || 0, // backend: total_pnl_pct -> frontend: total_return_pct
     positions: (data.positions || []).map((pos: any) => ({
-      ticker: pos.symbol || '', // backend: symbol -> frontend: ticker
+      // Preserve backend field names for compatibility  with DividendDashboard
+      symbol: pos.symbol || '',
+      ticker: pos.symbol || '', // Also provide ticker for backward compatibility
       quantity: pos.quantity || 0,
-      entry_price: pos.avg_price || 0, // backend: avg_price -> frontend: entry_price
+      avg_price: pos.avg_price || 0,
+      entry_price: pos.avg_price || 0, // Also provide entry_price for backward compatibility
       current_price: pos.current_price || 0,
       market_value: pos.market_value || 0,
-      unrealized_pnl: pos.profit_loss || 0, // backend: profit_loss -> frontend: unrealized_pnl
-      unrealized_pnl_pct: pos.profit_loss_pct || 0, // backend: profit_loss_pct -> frontend: unrealized_pnl_pct
+      profit_loss: pos.profit_loss || 0,
+      unrealized_pnl: pos.profit_loss || 0, // Also provide unrealized_pnl for backward compatibility
+      profit_loss_pct: pos.profit_loss_pct || 0,
+      unrealized_pnl_pct: pos.profit_loss_pct || 0, // Also provide unrealized_pnl_pct for backward compatibility
+      daily_pnl: pos.daily_pnl || 0,
+      daily_return_pct: pos.daily_return_pct || 0,
+      // Dividend information
+      annual_dividend: pos.annual_dividend || 0,
+      dividend_yield: pos.dividend_yield || 0,
+      dividend_frequency: pos.dividend_frequency || '',
+      next_dividend_date: pos.next_dividend_date || '',
     })),
     recent_trades: data.recent_trades || [],
   };
