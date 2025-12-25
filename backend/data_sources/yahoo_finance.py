@@ -182,3 +182,38 @@ def _get_default_dividend_info() -> Dict:
         "payment_count": 0,
         "history": []
     }
+
+
+def get_stock_sector(symbol: str) -> Optional[str]:
+    """
+    Fetch stock sector information from Yahoo Finance
+    
+    Args:
+        symbol: Stock ticker symbol (e.g., "INTC", "AAPL")
+        
+    Returns:
+        str: Sector name (e.g., "Technology", "Healthcare", "Finance")
+             or None if not available
+    """
+    try:
+        logger.info(f"📊 Fetching sector data from Yahoo Finance: {symbol}")
+        
+        # Create ticker object
+        ticker = yf.Ticker(symbol)
+        
+        # Get company info
+        info = ticker.info
+        
+        # Get sector from info
+        sector = info.get('sector')
+        
+        if sector:
+            logger.info(f"✅ Sector for {symbol}: {sector}")
+            return sector
+        else:
+            logger.warning(f"No sector data found for {symbol}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error fetching sector for {symbol}: {e}")
+        return None

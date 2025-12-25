@@ -42,6 +42,9 @@ class PositionResponse(BaseModel):
     dividend_yield: Optional[float] = 0.0
     dividend_frequency: Optional[str] = "Q"
     next_dividend_date: Optional[str] = ""
+    
+    # 섹터 정보
+    sector: Optional[str] = None
 
 
 class PortfolioResponse(BaseModel):
@@ -239,6 +242,15 @@ async def get_portfolio():
                 except Exception as e:
                     logger.warning(f"배당 정보 조회 실패 ({symbol}): {e}")
             
+            # 섹터 정보 조회 (Yahoo Finance)
+            sector = None
+            if symbol:
+                try:
+                    from backend.data_sources import yahoo_finance as yf
+                    sector = yf.get_stock_sector(symbol)
+                except Exception as e:
+                    logger.warning(f"섹터 정보 조회 실패 ({symbol}): {e}")
+            
             positions.append(PositionResponse(
                 symbol=symbol,
                 quantity=quantity,
@@ -248,12 +260,13 @@ async def get_portfolio():
                 profit_loss=pos.get("profit_loss", 0),
                 profit_loss_pct=(pos.get("profit_loss", 0) / (avg_price * quantity) * 100) if avg_price > 0 and quantity > 0 else 0,
                 daily_pnl=pos.get("daily_pnl", 0),
-                daily_return_pct=pos.get("daily_return_pct", 0),
+                daily_return_pct=(pos.get("daily_pnl", 0) / pos.get("market_value", 1) * 100) if pos.get("market_value", 0) > 0 else 0,
                 # 배당 정보
-                annual_dividend=dividend_info["annual_dividend"],
-                dividend_yield=dividend_info["dividend_yield"],
-                dividend_frequency=dividend_info["frequency"],
-                next_dividend_date=dividend_info["next_ex_date"]
+                annual_dividend=dividend_info.get("annual_dividend", 0),
+                dividend_yield=dividend_info.get("dividend_yield", 0),
+                dividend_frequency=dividend_info.get("frequency", "Q"),
+                next_dividend_date=dividend_info.get("next_ex_date", ""),
+                sector=sector
             ))
 
         logger.info(f"💼 Portfolio fetched: ${total_value:.2f} total, {len(positions)} positions")
