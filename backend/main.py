@@ -372,6 +372,11 @@ if SIGNALS_AVAILABLE:    # Phase 4: Trading Signals
     app.include_router(weight_router)
     app.include_router(alerts_router)
     logger.info("Weight Adjustment & Alerts routers registered")
+    
+    # 🆕 Dividend API (Phase 21: Dividend Intelligence Module)
+    from backend.api.dividend_router import router as dividend_router
+    app.include_router(dividend_router)
+    logger.info("Dividend router registered")
 if NOTIFICATIONS_AVAILABLE:
     app.include_router(notifications_router)
     logger.info("Notifications router registered")

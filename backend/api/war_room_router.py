@@ -37,6 +37,7 @@ from backend.ai.debate.analyst_agent import AnalystAgent
 from backend.ai.debate.macro_agent import MacroAgent
 from backend.ai.debate.institutional_agent import InstitutionalAgent
 from backend.ai.debate.chip_war_agent import ChipWarAgent
+from backend.intelligence.dividend_risk_agent import DividendRiskAgent
 
 # Constitutional Validator
 from backend.constitution.constitution import Constitution
@@ -90,21 +91,23 @@ class WarRoomEngine:
         self.macro_agent = MacroAgent()
         self.institutional_agent = InstitutionalAgent()
         self.news_agent = NewsAgent()
-        self.chip_war_agent = ChipWarAgent()  # NEW: Phase 24
+        self.chip_war_agent = ChipWarAgent()  # Phase 24
+        self.dividend_risk_agent = DividendRiskAgent()  # Phase 21 ✨ NEW
         # PM agent is internal (weighted voting logic)
 
         self.vote_weights = {
-            "trader": 0.16,       # 14% → 16% (technical analysis boost)
-            "risk": 0.16,         # 18% → 16% (risk remains important)
-            "analyst": 0.12,      # 13% → 12% (fundamental analysis)
-            "macro": 0.14,        # 16% → 14% (macro economics)
-            "institutional": 0.14, # 15% → 14% (smart money tracking)
+            "trader": 0.15,       # 16% → 15% (technical analysis)
+            "risk": 0.15,         # 16% → 15% (risk management)
+           "analyst": 0.12,      # 12% → 12% (fundamental analysis)
+            "macro": 0.14,        # 14% → 14% (macro economics)
+            "institutional": 0.14, # 14% → 14% (smart money tracking)
             "news": 0.14,         # 14% → 14% (news sentiment)
-            "chip_war": 0.14,     # 12% → 14% ✨ INCREASED (semiconductor competition)
+            "chip_war": 0.14,     # 14% → 14% (semiconductor competition)
+            "dividend_risk": 0.02, # ✨ NEW: 2% (dividend sustainability)
             "pm": 0.00            # PM uses weighted voting, no direct weight
         }
 
-        logger.info("WarRoomEngine initialized with 8 agents (including ChipWarAgent)")
+        logger.info("WarRoomEngine initialized with 9 agents (including ChipWar + DividendRisk)")
     
     async def run_debate(self, ticker: str, context: Dict[str, Any] = None) -> tuple[List[Dict], Dict]:
         """
@@ -170,13 +173,21 @@ class WarRoomEngine:
         except Exception as e:
             logger.error(f"❌ Analyst Agent failed: {e}")
 
-        # 7. Chip War Agent (12%) - NEW: Phase 24
+        # 7. Chip War Agent (14%)
         try:
             chip_war_vote = await self.chip_war_agent.analyze(ticker, context)
             votes.append(chip_war_vote)
             logger.info(f"🎮 Chip War Agent: {chip_war_vote['action']} ({chip_war_vote['confidence']:.0%})")
         except Exception as e:
             logger.error(f"❌ Chip War Agent failed: {e}")
+
+        # 8. Dividend Risk Agent (2%) - NEW: Phase 21 ✨
+        try:
+            dividend_risk_vote = await self.dividend_risk_agent.vote_for_war_room(ticker, context)
+            votes.append(dividend_risk_vote)
+            logger.info(f"💰 Dividend Risk Agent: {dividend_risk_vote['action']} ({dividend_risk_vote['confidence']:.0%})")
+        except Exception as e:
+            logger.error(f"❌ Dividend Risk Agent failed: {e}")
 
         # 8. PM Agent 최종 결정 (18%)
         pm_decision = self._pm_arbitrate(votes)
