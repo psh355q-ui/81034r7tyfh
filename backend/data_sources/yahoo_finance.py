@@ -65,6 +65,15 @@ def get_dividend_info(symbol: str) -> Dict:
         ttm_divs = dividends[dividends.index >= one_year_ago]
         annual_dividend = float(ttm_divs.sum())
         
+        # DEBUG: Log dividend data
+        logger.info(f"  Total dividends in dataset: {len(dividends)}")
+        logger.info(f"  Recent dividends (last 2 years): {len(recent_divs)}")
+        logger.info(f"  TTM dividends (last 365 days): {len(ttm_divs)}")
+        if len(ttm_divs) > 0:
+            logger.info(f"  TTM dividend dates: {[d.strftime('%Y-%m-%d') for d in ttm_divs.index[-5:]]}")
+            logger.info(f"  TTM dividend amounts: {ttm_divs.values[-5:].tolist()}")
+        logger.info(f"  TTM sum: ${annual_dividend:.4f}")
+        
         # Determine frequency
         payment_count = len(ttm_divs)
         if payment_count >= 12:
