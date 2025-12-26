@@ -20,6 +20,7 @@ from datetime import datetime
 from enum import Enum
 from collections import deque
 import logging
+import networkx as nx  # Added for graph support
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,7 @@ class GlobalMarketMap:
         self.nodes: Dict[str, MarketNode] = {}
         self.correlations: Dict[str, List[Correlation]] = {}  # source -> [correlations]
         self.reverse_correlations: Dict[str, List[Correlation]] = {}  # target -> [correlations]
+        self.graph = nx.DiGraph()  # ✅ Added: NetworkX graph for advanced analysis
         
         # 기본 노드 및 상관관계 정의
         self._setup_default_nodes()
