@@ -17,7 +17,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.auth import (
-from backend.ai.skills.common.logging_decorator import log_endpoint
     get_api_key,
     verify_readonly_access,
     verify_trading_access,
@@ -25,6 +24,8 @@ from backend.ai.skills.common.logging_decorator import log_endpoint
     api_config,
     get_audit_log,
 )
+
+from backend.ai.skills.common.logging_decorator import log_endpoint
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
