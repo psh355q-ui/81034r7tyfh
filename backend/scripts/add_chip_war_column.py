@@ -16,7 +16,7 @@ conn = psycopg2.connect(
     port=os.getenv("POSTGRES_PORT", "5432"),
     database=os.getenv("POSTGRES_DB", "ai_trading"),
     user=os.getenv("POSTGRES_USER", "postgres"),
-    password=os.getenv("POSTGRES_PASSWORD", "Qkqhdi1!")
+    password=os.getenv("POSTGRES_PASSWORD")  # Must be set in .env
 )
 
 cursor = conn.cursor()

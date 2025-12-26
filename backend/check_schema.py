@@ -14,7 +14,7 @@ async def check_schema():
         host=os.getenv('POSTGRES_HOST', 'localhost'),
         port=int(os.getenv('POSTGRES_PORT', '5432')),
         user=os.getenv('POSTGRES_USER', 'postgres'),
-        password=os.getenv('POSTGRES_PASSWORD', 'Qkqhdi1!'),
+        password=os.getenv('POSTGRES_PASSWORD'),  # Must be set in .env
         database=os.getenv('POSTGRES_DB', 'ai_trading')
     )
 

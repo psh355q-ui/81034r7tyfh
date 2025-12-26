@@ -32,7 +32,7 @@ except ImportError:
         timescale_host = os.getenv("TIMESCALE_HOST", "localhost")
         timescale_port = int(os.getenv("TIMESCALE_PORT", "5432"))
         timescale_user = os.getenv("POSTGRES_USER", "postgres")
-        timescale_password = os.getenv("POSTGRES_PASSWORD", "Qkqhdi1!")
+        timescale_password = os.getenv("POSTGRES_PASSWORD", "")  # Must be set in .env
         timescale_database = os.getenv("TIMESCALE_DATABASE", "ai_trading")
 
     def get_settings():

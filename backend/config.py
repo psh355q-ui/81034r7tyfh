@@ -165,7 +165,7 @@ class Settings(BaseSettings):
     timescale_host: str = Field(default="localhost", validation_alias="TIMESCALE_HOST")
     timescale_port: int = Field(default=5432, validation_alias="TIMESCALE_PORT")
     timescale_user: str = Field(default="postgres", validation_alias="POSTGRES_USER")
-    timescale_password: str = Field(default="Qkqhdi1!", validation_alias="POSTGRES_PASSWORD")
+    timescale_password: str = Field(default="", validation_alias="POSTGRES_PASSWORD")  # Must be set in .env
     timescale_database: str = Field(default="ai_trading", validation_alias="TIMESCALE_DATABASE")
     
     # ==================== Feature Store ====================
