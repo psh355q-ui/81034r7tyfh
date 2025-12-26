@@ -26,8 +26,6 @@ backtest_router.py - 백테스트 API
 
 📤 API Endpoints:
     - POST /backtest/run: 백테스트 실행 (비동기)
-
-from backend.ai.skills.common.logging_decorator import log_endpoint
     - GET /backtest/results: 백테스트 목록
     - GET /backtest/results/{id}: 상세 결과 조회
     - GET /backtest/status/{id}: 작업 상태 확인
@@ -66,6 +64,8 @@ from backend.backtesting.signal_backtest_engine import (
     NewsAnalysis,
     BacktestResult
 )
+
+from backend.ai.skills.common.logging_decorator import log_endpoint
 
 router = APIRouter(prefix="/backtest", tags=["backtest"])
 
