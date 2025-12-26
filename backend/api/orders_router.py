@@ -17,6 +17,7 @@ import logging
 
 from backend.database.models import Order
 from backend.database.repository import get_sync_session
+from backend.ai.skills.common.logging_decorator import log_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ async def get_orders(
 
 
 @router.get("/{order_id}", response_model=OrderResponse)
+@log_endpoint("orders", "system")
 async def get_order(order_id: int):
     """
     Get specific order details
