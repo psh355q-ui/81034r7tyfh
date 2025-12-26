@@ -6,10 +6,22 @@ Premium feature: On-demand ticker news search using Gemini grounding
 from typing import Optional
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
+from datetime import datetime
+import traceback
 
 from backend.data.gemini_news_fetcher import GeminiNewsFetcher
 
+# Agent Logging
+from backend.ai.skills.common.agent_logger import AgentLogger
+from backend.ai.skills.common.log_schema import (
+    ExecutionLog,
+    ErrorLog,
+    ExecutionStatus,
+    ErrorImpact
+)
+
 router = APIRouter(prefix="/news/gemini", tags=["Gemini News Search"])
+agent_logger = AgentLogger("gemini-news", "analysis")
 
 
 class GeminiNewsResponse(BaseModel):
@@ -32,11 +44,14 @@ async def search_ticker_realtime(
     Premium feature - uses Gemini 2.0 Flash with Google Search grounding
     Currently FREE (experimental), will cost $0.04/search after Jan 2026
     """
+    start_time = datetime.now()
+    task_id = f"gemini-news-{ticker}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    
     try:
         fetcher = GeminiNewsFetcher()
         articles = fetcher.fetch_ticker_news(ticker.upper(), max_articles=max_articles)
         
-        return {
+        result = {
             "ticker": ticker.upper(),
             "query": f"latest news about {ticker.upper()} stock",
             "articles": articles,
@@ -47,7 +62,36 @@ async def search_ticker_realtime(
                 "billing_start": "2026-01-05"
             }
         }
+        
+        # Log successful execution
+        agent_logger.log_execution(ExecutionLog(
+            timestamp=datetime.now(),
+            agent="analysis/gemini-news",
+            task_id=task_id,
+            status=ExecutionStatus.SUCCESS,
+            duration_ms=int((datetime.now() - start_time).total_seconds() * 1000),
+            input={"ticker": ticker.upper(), "max_articles": max_articles},
+            output={"article_count": len(articles)}
+        ))
+        
+        return result
+        
     except Exception as e:
+        # Log error
+        agent_logger.log_error(ErrorLog(
+            timestamp=datetime.now(),
+            agent="analysis/gemini-news",
+            task_id=task_id,
+            error={
+                "type": type(e).__name__,
+                "message": str(e),
+                "stack": traceback.format_exc(),
+                "context": {"ticker": ticker, "max_articles": max_articles}
+            },
+            impact=ErrorImpact.MEDIUM,
+            recovery_attempted=False
+        ))
+        
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 

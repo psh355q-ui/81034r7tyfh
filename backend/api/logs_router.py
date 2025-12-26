@@ -7,10 +7,21 @@ Logs Router - 로그 조회 API
 from fastapi import APIRouter, Query
 from typing import Optional
 from datetime import datetime, timedelta
+import traceback
 
 from backend.log_manager import log_manager, LogLevel, LogCategory
 
+# Agent Logging
+from backend.ai.skills.common.agent_logger import AgentLogger
+from backend.ai.skills.common.log_schema import (
+    ExecutionLog,
+    ErrorLog,
+    ExecutionStatus,
+    ErrorImpact
+)
+
 router = APIRouter(prefix="/logs", tags=["Logs"])
+agent_logger = AgentLogger("log-manager", "system")
 
 @router.get("")
 async def get_logs(
@@ -68,7 +79,44 @@ async def get_log_statistics(
     - errors_count: 에러 로그 수
     - warnings_count: 경고 로그 수
     """
-    return log_manager.get_statistics(days=days)
+    start_time = datetime.now()
+    task_id = f"log-stats-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    
+    try:
+        result = log_manager.get_statistics(days=days)
+        
+        # Log successful execution
+        agent_logger.log_execution(ExecutionLog(
+            timestamp=datetime.now(),
+            agent="system/log-manager",
+            task_id=task_id,
+            status=ExecutionStatus.SUCCESS,
+            duration_ms=int((datetime.now() - start_time).total_seconds() * 1000),
+            input={"days": days},
+            output={
+                "total_logs": result.get("total_logs", 0),
+                "errors_count": result.get("errors_count", 0)
+            }
+        ))
+        
+        return result
+    
+    except Exception as e:
+        # Log error
+        agent_logger.log_error(ErrorLog(
+            timestamp=datetime.now(),
+            agent="system/log-manager",
+            task_id=task_id,
+            error={
+                "type": type(e).__name__,
+                "message": str(e),
+                "stack": traceback.format_exc(),
+                "context": {"days": days}
+            },
+            impact=ErrorImpact.LOW,
+            recovery_attempted=False
+        ))
+        raise
 
 @router.get("/levels")
 async def get_log_levels():
