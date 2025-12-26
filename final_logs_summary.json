@@ -1,0 +1,177 @@
+{
+  "agents": [
+    "debugging-agent/proposals",
+    "system/debugging-agent",
+    "system/signal-consolidation",
+    "system/signal-generator-agent",
+    "war-room/war-room-debate"
+  ],
+  "total_executions": 4,
+  "total_errors": 5,
+  "total_performance": 1,
+  "time_range": "2025-12-23 to 2025-12-26",
+  "executions": [
+    {
+      "timestamp": "2025-12-25T18:19:57.689561",
+      "agent": "system/signal-consolidation",
+      "task_id": "task-test-20251225-181957-0",
+      "status": "SUCCESS",
+      "duration_ms": 800,
+      "input": {
+        "ticker": "AAPL",
+        "hours": 24,
+        "limit": 10
+      },
+      "output": {
+        "total_count": 5,
+        "sources": [
+          "war_room",
+          "deep_reasoning"
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-12-25T18:19:57.690382",
+      "agent": "system/signal-consolidation",
+      "task_id": "task-test-20251225-181957-1",
+      "status": "SUCCESS",
+      "duration_ms": 1000,
+      "input": {
+        "ticker": "MSFT",
+        "hours": 24,
+        "limit": 10
+      },
+      "output": {
+        "total_count": 6,
+        "sources": [
+          "war_room",
+          "deep_reasoning"
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-12-25T18:19:57.690836",
+      "agent": "system/signal-consolidation",
+      "task_id": "task-test-20251225-181957-2",
+      "status": "SUCCESS",
+      "duration_ms": 1200,
+      "input": {
+        "ticker": "GOOGL",
+        "hours": 24,
+        "limit": 10
+      },
+      "output": {
+        "total_count": 7,
+        "sources": [
+          "war_room",
+          "deep_reasoning"
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-12-25T18:13:55.458542",
+      "agent": "system/signal-generator-agent",
+      "task_id": "task-test-001",
+      "status": "SUCCESS",
+      "duration_ms": 1200,
+      "input": {
+        "ticker": "AAPL"
+      },
+      "output": {
+        "action": "BUY",
+        "confidence": 0.85
+      }
+    }
+  ],
+  "errors": [
+    {
+      "timestamp": "2025-12-25T18:19:57.691596",
+      "agent": "system/signal-consolidation",
+      "task_id": "task-error-20251225-181957",
+      "error": {
+        "type": "DatabaseError",
+        "message": "Connection timeout",
+        "stack": "Traceback (simulated)...",
+        "context": {
+          "database": "postgresql",
+          "timeout": "30s"
+        }
+      },
+      "impact": "HIGH",
+      "recovery_attempted": false
+    },
+    {
+      "timestamp": "2025-12-25T18:23:58.110987",
+      "agent": "system/signal-consolidation",
+      "task_id": "consolidate-20251225-182358",
+      "error": {
+        "type": "AttributeError",
+        "message": "type object 'TradingSignal' has no attribute 'generated_at'",
+        "stack": "Traceback (most recent call last):\n  File \"D:\\code\\ai-trading-system\\backend\\api\\signal_consolidation_router.py\", line 101, in get_consolidated_signals\n    .filter(TradingSignal.generated_at >= cutoff)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: type object 'TradingSignal' has no attribute 'generated_at'. Did you mean: 'created_at'?\n",
+        "context": {
+          "ticker": null,
+          "hours": 24
+        }
+      },
+      "impact": "HIGH",
+      "recovery_attempted": false
+    },
+    {
+      "timestamp": "2025-12-25T18:27:29.863750",
+      "agent": "system/signal-consolidation",
+      "task_id": "consolidate-20251225-182729",
+      "error": {
+        "type": "AttributeError",
+        "message": "type object 'TradingSignal' has no attribute 'generated_at'",
+        "stack": "Traceback (most recent call last):\n  File \"D:\\code\\ai-trading-system\\backend\\api\\signal_consolidation_router.py\", line 101, in get_consolidated_signals\n    .filter(TradingSignal.generated_at >= cutoff)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: type object 'TradingSignal' has no attribute 'generated_at'. Did you mean: 'created_at'?\n",
+        "context": {
+          "ticker": null,
+          "hours": 24
+        }
+      },
+      "impact": "HIGH",
+      "recovery_attempted": false
+    },
+    {
+      "timestamp": "2025-12-25T18:13:55.460118",
+      "agent": "system/signal-generator-agent",
+      "task_id": "task-test-002",
+      "error": {
+        "type": "ValueError",
+        "message": "Invalid ticker",
+        "stack": "..."
+      },
+      "impact": "LOW",
+      "recovery_attempted": false
+    },
+    {
+      "timestamp": "2025-12-25T18:40:59.468931",
+      "agent": "war-room/war-room-debate",
+      "task_id": "war-room-AAPL-20251225-184058",
+      "error": {
+        "type": "TypeError",
+        "message": "'consensus_action' is an invalid keyword argument for AIDebateSession",
+        "stack": "Traceback (most recent call last):\n  File \"D:\\code\\ai-trading-system\\backend\\api\\war_room_router.py\", line 635, in run_war_room_debate\n    session = AIDebateSession(\n        ticker=ticker,\n    ...<13 lines>...\n        completed_at=datetime.now()\n    )\n  File \"<string>\", line 4, in __init__\n  File \"C:\\Users\\a\\AppData\\Roaming\\Python\\Python314\\site-packages\\sqlalchemy\\orm\\state.py\", line 596, in _initialize_instance\n    with util.safe_reraise():\n         ~~~~~~~~~~~~~~~~~^^\n  File \"C:\\Users\\a\\AppData\\Roaming\\Python\\Python314\\site-packages\\sqlalchemy\\util\\langhelpers.py\", line 224, in __exit__\n    raise exc_value.with_traceback(exc_tb)\n  File \"C:\\Users\\a\\AppData\\Roaming\\Python\\Python314\\site-packages\\sqlalchemy\\orm\\state.py\", line 594, in _initialize_instance\n    manager.original_init(*mixed[1:], **kwargs)\n    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\a\\AppData\\Roaming\\Python\\Python314\\site-packages\\sqlalchemy\\orm\\decl_base.py\", line 2179, in _declarative_constructor\n    raise TypeError(\n        \"%r is an invalid keyword argument for %s\" % (k, cls_.__name__)\n    )\nTypeError: 'consensus_action' is an invalid keyword argument for AIDebateSession\n",
+        "context": {
+          "ticker": "AAPL",
+          "execute_trade": false
+        }
+      },
+      "impact": "CRITICAL",
+      "recovery_attempted": false
+    }
+  ],
+  "performance": [
+    {
+      "timestamp": "2025-12-25T18:19:57.692682",
+      "agent": "system/signal-consolidation",
+      "metrics": {
+        "cpu_percent": 35.2,
+        "memory_mb": 256.0,
+        "api_calls": 2.0,
+        "db_queries": 3.0,
+        "avg_response_time_ms": 850.0
+      }
+    }
+  ]
+}

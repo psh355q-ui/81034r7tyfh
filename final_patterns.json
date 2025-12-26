@@ -1,0 +1,46 @@
+{
+  "patterns": [
+    {
+      "type": "high_error_rate",
+      "agent": "war-room/war-room-debate",
+      "error_rate": 1.0,
+      "executions": 0,
+      "errors": 1,
+      "priority": "CRITICAL",
+      "details": "Error rate 100.0% (1/1)"
+    },
+    {
+      "type": "high_error_rate",
+      "agent": "system/signal-generator-agent",
+      "error_rate": 0.5,
+      "executions": 1,
+      "errors": 1,
+      "priority": "HIGH",
+      "details": "Error rate 50.0% (1/2)"
+    },
+    {
+      "type": "high_error_rate",
+      "agent": "system/signal-consolidation",
+      "error_rate": 0.5,
+      "executions": 3,
+      "errors": 3,
+      "priority": "HIGH",
+      "details": "Error rate 50.0% (3/6)"
+    }
+  ],
+  "summary": {
+    "total_patterns": 3,
+    "by_type": {
+      "high_error_rate": 3
+    },
+    "by_priority": {
+      "CRITICAL": 1,
+      "HIGH": 2
+    },
+    "agents_affected": [
+      "system/signal-generator-agent",
+      "system/signal-consolidation",
+      "war-room/war-room-debate"
+    ]
+  }
+}
