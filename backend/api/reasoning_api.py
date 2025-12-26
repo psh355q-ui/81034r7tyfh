@@ -89,7 +89,7 @@ class VerifyRequest(BaseModel):
 class BacktestRequest(BaseModel):
     """백테스트 요청"""
     events: Optional[List[Dict]] = None  # 커스텀 이벤트
-    use_mock: bool = True  # Mock 데이터 사용 (실제 가격 조회 안 함)
+    use_mock: bool = False  # 실제 데이터 사용 (Mock은 테스트용)
 
 
 # ============================================
@@ -234,7 +234,7 @@ async def verify_relationship(request: VerifyRequest):
 
 
 @router.get("/backtest")
-async def run_backtest_endpoint(use_mock: bool = True):
+async def run_backtest_endpoint(use_mock: bool = False):
     """
     A/B 백테스트 실행
     

@@ -780,7 +780,7 @@ class ConsensusBacktestRequest(BaseModel):
     end_date: str = Field(default="2024-06-01", description="종료 날짜 (YYYY-MM-DD)")
     initial_capital: float = Field(default=100000.0, description="초기 자본금")
     consensus_threshold: float = Field(default=0.6, description="Consensus 승인 임계값 (0.6 = 60%)")
-    use_mock_consensus: bool = Field(default=True, description="Mock Consensus 사용 여부")
+    use_mock_consensus: bool = Field(default=False, description="실제 Consensus 사용")
     
     class Config:
         json_schema_extra = {
