@@ -23,17 +23,10 @@ from backend.metrics import (
     FLEResult
 )
 
-# Agent Logging
-from backend.ai.skills.common.agent_logger import AgentLogger
-from backend.ai.skills.common.log_schema import (
-    ExecutionLog,
-    ErrorLog,
-    ExecutionStatus,
-    ErrorImpact
-)
+# Agent Logging  
+from backend.ai.skills.common.logging_decorator import log_endpoint
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
-agent_logger = AgentLogger("fle-calculator", "system")
 
 
 # Request/Response Models
@@ -86,6 +79,7 @@ class FLEResponse(BaseModel):
 
 # Endpoints
 @router.post("/fle", response_model=FLEResponse)
+@log_endpoint("fle-calculator", "system")
 async def calculate_fle(portfolio_input: PortfolioInput):
     """
     FLE (Forced Liquidation Equity) 계산
@@ -113,77 +107,35 @@ async def calculate_fle(portfolio_input: PortfolioInput):
             "cash": 10000
         }
     """
-    start_time = datetime.now()
-    task_id = f"fle-{portfolio_input.user_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    
-    try:
-        # Portfolio 객체 생성
-        positions = [
-            Position(
-                ticker=p.ticker,
-                quantity=p.quantity,
-                current_price=p.current_price,
-                cost_basis=p.cost_basis
-            )
-            for p in portfolio_input.positions
-        ]
-        
-        portfolio = Portfolio(
-            user_id=portfolio_input.user_id,
-            positions=positions,
-            cash=portfolio_input.cash
+    # Portfolio 객체 생성
+    positions = [
+        Position(
+            ticker=p.ticker,
+            quantity=p.quantity,
+            current_price=p.current_price,
+            cost_basis=p.cost_basis
         )
-        
-        # FLE 계산
-        calculator = get_fle_calculator()
-        result = calculator.calculate_fle(portfolio)
-        
-        # 안전 메시지 생성
-        safety_message = calculator.get_safety_message(result)
-        
-        response = FLEResponse.from_fle_result(result, safety_message)
-        
-        # Log successful execution
-        agent_logger.log_execution(ExecutionLog(
-            timestamp=datetime.now(),
-            agent="system/fle-calculator",
-            task_id=task_id,
-            status=ExecutionStatus.SUCCESS,
-            duration_ms=int((datetime.now() - start_time).total_seconds() * 1000),
-            input={
-                "user_id": portfolio_input.user_id,
-                "position_count": len(portfolio_input.positions),
-                "cash": portfolio_input.cash
-            },
-            output={
-                "fle": result.fle,
-                "alert_level": result.alert_level,
-                "drawdown_pct": result.drawdown_pct
-            }
-        ))
-        
-        return response
+        for p in portfolio_input.positions
+    ]
     
-    except Exception as e:
-        # Log error
-        agent_logger.log_error(ErrorLog(
-            timestamp=datetime.now(),
-            agent="system/fle-calculator",
-            task_id=task_id,
-            error={
-                "type": type(e).__name__,
-                "message": str(e),
-                "stack": traceback.format_exc(),
-                "context": {"user_id": portfolio_input.user_id}
-            },
-            impact=ErrorImpact.MEDIUM,
-            recovery_attempted=False
-        ))
-        
-        raise HTTPException(status_code=500, detail=str(e))
+    portfolio = Portfolio(
+        user_id=portfolio_input.user_id,
+        positions=positions,
+        cash=portfolio_input.cash
+    )
+    
+    # FLE 계산
+    calculator = get_fle_calculator()
+    result = calculator.calculate_fle(portfolio)
+    
+    # 안전 메시지 생성
+    safety_message = calculator.get_safety_message(result)
+    
+    return FLEResponse.from_fle_result(result, safety_message)
 
 
 @router.get("/fle-history")
+@log_endpoint("fle-calculator", "system")
 async def get_fle_history(
     user_id: str,
     days: int = 30
