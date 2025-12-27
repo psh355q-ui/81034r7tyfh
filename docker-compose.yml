@@ -25,60 +25,27 @@ services:
     networks:
       - ai-trading-net
 
-  # PostgreSQL - L2 Cache (persistent time-series)
-  timescaledb:
-    image: postgres:15
-    container_name: ai-trading-timescaledb
+  # PostgreSQL - Main Database (TimescaleDB + pgvector)
+  postgres-prod:
+    image: postgres:16
+    container_name: ai-trading-postgres-prod
     ports:
-      - "5541:5432" # Changed: 5432→5541 to match .env configuration
+      - "5432:5432"
     volumes:
-      - timescale-data:/var/lib/postgresql/data
+      - postgres-prod-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=ai_trading
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres123
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-Qkqhdi1}
+      - POSTGRES_HOST_AUTH_METHOD=trust
       - TZ=Asia/Seoul
-      - PGDATA=/var/lib/postgresql/data/pgdata
-      - LC_ALL=C
-      - LANG=C
-      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
-      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 1024M
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - ai-trading-net
-
-  # PostgreSQL + pgvector - Knowledge Graph for Deep Reasoning (Phase 14)
-  pgvector:
-    image: ankane/pgvector:latest
-    container_name: ai-trading-pgvector
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgvector-data:/var/lib/postgresql/data
-      - ./backend/data/knowledge_graph/init.sql:/docker-entrypoint-initdb.d/init.sql
-    environment:
-      - POSTGRES_DB=knowledge_graph
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${PGVECTOR_PASSWORD:-postgres}
-      - TZ=Asia/Seoul
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ai_trading" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -180,9 +147,7 @@ services:
 volumes:
   redis-data:
     driver: local
-  timescale-data:
-    driver: local
-  pgvector-data:
+  postgres-prod-data:
     driver: local
   prometheus-data:
     driver: local

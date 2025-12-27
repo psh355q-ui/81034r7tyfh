@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+
 Database Repository Layer
 
 Repository pattern for data access:
@@ -14,7 +16,8 @@ Usage:
         article = await news_repo.create_article(...)
 """
 
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, TYPE_CHECKING
+
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_, or_
@@ -29,10 +32,15 @@ from backend.database.models import (
     SignalPerformance,
     StockPrice,
     DataCollectionProgress,
-    NewsSource
+    NewsSource,
+    PriceTracking,
+    AgentVoteTracking
 )
-from backend.news.rss_crawler import NewsArticle as RSSNewsArticle
-from backend.ai.reasoning.deep_reasoning import DeepReasoningResult
+
+if TYPE_CHECKING:
+    from backend.news.rss_crawler import NewsArticle as RSSNewsArticle
+    from backend.ai.reasoning.deep_reasoning import DeepReasoningResult
+
 
 
 class NewsRepository:
@@ -90,6 +98,10 @@ class NewsRepository:
             published_date=article_data['published_at'],
             crawled_at=article_data.get('processed_at', datetime.now()),
             content_hash=content_hash,
+            
+            # Phase 3 Added Fields
+            author=article_data.get('author'),
+            summary=article_data.get('summary'),
             
             # New fields
             embedding=article_data.get('embedding'),
@@ -687,14 +699,13 @@ class StockRepository:
         for p in prices:
             db_obj = StockPrice(
                 ticker=p['ticker'],
-                date=p['date'],
+                time=p.get('time') or p.get('date'),  # Map to 'time' column
                 open=p['open'],
                 high=p['high'],
                 low=p['low'],
                 close=p['close'],
                 volume=p['volume'],
-                adj_close=p.get('adj_close'),
-                source=p.get('source', 'yfinance')
+                adjusted_close=p.get('adjusted_close') or p.get('adj_close')
             )
             db_objects.append(db_obj)
             
@@ -722,6 +733,108 @@ class StockRepository:
             .order_by(StockPrice.date)
             .all()
         )
+
+
+class DividendRepository:
+    """Dividend History Repository"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+    
+    def save_dividend(
+        self,
+        ticker: str,
+        ex_dividend_date,
+        amount: float,
+        frequency: Optional[str] = None,
+        payment_date = None
+    ):
+        """
+        Save or update dividend history
+        
+        Args:
+            ticker: Stock ticker
+            ex_dividend_date: Ex-dividend date
+            amount: Dividend amount
+            frequency: Payment frequency (Monthly, Quarterly, Annual)
+            payment_date: Payment date
+        """
+        from sqlalchemy import update
+        from backend.database.models import DividendHistory
+        from decimal import Decimal
+        
+        # Check if exists
+        existing = self.session.query(DividendHistory).filter(
+            and_(
+                DividendHistory.ticker == ticker,
+                DividendHistory.ex_dividend_date == ex_dividend_date
+            )
+        ).first()
+        
+        if existing:
+            # Update
+            existing.amount = Decimal(str(amount))
+            existing.frequency = frequency
+            existing.payment_date = payment_date
+            existing.updated_at = datetime.now()
+        else:
+            # Insert
+            dividend = DividendHistory(
+                ticker=ticker,
+                ex_dividend_date=ex_dividend_date,
+                payment_date=payment_date,
+                amount=Decimal(str(amount)),
+                frequency=frequency
+            )
+            self.session.add(dividend)
+        
+        self.session.commit()
+    
+    def get_upcoming_ex_dates(self, days: int = 3):
+        """
+        Get upcoming ex-dividend dates
+        
+        Args:
+            days: Number of days to look ahead
+            
+        Returns:
+            List of dividend records
+        """
+        from backend.database.models import DividendHistory
+        from datetime import date, timedelta
+        
+        today = date.today()
+        target_date = today + timedelta(days=days)
+        
+        return (
+            self.session.query(DividendHistory)
+            .filter(and_(
+                DividendHistory.ex_dividend_date >= today,
+                DividendHistory.ex_dividend_date <= target_date
+            ))
+            .order_by(DividendHistory.ex_dividend_date, DividendHistory.ticker)
+            .all()
+        )
+    
+    def get_dividend_history(
+        self,
+        ticker: str,
+        start_date=None,
+        end_date=None
+    ):
+        """Get dividend history for a ticker"""
+        from backend.database.models import DividendHistory
+        
+        query = self.session.query(DividendHistory).filter(
+            DividendHistory.ticker == ticker
+        )
+        
+        if start_date:
+            query = query.filter(DividendHistory.ex_dividend_date >= start_date)
+        if end_date:
+            query = query.filter(DividendHistory.ex_dividend_date <= end_date)
+        
+        return query.order_by(DividendHistory.ex_dividend_date).all()
 
 
 # ============================================
@@ -764,6 +877,59 @@ async def get_db_session():
         yield session
     finally:
         session.close()
+
+class TrackingRepository:
+    """성과 추적 Repository (PriceTracking & AgentVoteTracking)"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+    
+    def get_pending_price_tracking(self, hours_old: int = 24) -> List[PriceTracking]:
+        """24시간 지난 대기 중인 가격 추적 조회"""
+        cutoff_time = datetime.now() - timedelta(hours=hours_old)
+        return (
+            self.session.query(PriceTracking)
+            .filter(and_(
+                PriceTracking.status == 'PENDING',
+                PriceTracking.initial_timestamp <= cutoff_time
+            ))
+            .order_by(PriceTracking.initial_timestamp.asc())
+            .all()
+        )
+        
+    def get_pending_agent_votes(self, hours_old: int = 24) -> List[AgentVoteTracking]:
+        """24시간 지난 대기 중인 에이전트 투표 조회"""
+        cutoff_time = datetime.now() - timedelta(hours=hours_old)
+        return (
+            self.session.query(AgentVoteTracking)
+            .filter(and_(
+                AgentVoteTracking.status == 'PENDING',
+                AgentVoteTracking.initial_timestamp <= cutoff_time
+            ))
+            .order_by(AgentVoteTracking.initial_timestamp.asc())
+            .all()
+        )
+    
+    def update_evaluation(self, db_obj: object, result: Dict):
+        """평가 결과 업데이트"""
+        for key, value in result.items():
+            if hasattr(db_obj, key):
+                setattr(db_obj, key, value)
+        
+        db_obj.status = 'COMPLETED'
+        db_obj.evaluated_at = datetime.now()
+        
+        self.session.add(db_obj)
+        self.session.commit()
+    
+    def mark_failed(self, db_obj: object, error_message: str):
+        """평가 실패 처리"""
+        db_obj.status = 'FAILED'
+        db_obj.notes = error_message
+        db_obj.evaluated_at = datetime.now()
+        
+        self.session.add(db_obj)
+        self.session.commit()
 
 
 def get_sync_session():

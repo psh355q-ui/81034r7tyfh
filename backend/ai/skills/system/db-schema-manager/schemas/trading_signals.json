@@ -1,0 +1,164 @@
+{
+    "table_name": "trading_signals",
+    "description": "트레이딩 시그널 (War Room, Deep Reasoning, Manual, News)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "ticker",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "description": "종목 코드",
+            "example": "NVDA"
+        },
+        {
+            "name": "action",
+            "type": "VARCHAR(10)",
+            "nullable": false,
+            "description": "액션",
+            "enum": [
+                "BUY",
+                "SELL",
+                "HOLD"
+            ]
+        },
+        {
+            "name": "signal_type",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "description": "시그널 타입",
+            "example": "war_room"
+        },
+        {
+            "name": "confidence",
+            "type": "FLOAT",
+            "nullable": false,
+            "description": "신뢰도 (0~100)"
+        },
+        {
+            "name": "reasoning",
+            "type": "TEXT",
+            "nullable": false,
+            "description": "시그널 근거"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        },
+        {
+            "name": "target_price",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "목표가"
+        },
+        {
+            "name": "stop_loss",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "손절가"
+        },
+        {
+            "name": "entry_price",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "진입가"
+        },
+        {
+            "name": "shares",
+            "type": "INTEGER",
+            "nullable": true,
+            "description": "주식 수"
+        },
+        {
+            "name": "alert_sent",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": false,
+            "description": "알림 전송 여부"
+        },
+        {
+            "name": "news_title",
+            "type": "VARCHAR(500)",
+            "nullable": true,
+            "description": "관련 뉴스 제목"
+        },
+        {
+            "name": "news_source",
+            "type": "VARCHAR(100)",
+            "nullable": true,
+            "description": "뉴스 출처"
+        },
+        {
+            "name": "analysis_theme",
+            "type": "VARCHAR(200)",
+            "nullable": true,
+            "description": "분석 테마"
+        },
+        {
+            "name": "source",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "default": "unknown",
+            "description": "시그널 출처",
+            "example": "war_room"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_signal_ticker",
+            "columns": [
+                "ticker"
+            ],
+            "unique": false,
+            "description": "종목별 조회"
+        },
+        {
+            "name": "idx_signal_type",
+            "columns": [
+                "signal_type"
+            ],
+            "unique": false,
+            "description": "타입별 조회"
+        },
+        {
+            "name": "idx_signal_created_at",
+            "columns": [
+                "created_at"
+            ],
+            "unique": false,
+            "description": "생성일 조회"
+        },
+        {
+            "name": "idx_signal_source",
+            "columns": [
+                "source"
+            ],
+            "unique": false,
+            "description": "출처별 조회"
+        }
+    ],
+    "metadata": {
+        "category": "trading",
+        "repository": "SignalRepository",
+        "module": "Signal Generation",
+        "created": "2024-01-01",
+        "last_updated": "2025-12-27",
+        "update_frequency": "Real-time (triggered)",
+        "data_source": "AI War Room, Deep Reasoning, News Analysis",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/database/repository.py",
+            "backend/ai/skills/war-room/"
+        ],
+        "notes": "실제 DB 구조 기준. action과 signal_type 모두 포함"
+    }
+}

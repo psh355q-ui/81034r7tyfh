@@ -457,7 +457,7 @@ async def run_news_backfill(
                         processed=job["progress"].get("saved_articles", 0),
                         total=job["progress"].get("total_articles", 0),
                         status='failed',
-                        error_message=str(e)[:255] # Truncate error message if needed
+                        error=str(e)[:255] # Truncate error message if needed
                     )
             except Exception as db_e:
                 logger.error(f"Job {job_id}: Failed to update DB status to failed: {db_e}")
@@ -558,7 +558,7 @@ async def run_price_backfill(
                         processed=job["progress"].get("saved_data_points", 0),
                         total=job["progress"].get("total_data_points", 0),
                         status='failed',
-                        error_message=str(e)[:255]
+                        error=str(e)[:255]
                     )
             except Exception as db_e:
                 logger.error(f"Job {job_id}: Failed to update DB status to failed: {db_e}")

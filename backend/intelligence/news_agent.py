@@ -14,9 +14,10 @@ from typing import List, Dict, Optional
 import logging
 import numpy as np
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_, func
 
-from backend.data.news_models import NewsArticle, SessionLocal
+from backend.database.models import NewsArticle
+from backend.database.repository import get_sync_session
 from backend.ai.news_intelligence_analyzer import (
     NewsIntelligenceAnalyzer,
     NewsIntelligence,
@@ -71,17 +72,6 @@ class AgentOpinion:
 class NewsAgent:
     """
     News-based AI Agent for trading decisions
-    
-    Role in AI War Room:
-    - Provides independent opinion based on recent news
-    - Weighs news by impact score
-    - Aggregates sentiment from multiple sources
-    - Highlights urgent/critical news
-    
-    Integration:
-    - Integrates with existing debate_engine.py
-    - Uses NewsIntelligenceAnalyzer for analysis
-    - Queries news_articles table for recent news
     """
     
     def __init__(
@@ -90,21 +80,13 @@ class NewsAgent:
         lookback_days: int = 7,
         min_impact_score: int = 50
     ):
-        """
-        Initialize NewsAgent
-        
-        Args:
-            db: Database session
-            lookback_days: How far back to look for news (default 7 days)
-            min_impact_score: Minimum impact score to consider (default 50)
-        """
-        self.db = db or SessionLocal()
+        self.db = db if db else get_sync_session()
+        self._owned_session = db is None
         self.name = "NewsAgent"
         self.lookback_days = lookback_days
         self.min_impact_score = min_impact_score
         
         # For future: News intelligence analyzer
-        # (Currently assuming news is pre-analyzed)
         self.analyzer = NewsIntelligenceAnalyzer()
         
         logger.info(
@@ -112,6 +94,10 @@ class NewsAgent:
             f"  - Lookback: {lookback_days} days\n"
             f"  - Min impact: {min_impact_score}/100"
         )
+        
+    def __del__(self):
+        if hasattr(self, '_owned_session') and self._owned_session:
+            self.db.close()
     
     async def analyze(
         self,
@@ -120,13 +106,6 @@ class NewsAgent:
     ) -> AgentOpinion:
         """
         Generate news-based trading opinion
-        
-        Args:
-            ticker: Stock ticker symbol
-            context: Additional context (optional)
-        
-        Returns:
-            AgentOpinion with action, conviction, reasoning
         """
         # Fetch relevant news
         news_items = self._fetch_recent_news(ticker)
@@ -173,30 +152,32 @@ class NewsAgent:
     def _fetch_recent_news(self, ticker: str) -> List[Dict]:
         """
         Fetch recent high-impact news for ticker
-        
-        Returns:
-            List of news items with intelligence data
         """
         since = datetime.now() - timedelta(days=self.lookback_days)
         
         # Query news articles
-        # For now, using keywords field to match ticker
-        # Future: Use news_intelligence table with related_tickers
+        # Improved query: Check title or keywords
+        # Note: keywords is JSONB in Postgres, we can cast to text for simple search or use contains if supported
+        # For compatibility, we'll search title and use a generic check
+        
+        # Note: backend.database.models.NewsArticle.keywords is JSON
+        
         articles = self.db.query(NewsArticle).filter(
-            and_(
-                NewsArticle.crawled_at >= since,
-                NewsArticle.keywords.contains([ticker])  # SQLite JSON contains
+            NewsArticle.crawled_at >= since
+        ).filter(
+            or_(
+                NewsArticle.title.ilike(f"%{ticker}%"),
+                # JSONB contains for simple list
+                # cast(NewsArticle.keywords, String).ilike(f"%{ticker}%") # Fallback
+                NewsArticle.keywords.cast(str).ilike(f"%{ticker}%") 
             )
         ).order_by(
             NewsArticle.published_at.desc()
         ).limit(20).all()
         
         # Convert to intelligence format
-        # TODO: Replace with actual news_intelligence table lookup
         news_items = []
         for article in articles:
-            # Mock intelligence for now
-            # In production, this would come from news_intelligence table
             news_items.append({
                 'title': article.title,
                 'source': article.source,
@@ -212,20 +193,12 @@ class NewsAgent:
             if n['impact_score'] >= self.min_impact_score
         ]
         
-        logger.info(
-            f"📊 Found {len(articles)} news items, "
-            f"{len(high_impact)} high-impact (>={self.min_impact_score})"
-        )
-        
         return high_impact
     
     def _infer_sentiment(self, title: str) -> float:
         """
         Infer sentiment from title (temporary)
-        
         Returns: -1.0 (negative) to +1.0 (positive)
-        
-        TODO: Replace with actual NewsIntelligence lookup
         """
         title_lower = title.lower()
         
@@ -249,17 +222,15 @@ class NewsAgent:
     def _infer_impact(self, article: NewsArticle) -> int:
         """
         Infer impact score (temporary)
-        
         Returns: 0-100
-        
-        TODO: Replace with actual NewsIntelligence lookup
         """
         # Simple heuristic based on source
         major_sources = ['Bloomberg', 'Reuters', 'WSJ', 'CNBC']
         
-        if any(src in article.source for src in major_sources):
+        source = article.source or ""
+        if any(src in source for src in major_sources):
             return 70
-        elif article.source == 'finviz':
+        elif source == 'finviz':
             return 60
         else:
             return 50
@@ -270,11 +241,7 @@ class NewsAgent:
     ) -> tuple[float, float]:
         """
         Calculate impact-weighted average sentiment
-        
         Formula: sum(sentiment * impact) / sum(impact)
-        
-        Returns:
-            (weighted_sentiment, total_impact)
         """
         if not news_items:
             return 0.0, 0.0
@@ -282,6 +249,9 @@ class NewsAgent:
         weights = [item['impact_score'] for item in news_items]
         sentiments = [item['sentiment'] for item in news_items]
         
+        if sum(weights) == 0:
+            return 0.0, 0.0
+            
         weighted_avg = np.average(sentiments, weights=weights)
         total_impact = sum(weights)
         
@@ -295,14 +265,6 @@ class NewsAgent:
     ) -> tuple[str, float]:
         """
         Convert weighted sentiment to trading action
-        
-        Args:
-            weighted_sentiment: -1.0 to +1.0
-            total_impact: Total impact score
-            news_count: Number of news items
-        
-        Returns:
-            (action, conviction)
         """
         # Base thresholds
         buy_threshold = 0.3
@@ -391,11 +353,6 @@ async def get_news_opinion(
 ) -> AgentOpinion:
     """
     Quick helper to get NewsAgent opinion
-    
-    Usage in debate_engine.py:
-        from backend.intelligence.news_agent import get_news_opinion
-        
-        news_opinion = await get_news_opinion(ticker, db)
     """
     agent = NewsAgent(db=db, lookback_days=lookback_days, min_impact_score=min_impact)
     return await agent.analyze(ticker)
@@ -407,30 +364,39 @@ async def get_news_opinion(
 
 async def test_news_agent():
     """Test NewsAgent"""
-    print("🧪 Testing NewsAgent\n")
+    print("🧪 Testing NewsAgent (PostgreSQL)\n")
     
-    db = SessionLocal()
+    db = get_sync_session()
     agent = NewsAgent(db=db)
     
-    # Test with sample tickers
-    test_tickers = ['AAPL', 'TSLA', 'NVDA']
-    
-    for ticker in test_tickers:
-        print(f"\n{'='*60}")
-        print(f"Testing: {ticker}")
-        print(f"{'='*60}")
+    try:
+        # Test with sample tickers
+        test_tickers = ['AAPL', 'TSLA', 'nvda']
         
-        opinion = await agent.analyze(ticker)
-        
-        print(f"\n📊 NewsAgent Opinion:")
-        print(f"  Action: {opinion.action}")
-        print(f"  Conviction: {opinion.conviction:.2%}")
-        print(f"  Evidence: {len(opinion.evidence)} news items")
-        print(f"\n  Reasoning:")
-        for line in opinion.reasoning.split('\n'):
-            print(f"    {line}")
-    
-    db.close()
+        for ticker in test_tickers:
+            print(f"\n{'='*60}")
+            print(f"Testing: {ticker}")
+            print(f"{'='*60}")
+            
+            try:
+                opinion = await agent.analyze(ticker)
+                
+                print(f"\n📊 NewsAgent Opinion:")
+                print(f"  Action: {opinion.action}")
+                print(f"  Conviction: {opinion.conviction:.2%}")
+                print(f"  Evidence: {len(opinion.evidence)} news items")
+                print(f"\n  Reasoning:")
+                for line in opinion.reasoning.split('\n'):
+                    print(f"    {line}")
+            except Exception as e:
+                print(f"Error analyzing {ticker}: {e}")
+                
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(test_news_agent())
 
 
 if __name__ == "__main__":

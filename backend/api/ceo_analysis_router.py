@@ -77,7 +77,7 @@ class ManagementAnalysisResponse(BaseModel):
 @log_endpoint("ceo_analysis", "analysis")
 async def get_ceo_quotes(
     ticker: str,
-    source: str = Query("all", regex="^(all|sec|news)$"),
+    source: str = Query("all", pattern="^(all|sec|news)$"),
     limit: int = Query(20, ge=1, le=100)
 ):
     """

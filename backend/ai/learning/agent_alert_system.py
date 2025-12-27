@@ -1,21 +1,24 @@
 """
 Agent Alert System - 저성과 에이전트 자동 감지 및 경고
 
-Phase 25.4: Self-Learning Feedback Loop
-Date: 2025-12-25
+Phase 25.4: Self-Learning Feedback Loop (Repository Pattern)
+Date: 2025-12-27
 
 Features:
 - 저성과 에이전트 탐지 (정확도 < 50%)
 - 오버컨피던트 에이전트 탐지
 - 경고 로그 시스템
 - 알림 이력 저장
+- Repository Pattern 적용
 """
 
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-import asyncpg
-import os
+from sqlalchemy import text
+
+# Repository pattern
+from backend.database.repository import get_sync_session
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +28,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 class AgentAlertSystem:
-    """에이전트 성과 모니터링 및 경고 시스템"""
+    """에이전트 성과 모니터링 및 경고 시스템 (Repository Pattern)"""
     
     # 경고 임계값
     UNDERPERFORMANCE_THRESHOLD = 0.50  # 정확도 50% 미만
@@ -39,17 +42,8 @@ class AgentAlertSystem:
     ALERT_INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
     
     def __init__(self):
-        self.db_config = {
-            'host': os.getenv('DB_HOST', 'localhost'),
-            'port': int(os.getenv('DB_PORT', 5432)),
-            'database': os.getenv('DB_NAME', 'trading_db'),
-            'user': os.getenv('DB_USER', 'postgres'),
-            'password': os.getenv('DB_PASSWORD', 'password')
-        }
-    
-    async def get_db_connection(self) -> asyncpg.Connection:
-        """데이터베이스 연결"""
-        return await asyncpg.connect(**self.db_config)
+        # SQLAlchemy session is managed per method
+        pass
     
     async def get_agent_performance(
         self,
@@ -67,40 +61,44 @@ class AgentAlertSystem:
                 'avg_confidence': float
             }
         """
-        conn = await self.get_db_connection()
+        session = get_sync_session()
         
         try:
             cutoff_date = datetime.now() - timedelta(days=lookback_days)
             
-            query = """
+            # Note: Using synchronous session in async method is standard here as simple queries are fast.
+            # Ideally this should be async or run in executor if high load, but acceptable for this scheduler.
+            
+            query = text("""
                 SELECT 
                     COUNT(*) as total_votes,
                     SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct_votes,
                     AVG(vote_confidence) as avg_confidence
                 FROM agent_vote_tracking
-                WHERE agent_name = $1
+                WHERE agent_name = :agent_name
                   AND status = 'COMPLETED'
-                  AND initial_timestamp >= $2
-            """
+                  AND initial_timestamp >= :cutoff_date
+            """)
             
-            row = await conn.fetchrow(query, agent_name, cutoff_date)
+            result = session.execute(query, {'agent_name': agent_name, 'cutoff_date': cutoff_date})
+            row = result.fetchone()
             
-            if not row or row['total_votes'] == 0:
+            if not row or row.total_votes == 0:
                 return None
             
-            total = int(row['total_votes'])
-            correct = int(row['correct_votes'] or 0)
+            total = int(row.total_votes)
+            correct = int(row.correct_votes or 0)
             accuracy = correct / total if total > 0 else 0.0
             
             return {
                 'total_votes': total,
                 'correct_votes': correct,
                 'accuracy': accuracy,
-                'avg_confidence': float(row['avg_confidence'] or 0.0)
+                'avg_confidence': float(row.avg_confidence or 0.0)
             }
         
         finally:
-            await conn.close()
+            session.close()
     
     async def check_underperformance(
         self,
@@ -231,13 +229,6 @@ class AgentAlertSystem:
     ):
         """
         경고 발송 (로그 + DB 저장)
-        
-        Args:
-            agent_name: 에이전트 이름
-            alert_type: 경고 타입
-            message: 경고 메시지
-            severity: 심각도 (LOW, MEDIUM, HIGH)
-            metadata: 추가 정보
         """
         # 로그 출력
         log_message = f"🚨 ALERT [{severity}] [{alert_type}] {message}"
@@ -265,11 +256,11 @@ class AgentAlertSystem:
         
         Table: agent_alerts
         """
-        conn = await self.get_db_connection()
+        session = get_sync_session()
         
         try:
             # 테이블 생성
-            create_table_query = """
+            create_table_query = text("""
                 CREATE TABLE IF NOT EXISTS agent_alerts (
                     id SERIAL PRIMARY KEY,
                     agent_name VARCHAR(50) NOT NULL,
@@ -285,21 +276,37 @@ class AgentAlertSystem:
                 
                 CREATE INDEX IF NOT EXISTS idx_alerts_type 
                 ON agent_alerts(alert_type);
-            """
-            await conn.execute(create_table_query)
+            """)
+            session.execute(create_table_query)
+            session.commit()
             
             # 경고 저장
-            insert_query = """
+            insert_query = text("""
                 INSERT INTO agent_alerts (agent_name, alert_type, message, severity, metadata)
-                VALUES ($1, $2, $3, $4, $5)
-            """
-            await conn.execute(insert_query, agent_name, alert_type, message, severity, metadata)
+                VALUES (:agent_name, :alert_type, :message, :severity, :metadata)
+            """)
+            
+            import json
+            # JSON serialization for metadata if needed, though SQLAlchemy might handle dict for JSON type
+            # Using json.dumps ensures it's a string if the driver requires it, or passing dict if driver supports it.
+            # psycopg2 (used by sqlalchemy) adapts dict to jsonb automatically usually.
+            # But let's be safe and pass the dict, assuming SQLA handles it.
+            
+            session.execute(insert_query, {
+                'agent_name': agent_name,
+                'alert_type': alert_type,
+                'message': message,
+                'severity': severity,
+                'metadata': json.dumps(metadata) if metadata else None
+            })
+            session.commit()
         
         except Exception as e:
             logger.error(f"Failed to save alert to DB: {e}")
+            session.rollback()
         
         finally:
-            await conn.close()
+            session.close()
     
     async def get_recent_alerts(
         self,
@@ -309,50 +316,42 @@ class AgentAlertSystem:
     ) -> List[Dict]:
         """
         최근 경고 조회
-        
-        Args:
-            hours: 조회 시간 (시간)
-            agent_name: 에이전트 필터 (선택)
-            alert_type: 경고 타입 필터 (선택)
-        
-        Returns:
-            [{'id', 'agent_name', 'alert_type', 'message', 'severity', 'created_at'}]
         """
-        conn = await self.get_db_connection()
+        session = get_sync_session()
         
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             
-            query = """
+            query_str = """
                 SELECT id, agent_name, alert_type, message, severity, 
                        metadata, created_at
                 FROM agent_alerts
-                WHERE created_at >= $1
+                WHERE created_at >= :cutoff_time
             """
-            params = [cutoff_time]
+            params = {'cutoff_time': cutoff_time}
             
             if agent_name:
-                query += " AND agent_name = $2"
-                params.append(agent_name)
+                query_str += " AND agent_name = :agent_name"
+                params['agent_name'] = agent_name
             
             if alert_type:
-                param_idx = len(params) + 1
-                query += f" AND alert_type = ${param_idx}"
-                params.append(alert_type)
+                query_str += " AND alert_type = :alert_type"
+                params['alert_type'] = alert_type
             
-            query += " ORDER BY created_at DESC LIMIT 100"
+            query_str += " ORDER BY created_at DESC LIMIT 100"
             
-            rows = await conn.fetch(query, *params)
+            result = session.execute(text(query_str), params)
+            rows = result.fetchall()
             
             return [
                 {
-                    'id': row['id'],
-                    'agent_name': row['agent_name'],
-                    'alert_type': row['alert_type'],
-                    'message': row['message'],
-                    'severity': row['severity'],
-                    'metadata': row['metadata'],
-                    'created_at': row['created_at'].isoformat()
+                    'id': row.id,
+                    'agent_name': row.agent_name,
+                    'alert_type': row.alert_type,
+                    'message': row.message,
+                    'severity': row.severity,
+                    'metadata': row.metadata,
+                    'created_at': row.created_at.isoformat()
                 }
                 for row in rows
             ]
@@ -362,7 +361,7 @@ class AgentAlertSystem:
             return []
         
         finally:
-            await conn.close()
+            session.close()
 
 
 # ============================================================================

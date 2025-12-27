@@ -1,3 +1,4 @@
+
 """
 NewsAPI Real-time Crawler
 
@@ -8,20 +9,21 @@ NewsAPI Real-time Crawler
 - Tech/Finance 뉴스 필터링
 - KIS Auto Trade 트리거
 - 중복 제거
+- Repository Pattern 적용 (Phase 4)
 
 작성일: 2025-12-03
+수정일: 2025-12-27 (Refactoring)
 """
 
 import os
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from pathlib import Path
 import asyncio
 
 # Load .env file
 from dotenv import load_dotenv
-load_dotenv()  # Load from project root .env
+load_dotenv()
 
 # NewsAPI
 try:
@@ -31,44 +33,10 @@ except ImportError:
     NEWSAPI_AVAILABLE = False
     logging.warning("newsapi-python not installed. Run: pip install newsapi-python")
 
-# Database (for deduplication)
-from sqlalchemy import create_engine, Column, String, DateTime, Integer, Boolean
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.pool import StaticPool
+# Database (Repository Pattern)
+from backend.database.repository import get_sync_session, NewsRepository
 
 logger = logging.getLogger(__name__)
-
-Base = declarative_base()
-
-
-# ============================================================================
-# Database Model
-# ============================================================================
-
-class CrawledNews(Base):
-    """크롤링된 뉴스 저장 (중복 방지)"""
-    __tablename__ = 'crawled_news'
-    
-    id = Column(Integer, primary_key=True)
-    url = Column(String, unique=True, index=True)  # 중복 체크용
-    title = Column(String)
-    description = Column(String, nullable=True)
-    source = Column(String)
-    published_at = Column(DateTime)
-    crawled_at = Column(DateTime, default=datetime.utcnow)
-    processed = Column(Boolean, default=False)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'url': self.url,
-            'title': self.title,
-            'description': self.description,
-            'source': self.source,
-            'published_at': self.published_at.isoformat() if self.published_at else None,
-            'crawled_at': self.crawled_at.isoformat() if self.crawled_at else None,
-            'processed': self.processed
-        }
 
 
 # ============================================================================
@@ -86,13 +54,11 @@ class NewsAPICrawler:
     
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        db_url: str = "sqlite:///news_crawler.db"
+        api_key: Optional[str] = None
     ):
         """
         Args:
             api_key: NewsAPI 키 (없으면 환경변수에서 읽기)
-            db_url: 데이터베이스 URL
         """
         self.api_key = api_key or os.getenv('NEWS_API_KEY')
         
@@ -107,15 +73,6 @@ class NewsAPICrawler:
             self.client = None
             self.enabled = False
             logger.warning("NewsAPI crawler disabled (no API key or library)")
-        
-        # Database setup
-        self.engine = create_engine(
-            db_url,
-            connect_args={"check_same_thread": False} if "sqlite" in db_url else {},
-            poolclass=StaticPool if "sqlite" in db_url else None
-        )
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
         
         logger.info(f"NewsAPICrawler initialized (enabled={self.enabled})")
     
@@ -196,7 +153,8 @@ class NewsAPICrawler:
         Returns:
             새로운 기사만 리턴
         """
-        session = self.Session()
+        session = get_sync_session()
+        repo = NewsRepository(session)
         new_articles = []
         
         try:
@@ -205,36 +163,43 @@ class NewsAPICrawler:
                 if not url:
                     continue
                 
-                # 중복 체크
-                existing = session.query(CrawledNews).filter_by(url=url).first()
-                if existing:
+                # 중복 체크 (Repository 사용)
+                if repo.exists_by_url(url):
                     continue
                 
-                # 새 기사 저장
-                news = CrawledNews(
-                    url=url,
-                    title=article.get('title', ''),
-                    description=article.get('description', ''),
-                    source=article.get('source', {}).get('name', 'Unknown'),
-                    published_at=self._parse_datetime(article.get('publishedAt')),
-                    processed=False
-                )
+                # 새 기사 데이터 구성
+                published_at = self._parse_datetime(article.get('publishedAt'))
                 
-                session.add(news)
-                session.commit()
+                news_data = {
+                    'title': article.get('title', ''),
+                    'summary': article.get('description', ''), # map description to summary
+                    'content': article.get('description', ''), # also map to content for now if content is empty/truncated
+                    'url': url,
+                    'source': article.get('source', {}).get('name', 'Unknown'),
+                    'published_at': published_at,
+                    'author': article.get('author'),
+                    'tags': [], # Will be populated by NLP later
+                    'processed_at': None # Not processed yet
+                }
                 
-                # 새 기사 리스트에 추가
-                new_articles.append({
-                    'title': news.title,
-                    'description': news.description,
-                    'url': news.url,
-                    'source': news.source,
-                    'published_at': news.published_at,
-                    'id': news.id
-                })
+                # 저장 (Repository 사용)
+                # save_processed_article handles uniqueness via content_hash too, but we did a URL check above.
+                # It also generates content_hash.
+                saved_article = repo.save_processed_article(news_data)
                 
-                logger.debug(f"New article: {news.title[:50]}...")
+                if saved_article:
+                    new_articles.append({
+                        'title': saved_article.title,
+                        'description': saved_article.summary,
+                        'url': saved_article.url,
+                        'source': saved_article.source,
+                        'published_at': saved_article.published_date,
+                        'id': saved_article.id
+                    })
+                    logger.debug(f"New article: {saved_article.title[:50]}...")
         
+        except Exception as e:
+            logger.error(f"Error saving articles: {e}")
         finally:
             session.close()
         
@@ -269,29 +234,41 @@ class NewsAPICrawler:
             }
         ]
     
-    def mark_as_processed(self, news_id: int):
-        """기사를 처리됨으로 표시"""
-        session = self.Session()
-        try:
-            news = session.query(CrawledNews).filter_by(id=news_id).first()
-            if news:
-                news.processed = True
-                session.commit()
-        finally:
-            session.close()
-    
     def get_unprocessed_news(self, limit: int = 10) -> List[Dict]:
         """미처리 뉴스 조회"""
-        session = self.Session()
+        session = get_sync_session()
+        repo = NewsRepository(session)
         try:
+            # We don't have a direct 'get_unprocessed' in repo yet, let's assume we can query directly or add method?
+            # For now, let's use session query as standard practice allowed within Repository pattern user code for simple fetches?
+            # Or better, check if repo has get_recent_articles.
+            # But here we filter by 'processed_at' IS NULL or similar logic. 
+            # In standard models.py, 'processed_at' is used.
+            # But the logic here relied on 'processed' boolean in CrawledNews.
+            # NewsArticle doesn't have 'processed' boolean. It has 'processed_at' DateTime.
+            # So unprocessed means processed_at IS NULL.
+            
+            from backend.database.models import NewsArticle
+            
             news_list = (
-                session.query(CrawledNews)
-                .filter_by(processed=False)
-                .order_by(CrawledNews.published_at.desc())
+                session.query(NewsArticle)
+                .filter(NewsArticle.processed_at == None)
+                .order_by(NewsArticle.published_date.desc())
                 .limit(limit)
                 .all()
             )
-            return [n.to_dict() for n in news_list]
+            
+            # Map back to dict structure expected by consumers
+            return [{
+                'id': n.id,
+                'url': n.url,
+                'title': n.title,
+                'description': n.summary,
+                'source': n.source,
+                'published_at': n.published_date.isoformat() if n.published_date else None,
+                'processed': False # implied
+            } for n in news_list]
+            
         finally:
             session.close()
 
@@ -303,7 +280,7 @@ class NewsAPICrawler:
 if __name__ == "__main__":
     async def test():
         print("=" * 70)
-        print("NewsAPI Crawler Test")
+        print("NewsAPI Crawler Test (Repository Pattern)")
         print("=" * 70)
         
         # 크롤러 초기화

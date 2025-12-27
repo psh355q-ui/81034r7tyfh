@@ -1,0 +1,126 @@
+{
+    "table_name": "stock_prices",
+    "description": "주가 시계열 데이터 (OHLCV) - TimescaleDB Hypertable",
+    "primary_key": "id",
+    "timeseries": {
+        "enabled": true,
+        "time_column": "time",
+        "partition_interval": "1 week"
+    },
+    "columns": [
+        {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "ticker",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "description": "종목 코드",
+            "example": "AAPL"
+        },
+        {
+            "name": "time",
+            "type": "TIMESTAMP WITH TIME ZONE",
+            "nullable": false,
+            "description": "타임스탬프 (TimescaleDB 표준)",
+            "example": "2024-01-02T09:30:00Z"
+        },
+        {
+            "name": "open",
+            "type": "NUMERIC",
+            "nullable": true,
+            "description": "시가"
+        },
+        {
+            "name": "high",
+            "type": "NUMERIC",
+            "nullable": true,
+            "description": "고가"
+        },
+        {
+            "name": "low",
+            "type": "NUMERIC",
+            "nullable": true,
+            "description": "저가"
+        },
+        {
+            "name": "close",
+            "type": "NUMERIC",
+            "nullable": true,
+            "description": "종가"
+        },
+        {
+            "name": "volume",
+            "type": "BIGINT",
+            "nullable": true,
+            "description": "거래량"
+        },
+        {
+            "name": "adjusted_close",
+            "type": "NUMERIC",
+            "nullable": true,
+            "description": "조정 종가 (배당/액면분할 반영)"
+        },
+        {
+            "name": "source",
+            "type": "VARCHAR",
+            "nullable": true,
+            "description": "데이터 소스",
+            "example": "yfinance"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "레코드 생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_stock_price_ticker",
+            "columns": [
+                "ticker"
+            ],
+            "unique": false,
+            "description": "종목별 조회 최적화"
+        },
+        {
+            "name": "idx_stock_price_time",
+            "columns": [
+                "time"
+            ],
+            "unique": false,
+            "description": "시간별 조회 최적화"
+        },
+        {
+            "name": "idx_stock_price_ticker_time",
+            "columns": [
+                "ticker",
+                "time"
+            ],
+            "unique": false,
+            "description": "종목+시간 복합 조회 최적화"
+        }
+    ],
+    "metadata": {
+        "category": "timeseries",
+        "repository": "StockRepository",
+        "module": "Price Data Collection",
+        "created": "2024-01-01",
+        "last_updated": "2025-12-27",
+        "update_frequency": "Real-time (1-hour intervals)",
+        "data_source": "yfinance",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/database/repository.py",
+            "backend/data/collectors/stock_price_collector.py",
+            "backend/api/data_backfill_router.py"
+        ],
+        "notes": "TimescaleDB hypertable로 자동 파티셔닝됨. time 컬럼은 date가 아닌 time 사용 필수"
+    }
+}

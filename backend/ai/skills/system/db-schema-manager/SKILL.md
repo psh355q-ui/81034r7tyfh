@@ -18,12 +18,69 @@ allowed-tools:
 
 **단일 진실의 소스(Single Source of Truth)**로 모든 DB 테이블 스키마를 관리합니다.
 
+> ⚠️ **통합 참조 문서**: 모든 DB 작업 표준은 [`database_standards.md`](../../../../../../.gemini/antigravity/brain/c360bcf5-0a4d-48b1-b58b-0e2ef4000b25/database_standards.md)를 참조하세요.
+> 
+> db-schema-manager는 스키마 정의 및 검증을 담당하고, database_standards.md는 전체 DB 사용 규칙을 정의합니다.
+
 ## 🎯 핵심 기능
 
 1. **스키마 정의**: 모든 테이블을 JSON으로 명확히 정의
 2. **데이터 검증**: 삽입 전 스키마 준수 확인
 3. **스키마 비교**: DB 실제 구조와 정의 비교
 4. **마이그레이션**: SQL 마이그레이션 자동 생성
+
+## 📚 관리 중인 테이블 (5개)
+
+| 테이블 | 카테고리 | Repository | 용도 |
+|--------|----------|-----------|------|
+| stock_prices | 시계열 | StockRepository | 주가 OHLCV 데이터 |
+| news_articles | 콘텐츠 | NewsRepository | 뉴스 기사 |
+| trading_signals | 트레이딩 | SignalRepository | AI 매매 시그널 |
+| data_collection_progress | 추적 | DataCollectionRepository | 백필 작업 추적 |
+| dividend_aristocrats | 배당 | DividendRepository | 배당 귀족주 |
+
+---
+
+## 🤖 AI 개발 도구 통합
+
+### 코드 작성 시 자동 검증
+
+**VSCode / Antigravity / Claude**: DB 관련 코드를 작성하거나 검토할 때:
+
+1. **새 테이블 추가 시**:
+   ```bash
+   # 1단계: 스키마 먼저 작성
+   cat schemas/{table_name}.json
+   
+   # 2단계: 검증
+   python scripts/validate_schema.py {table_name}
+   
+   # 3단계: SQL 생성
+   python scripts/generate_migration.py {table_name}
+   ```
+
+2. **데이터 저장 전 검증**:
+   ```bash
+   python scripts/validate_data.py {table_name} '{...json_data...}'
+   ```
+
+3. **스키마 동기화 확인**:
+   ```bash
+   python scripts/compare_to_db.py {table_name}
+   ```
+
+### 필수 확인사항
+
+✅ **코드 작성 전**:
+- schemas/{table}.json 파일 존재 여부
+- database_standards.md의 네이밍 규칙 준수
+- **Repository 패턴 사용 여부** (`backend.database.repository` 확인)
+
+❌ **절대 금지 (Zero Tolerance)**:
+- **직접 SQL 작성 금지**: `SELECT`, `INSERT` 등 raw SQL 사용 적발 시 즉시 거부
+- **Legacy Driver 사용 금지**: `psycopg2.connect()` / `asyncpg.connect()` 직접 호출 시 즉시 거부
+- **스키마 우회 금지**: `models.py`에 정의되지 않은 컬럼 사용 금지
+- **Repository 우회 금지**: `session` 객체를 직접 생성하여 사용하는 행위 금지 (`get_sync_session` 또는 Repository 활용)
 
 ---
 

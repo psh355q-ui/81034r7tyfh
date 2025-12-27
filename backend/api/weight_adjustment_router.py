@@ -134,8 +134,6 @@ async def recalculate_weights(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/history")
-@log_endpoint("weights", "system")
 async def get_weight_history(
     agent: Optional[str] = Query(None, description="Filter by agent name"),
     days: int = Query(30, ge=1, le=365, description="Number of days")
@@ -152,47 +150,41 @@ async def get_weight_history(
     """
     try:
         from datetime import timedelta
-        import asyncpg
+        from backend.database.connection import get_db_session
+        from sqlalchemy import text
         
-        db_config = {
-            'host': os.getenv('DB_HOST', 'localhost'),
-            'port': int(os.getenv('DB_PORT', 5432)),
-            'database': os.getenv('DB_NAME', 'trading_db'),
-            'user': os.getenv('DB_USER', 'postgres'),
-            'password': os.getenv('DB_PASSWORD', 'password')
-        }
-        
-        conn = await asyncpg.connect(**db_config)
-        
-        try:
+        async with get_db_session() as session:
             cutoff_date = datetime.now() - timedelta(days=days)
             
-            query = """
+            query = text("""
                 SELECT agent_name, weights, created_at
                 FROM agent_weights_history
-                WHERE created_at >= $1
-            """
-            params = [cutoff_date]
+                WHERE created_at >= :cutoff_date
+            """)
+            params = {'cutoff_date': cutoff_date}
             
             if agent:
-                query += " AND agent_name = $2"
-                params.append(agent)
+                query = text("""
+                    SELECT agent_name, weights, created_at
+                    FROM agent_weights_history
+                    WHERE created_at >= :cutoff_date
+                    AND agent_name = :agent_name
+                """)
+                params = {'cutoff_date': cutoff_date, 'agent_name': agent}
             
-            query += " ORDER BY created_at DESC"
+            query = text(str(query) + " ORDER BY created_at DESC")
             
-            rows = await conn.fetch(query, *params)
+            result = await session.execute(query, params)
+            rows = result.fetchall()
             
             return [
                 {
-                    'agent_name': row['agent_name'],
-                    'weights': row['weights'],
-                    'created_at': row['created_at'].isoformat()
+                    'agent_name': row.agent_name,
+                    'weights': row.weights,
+                    'created_at': row.created_at.isoformat()
                 }
                 for row in rows
             ]
-        
-        finally:
-            await conn.close()
     
     except Exception as e:
         logger.error(f"Failed to get weight history: {e}")

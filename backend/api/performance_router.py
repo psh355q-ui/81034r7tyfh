@@ -302,7 +302,7 @@ async def get_performance_history(
 @router.get("/top-sessions", response_model=List[SessionPerformance])
 @log_endpoint("performance", "system")
 async def get_top_sessions(
-    order: str = Query("best", regex="^(best|worst)$", description="Sort order (best or worst)"),
+    order: str = Query("best", pattern="^(best|worst)$", description="Sort order (best or worst)"),
     limit: int = Query(10, ge=1, le=50, description="Number of sessions to return")
 ):
     """

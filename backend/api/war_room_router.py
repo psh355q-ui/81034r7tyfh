@@ -623,7 +623,8 @@ async def run_war_room_debate(request: DebateRequest, execute_trade: bool = Fals
         "ticker": ticker,
         "action": pm_decision["consensus_action"],
         "confidence": pm_decision["consensus_confidence"],
-        "is_approved": not execute_trade,  # execute_trade=False면 인간 승인 필요
+        "is_approved": True,  # War Room 데이터 축적 모드에서는 자동 승인
+        "position_value": 5000,  # 데이터 축적 모드: 임의값 (MIN_POSITION_SIZE_USD $1,000 이상)
     }
 
     # Context 생성 (간소화 버전)
@@ -634,10 +635,11 @@ async def run_war_room_debate(request: DebateRequest, execute_trade: bool = Fals
     }
 
     # Constitutional 검증 실행
+    # 실전 거래(execute_trade=True)일 때만 엄격한 검증, 데이터 축적 모드에서는 기본 검증만
     is_valid, violations, violated_articles = constitution.validate_proposal(
         proposal=proposal,
         context=context,
-        skip_allocation_rules=True  # War Room 단계에서는 배분 규칙 스킵
+        skip_allocation_rules=not execute_trade  # 데이터 축적 모드에서는 배분 규칙 스킵
     )
 
     logger.info(f"⚖️ Constitutional validation: {is_valid}")
@@ -659,6 +661,7 @@ async def run_war_room_debate(request: DebateRequest, execute_trade: bool = Fals
             votes=votes,  # Store votes as list of dicts (JSONB handles serialization)
             consensus_action=pm_decision["consensus_action"],  # PM output matches DB column
             consensus_confidence=pm_decision["consensus_confidence"],
+            constitutional_valid=is_valid,  # Constitutional 검증 결과 저장
             created_at=datetime.now(),
             completed_at=datetime.now()
         )

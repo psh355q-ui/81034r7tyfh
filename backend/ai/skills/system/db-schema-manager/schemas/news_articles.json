@@ -1,0 +1,179 @@
+{
+    "table_name": "news_articles",
+    "description": "RSS 크롤링된 뉴스 기사",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "title",
+            "type": "VARCHAR(500)",
+            "nullable": false,
+            "description": "기사 제목"
+        },
+        {
+            "name": "content",
+            "type": "TEXT",
+            "nullable": false,
+            "description": "기사 본문"
+        },
+        {
+            "name": "url",
+            "type": "VARCHAR(1000)",
+            "nullable": false,
+            "unique": true,
+            "description": "기사 원문 URL"
+        },
+        {
+            "name": "source",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "description": "뉴스 출처",
+            "example": "TechCrunch"
+        },
+        {
+            "name": "published_date",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "description": "기사 발행 시각"
+        },
+        {
+            "name": "crawled_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "크롤링 시각"
+        },
+        {
+            "name": "content_hash",
+            "type": "VARCHAR(64)",
+            "nullable": false,
+            "unique": true,
+            "description": "중복 체크용 해시"
+        },
+        {
+            "name": "embedding",
+            "type": "FLOAT[]",
+            "nullable": true,
+            "description": "벡터 임베딩 (ARRAY)"
+        },
+        {
+            "name": "tags",
+            "type": "VARCHAR[]",
+            "nullable": true,
+            "description": "태그 배열"
+        },
+        {
+            "name": "tickers",
+            "type": "VARCHAR[]",
+            "nullable": true,
+            "description": "관련 종목 코드 배열"
+        },
+        {
+            "name": "sentiment_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "감성 점수"
+        },
+        {
+            "name": "sentiment_label",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "감성 라벨"
+        },
+        {
+            "name": "source_category",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "출처 카테고리"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "processed_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "NLP 처리 완료 시각"
+        },
+        {
+            "name": "embedding_model",
+            "type": "VARCHAR(100)",
+            "nullable": true,
+            "description": "사용된 임베딩 모델"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_news_published_date",
+            "columns": [
+                "published_date"
+            ],
+            "unique": false,
+            "description": "발행일 조회"
+        },
+        {
+            "name": "idx_news_source",
+            "columns": [
+                "source"
+            ],
+            "unique": false,
+            "description": "출처별 조회"
+        },
+        {
+            "name": "idx_news_crawled_at",
+            "columns": [
+                "crawled_at"
+            ],
+            "unique": false,
+            "description": "크롤링 시각 조회"
+        },
+        {
+            "name": "idx_news_tickers",
+            "columns": [
+                "tickers"
+            ],
+            "type": "GIN",
+            "description": "티커 배열 검색"
+        },
+        {
+            "name": "idx_news_tags",
+            "columns": [
+                "tags"
+            ],
+            "type": "GIN",
+            "description": "태그 배열 검색"
+        },
+        {
+            "name": "idx_news_content_hash",
+            "columns": [
+                "content_hash"
+            ],
+            "unique": true,
+            "description": "중복 체크"
+        }
+    ],
+    "metadata": {
+        "category": "content",
+        "repository": "NewsRepository",
+        "module": "News Collection & Analysis",
+        "created": "2024-01-01",
+        "last_updated": "2025-12-27",
+        "update_frequency": "Real-time (continuous)",
+        "data_source": "RSS, NewsAPI",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/database/repository.py",
+            "backend/news/enhanced_news_crawler.py"
+        ],
+        "notes": "실제 DB 구조 기준. embedding은 ARRAY(Float) 사용"
+    }
+}

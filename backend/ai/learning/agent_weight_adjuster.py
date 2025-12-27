@@ -1,8 +1,8 @@
 """
 Agent Weight Adjuster - 에이전트 성과 기반 가중치 자동 조정
 
-Phase 25.4: Self-Learning Feedback Loop
-Date: 2025-12-25
+Phase 25.4: Self-Learning Feedback Loop (Repository Pattern)
+Date: 2025-12-27 (Updated)
 
 Features:
 - 에이전트 성과 데이터 기반 가중치 계산
@@ -14,8 +14,10 @@ Features:
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-import asyncpg
-import os
+from sqlalchemy import text
+
+# Repository pattern
+from backend.database.repository import get_sync_session
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 class AgentWeightAdjuster:
-    """에이전트 성과 기반 가중치 자동 조정"""
+    """에이전트 성과 기반 가중치 자동 조정 (Repository Pattern)"""
     
     # 기본 에이전트 가중치 (War Room)
     DEFAULT_WEIGHTS = {
@@ -50,19 +52,11 @@ class AgentWeightAdjuster:
     MAX_WEIGHT_CHANGE = 0.30  # 30%
     
     def __init__(self):
-        self.db_config = {
-            'host': os.getenv('DB_HOST', 'localhost'),
-            'port': int(os.getenv('DB_PORT', 5432)),
-            'database': os.getenv('DB_NAME', 'trading_db'),
-            'user': os.getenv('DB_USER', 'postgres'),
-            'password': os.getenv('DB_PASSWORD', 'password')
-        }
+        """Note: DB 연결은 SQLAlchemy session을 통해 자동 관리됨"""
+        pass
     
-    async def get_db_connection(self) -> asyncpg.Connection:
-        """데이터베이스 연결"""
-        return await asyncpg.connect(**self.db_config)
     
-    async def get_agent_performance(
+    def get_agent_performance(
         self,
         agent_name: str,
         lookback_days: int = 30
@@ -85,71 +79,74 @@ class AgentWeightAdjuster:
                 'best_action_accuracy': float
             }
         """
-        conn = await self.get_db_connection()
+        session = get_sync_session()
         
         try:
             cutoff_date = datetime.now() - timedelta(days=lookback_days)
             
             # 전체 성과
-            query = """
+            query = text("""
                 SELECT 
                     COUNT(*) as total_votes,
                     SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct_votes,
                     AVG(return_pct) as avg_return,
                     AVG(vote_confidence) as avg_confidence
                 FROM agent_vote_tracking
-                WHERE agent_name = $1
+                WHERE agent_name = :agent_name
                   AND status = 'COMPLETED'
-                  AND initial_timestamp >= $2
-            """
+                  AND initial_timestamp >= :cutoff_date
+            """)
             
-            row = await conn.fetchrow(query, agent_name, cutoff_date)
+            result = session.execute(query, {'agent_name': agent_name, 'cutoff_date': cutoff_date})
+            row = result.fetchone()
             
-            if not row or row['total_votes'] == 0:
+            if not row or row.total_votes == 0:
                 return None
             
-            total = int(row['total_votes'])
-            correct = int(row['correct_votes'] or 0)
+            total = int(row.total_votes)
+            correct = int(row.correct_votes or 0)
             accuracy = correct / total if total > 0 else 0.0
             
             # 액션별 성과 (최고 액션 찾기)
-            action_query = """
+            action_query = text("""
                 SELECT 
                     vote_action,
                     COUNT(*) as total,
                     SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct
                 FROM agent_vote_tracking
-                WHERE agent_name = $1
+                WHERE agent_name = :agent_name
                   AND status = 'COMPLETED'
-                  AND initial_timestamp >= $2
+                  AND initial_timestamp >= :cutoff_date
                 GROUP BY vote_action
                 ORDER BY correct DESC
                 LIMIT 1
-            """
+            """)
             
-            action_row = await conn.fetchrow(action_query, agent_name, cutoff_date)
+            action_result = session.execute(action_query, {'agent_name': agent_name, 'cutoff_date': cutoff_date})
+            action_row = action_result.fetchone()
             
             best_action = None
             best_action_accuracy = 0.0
             
             if action_row:
-                best_action = action_row['vote_action']
-                action_total = int(action_row['total'])
-                action_correct = int(action_row['correct'] or 0)
+                best_action = action_row.vote_action
+                action_total = int(action_row.total)
+                action_correct = int(action_row.correct or 0)
                 best_action_accuracy = action_correct / action_total if action_total > 0 else 0.0
             
             return {
                 'total_votes': total,
                 'correct_votes': correct,
                 'accuracy': accuracy,
-                'avg_return': float(row['avg_return'] or 0.0),
-                'avg_confidence': float(row['avg_confidence'] or 0.0),
+                'avg_return': float(row.avg_return or 0.0),
+                'avg_confidence': float(row.avg_confidence or 0.0),
                 'best_action': best_action,
                 'best_action_accuracy': best_action_accuracy
             }
         
         finally:
-            await conn.close()
+            session.close()
+    
     
     def calculate_weight_from_accuracy(self, accuracy: float) -> float:
         """
@@ -169,7 +166,7 @@ class AgentWeightAdjuster:
         # 최저 등급 (poor)
         return self.WEIGHT_RULES['poor']['multiplier']
     
-    async def calculate_agent_weight(
+    def calculate_agent_weight(
         self,
         agent_name: str,
         lookback_days: int = 30
@@ -185,7 +182,7 @@ class AgentWeightAdjuster:
             (new_weight, reason)
         """
         # 1. 성과 데이터 조회
-        performance = await self.get_agent_performance(agent_name, lookback_days)
+        performance = self.get_agent_performance(agent_name, lookback_days)
         
         if performance is None or performance['total_votes'] < 10:
             # 샘플 부족 → 기본 가중치 유지
@@ -207,7 +204,8 @@ class AgentWeightAdjuster:
         
         return new_weight, reason
     
-    async def recalculate_all_weights(
+    
+    def recalculate_all_weights(
         self,
         lookback_days: int = 30,
         save_to_db: bool = True
@@ -232,11 +230,11 @@ class AgentWeightAdjuster:
         results = {}
         
         # 기존 가중치 조회 (DB 또는 기본값)
-        old_weights = await self.get_current_weights()
+        old_weights = self.get_current_weights()
         
         for agent_name in self.DEFAULT_WEIGHTS.keys():
             old_weight = old_weights.get(agent_name, self.DEFAULT_WEIGHTS[agent_name])
-            new_weight, reason = await self.calculate_agent_weight(agent_name, lookback_days)
+            new_weight, reason = self.calculate_agent_weight(agent_name, lookback_days)
             
             # 점진적 업데이트 (최대 변화 제한)
             weight_change = new_weight - old_weight
@@ -263,33 +261,34 @@ class AgentWeightAdjuster:
         
         # DB 저장
         if save_to_db:
-            await self.save_weights_to_db(results)
+            self.save_weights_to_db(results)
         
         return results
     
-    async def get_current_weights(self) -> Dict[str, float]:
+    def get_current_weights(self) -> Dict[str, float]:
         """
         현재 에이전트 가중치 조회 (DB 또는 기본값)
         
         Returns:
             {'agent_name': weight}
         """
-        conn = await self.get_db_connection()
+        session = get_sync_session()
         
         try:
             # 가장 최근 가중치 조회
-            query = """
+            query = text("""
                 SELECT DISTINCT ON (agent_name)
                     agent_name,
                     weights->>'new_weight' as weight
                 FROM agent_weights_history
                 ORDER BY agent_name, created_at DESC
-            """
+            """)
             
-            rows = await conn.fetch(query)
+            result = session.execute(query)
+            rows = result.fetchall()
             
             if rows:
-                return {row['agent_name']: float(row['weight']) for row in rows}
+                return {row.agent_name: float(row.weight) for row in rows}
             else:
                 # DB에 없으면 기본값 반환
                 return self.DEFAULT_WEIGHTS.copy()
@@ -300,20 +299,20 @@ class AgentWeightAdjuster:
             return self.DEFAULT_WEIGHTS.copy()
         
         finally:
-            await conn.close()
+            session.close()
     
-    async def save_weights_to_db(self, results: Dict[str, Dict]):
+    def save_weights_to_db(self, results: Dict[str, Dict]):
         """
         가중치 변경 이력 저장
         
         Table: agent_weights_history
         Columns: agent_name, date, weights (JSONB), created_at
         """
-        conn = await self.get_db_connection()
+        session = get_sync_session()
         
         try:
             # 테이블 존재 확인 및 생성
-            create_table_query = """
+            create_table_query = text("""
                 CREATE TABLE IF NOT EXISTS agent_weights_history (
                     id SERIAL PRIMARY KEY,
                     agent_name VARCHAR(50) NOT NULL,
@@ -324,24 +323,31 @@ class AgentWeightAdjuster:
                 
                 CREATE INDEX IF NOT EXISTS idx_weights_agent_date 
                 ON agent_weights_history(agent_name, date DESC);
-            """
-            await conn.execute(create_table_query)
+            """)
+            session.execute(create_table_query)
+            session.commit()
             
             # 각 에이전트 가중치 저장
             for agent_name, data in results.items():
-                insert_query = """
+                insert_query = text("""
                     INSERT INTO agent_weights_history (agent_name, weights)
-                    VALUES ($1, $2)
-                """
-                await conn.execute(insert_query, agent_name, data)
+                    VALUES (:agent_name, :weights)
+                """)
+                # JSONB 변환을 위해 json.dumps가 필요할 수 있으나, SQLAlchemy가 처리해줄 수도 있음. 
+                # 하지만 data가 dict이므로 JSON 파라미터로 넘기면 됨.
+                # asyncpg에서는 바로 dict를 넘겼음. SQLAlchemy + psycopg2에서는 json.dumps가 더 안전할 수 있음.
+                import json
+                session.execute(insert_query, {'agent_name': agent_name, 'weights': json.dumps(data)})
             
+            session.commit()
             logger.info(f"✅ Saved {len(results)} agent weight updates to DB")
         
         except Exception as e:
+            session.rollback()
             logger.error(f"Failed to save weights to DB: {e}")
         
         finally:
-            await conn.close()
+            session.close()
     
     def detect_overconfidence(
         self,
@@ -404,7 +410,7 @@ class AgentWeightAdjuster:
 # CLI 실행
 # ============================================================================
 
-async def main():
+def main():
     """가중치 재계산 실행"""
     adjuster = AgentWeightAdjuster()
     
@@ -412,7 +418,7 @@ async def main():
     logger.info(f"Lookback period: 30 days")
     logger.info("")
     
-    results = await adjuster.recalculate_all_weights(lookback_days=30, save_to_db=True)
+    results = adjuster.recalculate_all_weights(lookback_days=30, save_to_db=True)
     
     logger.info("")
     logger.info("========== Summary ==========")
@@ -425,5 +431,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()

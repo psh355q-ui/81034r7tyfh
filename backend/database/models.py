@@ -52,7 +52,7 @@ models.py - SQLAlchemy 데이터베이스 모델
 Database: TimescaleDB (PostgreSQL with time-series extensions)
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Index, BigInteger, Numeric
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, Boolean, ForeignKey, Index, BigInteger, Numeric, UniqueConstraint, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -75,6 +75,8 @@ class NewsArticle(Base):
     published_date = Column(DateTime, nullable=False)
     crawled_at = Column(DateTime, nullable=False, default=datetime.now)
     content_hash = Column(String(64), nullable=False, unique=True, index=True)
+    author = Column(String(200), nullable=True)
+    summary = Column(Text, nullable=True)
 
     # NLP & Embedding Fields (Added in Phase 17)
     embedding = Column(ARRAY(Float), nullable=True)  # Fallback: ARRAY(Float)
@@ -137,6 +139,7 @@ class TradingSignal(Base):
     __tablename__ = 'trading_signals'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    analysis_id = Column(Integer, ForeignKey('analysis_results.id'), nullable=True)
     ticker = Column(String(20), nullable=False, index=True)
     action = Column(String(10), nullable=False)
     signal_type = Column(String(20), nullable=False, index=True)
@@ -274,7 +277,9 @@ class AIDebateSession(Base):
     debate_transcript = Column(JSONB, nullable=True)  # Full debate transcript with reasoning
     consensus_action = Column(String(10), nullable=True)  # BUY/SELL/HOLD
     consensus_confidence = Column(Float, nullable=True)
-    
+    constitutional_valid = Column(Boolean, nullable=True)  # Constitutional 검증 결과
+    signal_id = Column(Integer, nullable=True)  # Trading signal ID
+
     # Metadata
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     completed_at = Column(DateTime, nullable=True)
@@ -335,7 +340,7 @@ class StockPrice(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     ticker = Column(String(20), nullable=False, index=True)
-    date = Column(DateTime, nullable=False, index=True)
+    time = Column(DateTime, nullable=False, index=True)
     open = Column(Float, nullable=False)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
@@ -346,12 +351,12 @@ class StockPrice(Base):
     # Indexes
     __table_args__ = (
         Index('idx_stock_price_ticker', 'ticker'),
-        Index('idx_stock_price_date', 'date'),
-        Index('idx_stock_price_ticker_date', 'ticker', 'date'),
+        Index('idx_stock_price_time', 'time'),
+        Index('idx_stock_price_ticker_time', 'ticker', 'time'),
     )
 
     def __repr__(self):
-        return f"<StockPrice(ticker='{self.ticker}', date={self.date}, close={self.close})>"
+        return f"<StockPrice(ticker='{self.ticker}', time={self.time}, close={self.close})>"
 
 
 class DataCollectionProgress(Base):
@@ -359,18 +364,30 @@ class DataCollectionProgress(Base):
     __tablename__ = 'data_collection_progress'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    task_name = Column(String(100), nullable=False, unique=True, index=True)
+    task_name = Column(String(100), nullable=True, index=True)  # Changed to nullable since we may use different identifiers
+    source = Column(String(50), nullable=False, index=True)  # 데이터 소스 (multi_source, yfinance, etc.)
+    collection_type = Column(String(50), nullable=False, index=True)  # 수집 타입 (news, prices, etc.)
     status = Column(String(20), nullable=False, default='pending')
     progress_pct = Column(Float, nullable=False, default=0.0)
     items_processed = Column(Integer, nullable=False, default=0)
     items_total = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    start_date = Column(DateTime, nullable=True)  # 수집 시작 날짜
+    end_date = Column(DateTime, nullable=True)  # 수집 종료 날짜
+    job_metadata = Column(JSONB, nullable=True)  # 작업 메타데이터
+    started_at = Column(DateTime, nullable=True)  # 작업 시작 시간
+    completed_at = Column(DateTime, nullable=True)  # 작업 완료 시간
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
+    # Indexes
+    __table_args__ = (
+        Index('idx_data_collection_source', 'source'),
+        Index('idx_data_collection_type', 'collection_type'),
+        Index('idx_data_collection_status', 'status'),
+    )
+
     def __repr__(self):
-        return f"<DataCollectionProgress(task='{self.task_name}', status='{self.status}', progress={self.progress_pct}%)>"
+        return f"<DataCollectionProgress(source='{self.source}', type='{self.collection_type}', status='{self.status}', progress={self.progress_pct}%)>"
 
 
 class NewsSource(Base):
@@ -419,6 +436,31 @@ class Order(Base):
 
     def __repr__(self):
         return f"<Order(id={self.id}, ticker='{self.ticker}', action='{self.action}', quantity={self.quantity}, status='{self.status}')>"
+
+
+class DividendHistory(Base):
+    """배당 이력 데이터"""
+    __tablename__ = 'dividend_history'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(20), nullable=False, index=True)
+    ex_dividend_date = Column(Date, nullable=False, index=True)
+    payment_date = Column(Date, nullable=True)
+    amount = Column(Numeric(10, 4), nullable=False)
+    frequency = Column(String(20), nullable=True)  # Monthly, Quarterly, Annual
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    
+    # Indexes
+    __table_args__ = (
+        Index('ix_dividend_history_ticker', 'ticker'),
+        Index('ix_dividend_history_ex_dividend_date', 'ex_dividend_date'),
+        # Unique constraint for ticker + ex_dividend_date
+        {'extend_existing': True}
+    )
+    
+    def __repr__(self):
+        return f"<DividendHistory(ticker='{self.ticker}', ex_date={self.ex_dividend_date}, amount={self.amount})>"
 
 
 class DividendAristocrat(Base):
@@ -471,3 +513,173 @@ class DividendAristocrat(Base):
     
     def __repr__(self):
         return f"<DividendAristocrat(ticker={self.ticker}, company={self.company_name}, years={self.consecutive_years})>"
+
+
+class PriceTracking(Base):
+    """가격 추적 및 성과 평가 (24h)"""
+    __tablename__ = 'price_tracking'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(100), nullable=True)
+    ticker = Column(String(20), nullable=False, index=True)
+    initial_price = Column(Float, nullable=False)
+    initial_timestamp = Column(DateTime, nullable=False, default=datetime.now)
+    consensus_action = Column(String(10), nullable=False)
+    consensus_confidence = Column(Float, nullable=False)
+    
+    # Evaluation Results
+    final_price = Column(Float, nullable=True)
+    final_timestamp = Column(DateTime, nullable=True)
+    price_change = Column(Float, nullable=True)
+    return_pct = Column(Float, nullable=True)
+    is_correct = Column(Boolean, nullable=True)
+    performance_score = Column(Float, nullable=True)
+    status = Column(String(20), nullable=False, default='PENDING', index=True)
+    evaluated_at = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_price_tracking_status_time', 'status', 'initial_timestamp'),
+    )
+
+
+class AgentVoteTracking(Base):
+    """에이전트별 투표 성과 추적"""
+    __tablename__ = 'agent_vote_tracking'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(100), nullable=True)
+    agent_name = Column(String(50), nullable=False, index=True)
+    vote_action = Column(String(10), nullable=False)
+    vote_confidence = Column(Float, nullable=False)
+    ticker = Column(String(20), nullable=False, index=True)
+    initial_price = Column(Float, nullable=False)
+    initial_timestamp = Column(DateTime, nullable=False, default=datetime.now)
+    
+    # Evaluation Results
+    final_price = Column(Float, nullable=True)
+    final_timestamp = Column(DateTime, nullable=True)
+    price_change = Column(Float, nullable=True)
+    return_pct = Column(Float, nullable=True)
+    is_correct = Column(Boolean, nullable=True)
+    performance_score = Column(Float, nullable=True)
+    status = Column(String(20), nullable=False, default='PENDING', index=True)
+    evaluated_at = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_agent_vote_status_time', 'status', 'initial_timestamp'),
+        Index('idx_agent_vote_name', 'agent_name'),
+    )
+
+
+class NewsAnalysis(Base):
+    """AI 분석 결과"""
+    __tablename__ = "news_analysis"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    article_id = Column(Integer, ForeignKey("news_articles.id"), unique=True)
+    
+    # Sentiment
+    sentiment_overall = Column(String(32))  # positive | negative | neutral | mixed
+    sentiment_score = Column(Float)  # -1.0 ~ 1.0
+    sentiment_confidence = Column(Float)  # 0.0 ~ 1.0
+    
+    # Tone Analysis
+    tone_objective_score = Column(Float)  # 0.0 (객관) ~ 1.0 (주관)
+    urgency = Column(String(32))  # low | medium | high | critical
+    sensationalism = Column(Float)  # 0.0 ~ 1.0
+    
+    # Market Impact
+    market_impact_short = Column(String(32))  # bullish | bearish | neutral | uncertain
+    market_impact_long = Column(String(32))
+    impact_magnitude = Column(Float)  # 0.0 ~ 1.0
+    affected_sectors = Column(JSONB)  # List[str]
+    
+    # Key Findings
+    key_facts = Column(JSONB)  # List[str]
+    key_opinions = Column(JSONB)  # List[str]
+    key_implications = Column(JSONB)  # List[str]
+    key_warnings = Column(JSONB)  # List[str]
+    
+    # Indirect Expressions
+    indirect_expressions = Column(JSONB)  # List[dict]
+    red_flags = Column(JSONB)  # List[str]
+    
+    # Trading Relevance
+    trading_actionable = Column(Boolean, default=False)
+    risk_category = Column(String(64))  # legal | regulatory | operational | financial | strategic | none
+    recommendation = Column(Text)
+    
+    # Credibility
+    source_reliability = Column(Float)  # 0.0 ~ 1.0
+    data_backed = Column(Boolean)
+    multiple_sources_cited = Column(Boolean)
+    potential_bias = Column(String(256))
+    
+    # Model Info
+    model_used = Column(String(64))
+    tokens_used = Column(Integer)
+    analysis_cost = Column(Float, default=0.0)
+    analyzed_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    article = relationship("NewsArticle", back_populates="analysis")
+    
+    __table_args__ = (
+        Index('idx_sentiment_overall', 'sentiment_overall'),
+        Index('idx_trading_actionable', 'trading_actionable'),
+        Index('idx_risk_category', 'risk_category'),
+    )
+
+
+class NewsTickerRelevance(Base):
+    """뉴스-티커 연관성"""
+    __tablename__ = "news_ticker_relevance"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    article_id = Column(Integer, ForeignKey("news_articles.id"))
+    ticker = Column(String(16), nullable=False, index=True)
+    
+    relevance_score = Column(Float)  # 0.0 ~ 1.0
+    sentiment_for_ticker = Column(Float)  # -1.0 ~ 1.0
+    mention_count = Column(Integer, default=1)
+    
+    # Relationship
+    article = relationship("NewsArticle", back_populates="ticker_relevances")
+    
+    __table_args__ = (
+        Index('idx_ticker', 'ticker'),
+        Index('idx_relevance', 'relevance_score'),
+    )
+
+
+class Relationship(Base):
+    """지식 그래프 관계 (Triplets)"""
+    __tablename__ = "relationships"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String, nullable=False, index=True)
+    relation = Column(String, nullable=False, index=True)
+    object = Column(String, nullable=False, index=True)
+    
+    evidence_text = Column(Text)
+    source = Column(String)
+    date = Column(Date, default=datetime.utcnow)
+    
+    # pgvector embedding (1536 dim for OpenAI text-embedding-3-small)
+    embedding = Column(Vector(1536))
+    
+    confidence = Column(Float, default=0.8)
+    verified_at = Column(DateTime)
+    is_active = Column(Boolean, default=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('subject', 'relation', 'object', name='uq_subject_relation_object'),
+        Index('idx_rel_active', 'is_active'),
+    )

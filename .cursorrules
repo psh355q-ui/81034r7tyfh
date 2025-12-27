@@ -1,46 +1,26 @@
-# Cursor AI Rules for AI Trading System
+# Project Rules & Coding Standards
 
-## 필수 컨텍스트 파일
+## 🚨 Critical Database Rules (Zero Tolerance)
+1. **Single Source of Truth**: `backend/database/models.py` is the absolute definition of the database schema. All changes must start here.
+2. **Repository Pattern Only**:
+   - **NEVER** write raw SQL (`SELECT`, `INSERT`, etc.) in application code.
+   - **NEVER** use `psycopg2.connect()` or `asyncpg.connect()` directly.
+   - **ALWAYS** use `backend.database.repository` classes (e.g., `NewsRepository`, `StockRepository`).
+   - Use `get_sync_session()` for synchronous DB operations.
+3. **Legacy Patterns Prohibited**:
+   - Do not import `backend.data.news_models` (Deleted/Legacy).
+   - Do not use SQLite for any news or trading features (PostgreSQL only).
 
-Cursor가 자동으로 로드할 파일들:
+## 📂 File Structure Standards
+- `backend/database/models.py`: All SQLAlchemy ORM models.
+- `backend/database/repository.py`: All database interaction logic.
+- `backend/database/migrations/`: One-off scripts and Alembic revisions.
 
-1. `.agent/README.md` - 프로젝트 개요
-2. `.agent/coding_standards.md` - 코딩 표준 (Python + TSX)
-3. `docs/PHASE_MASTER_INDEX.md` - Phase 전체 개overview
-
-## 코딩 표준
-
-### Python 파일
-- 모든 Python 파일은 `.agent/coding_standards.md`의 템플릿을 따를 것
-- 데이터 소스 명시 (📊 Data Sources)
-- 외부 의존성 나열 (🔗 External Dependencies)
-- 사용 관계 표시 (🔄 Called By / Used By)
-
-### TypeScript/React (TSX) 파일
-- TSX 컴포넌트는 `.agent/coding_standards.md`의 TSX 템플릿을 따를 것
-- API 엔드포인트 명시
-- Props 타입 문서화
-- 컴포넌트 사용 관계 표시
-
-## 워크플로우
-
-사용 가능한 워크플로우:
-- `/add-docstrings` - Python 파일에 표준 주석 추가
-- `/add-tsx-docs` - TSX 파일에 표준 주석 추가
-
-## 주요 디렉토리
-
-- `backend/`: Python FastAPI 백엔드
-- `frontend/src/`: React TypeScript 프론트엔드
-  - `pages/`: 페이지 컴포넌트
-  - `components/`: 재사용 컴포넌트
-- `docs/`: 문서
-
-## 데이터 소스
-
-- KIS API: 한국투자증권 실거래
-- Yahoo Finance: 배당/섹터 정보
-- PostgreSQL + TimescaleDB: 시계열 데이터
-- Redis: 캐싱
-
-**마지막 업데이트**: 2025-12-25 (TSX 문서화 추가)
+## 🤖 AI Agent Behavior (Antigravity/Claude)
+- When asked to add a feature involving DB:
+  1. Check `models.py` for existing tables.
+  2. If a new table/column is needed, propose a `models.py` update first.
+  3. Implement logic using extending `repository.py`.
+- When asked to fix a DB error:
+  1. Check if the error is due to direct SQL usage.
+  2. If so, refactor to use the Repository pattern immediately.

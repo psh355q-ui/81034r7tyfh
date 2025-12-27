@@ -10,17 +10,19 @@ Features:
 - 수익률 계산
 - 에이전트 성과 평가
 - 상태 업데이트 (PENDING → COMPLETED)
+- Repository Pattern 적용 (SQLAlchemy)
 
 Usage:
     python backend/automation/price_tracking_scheduler.py
 """
 
 import asyncio
-import psycopg2
 import os
 import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+
+from backend.database.repository import get_sync_session, TrackingRepository
 
 load_dotenv()
 
@@ -57,21 +59,7 @@ def evaluate_performance(
     consensus_confidence: float
 ) -> tuple[bool, float]:
     """
-    Evaluate agent performance
-
-    Args:
-        consensus_action: BUY, SELL, HOLD
-        return_pct: Actual return percentage
-        consensus_confidence: Consensus confidence
-
-    Returns:
-        (is_correct, performance_score)
-
-    Logic:
-        - BUY: Correct if return_pct > 0
-        - SELL: Correct if return_pct < 0
-        - HOLD: Correct if abs(return_pct) < 2%
-        - performance_score = return_pct * consensus_confidence (weighted)
+    Evaluate agent performance (Same logic as before)
     """
     is_correct = False
 
@@ -92,22 +80,11 @@ def evaluate_performance(
 
 
 async def evaluate_pending_tracking():
-    """Evaluate PENDING price_tracking records (24h+ old)"""
+    """Evaluate PENDING price_tracking records (24h+ old) using Repository"""
 
     logger.info("=" * 80)
     logger.info("🔍 Price Tracking Evaluation - 24h Later")
     logger.info("=" * 80)
-
-    # DB connection
-    conn = psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "localhost"),
-        port=os.getenv("POSTGRES_PORT", "5432"),
-        database=os.getenv("POSTGRES_DB", "ai_trading"),
-        user=os.getenv("POSTGRES_USER", "postgres"),
-        password=os.getenv("POSTGRES_PASSWORD")
-    )
-
-    cursor = conn.cursor()
 
     # Get KIS Broker
     broker = get_kis_broker()
@@ -115,22 +92,12 @@ async def evaluate_pending_tracking():
         logger.error("KIS Broker not available - aborting")
         return
 
-    try:
+    with get_sync_session() as session:
+        repo = TrackingRepository(session)
+        
         # Find PENDING records older than 24 hours
-        cutoff_time = datetime.now() - timedelta(hours=24)
-
-        cursor.execute("""
-            SELECT
-                id, session_id, ticker, initial_price, initial_timestamp,
-                consensus_action, consensus_confidence
-            FROM price_tracking
-            WHERE status = 'PENDING'
-            AND initial_timestamp <= %s
-            ORDER BY initial_timestamp ASC
-        """, (cutoff_time,))
-
-        pending_records = cursor.fetchall()
-
+        pending_records = repo.get_pending_price_tracking(hours_old=24)
+        
         logger.info(f"\n📊 Found {len(pending_records)} PENDING records to evaluate\n")
 
         if not pending_records:
@@ -141,70 +108,45 @@ async def evaluate_pending_tracking():
         failed_count = 0
 
         for record in pending_records:
-            (tracking_id, session_id, ticker, initial_price, initial_timestamp,
-             consensus_action, consensus_confidence) = record
-
-            logger.info(f"┌─ Evaluating #{tracking_id} ─────────────────────")
-            logger.info(f"│ Session: #{session_id}")
-            logger.info(f"│ Ticker: {ticker}")
-            logger.info(f"│ Initial Price: ${initial_price}")
-            logger.info(f"│ Initial Time: {initial_timestamp}")
-            logger.info(f"│ Consensus: {consensus_action} ({consensus_confidence:.1%})")
+            logger.info(f"┌─ Evaluating #{record.id} ─────────────────────")
+            logger.info(f"│ Session: #{record.session_id}")
+            logger.info(f"│ Ticker: {record.ticker}")
+            logger.info(f"│ Initial Price: ${record.initial_price}")
+            logger.info(f"│ Initial Time: {record.initial_timestamp}")
+            logger.info(f"│ Consensus: {record.consensus_action} ({record.consensus_confidence:.1%})")
 
             try:
                 # Get current price from KIS
-                price_data = broker.get_price(ticker, exchange="NASDAQ")
+                price_data = broker.get_price(record.ticker, exchange="NASDAQ")
 
                 if not price_data:
-                    logger.warning(f"│ ⚠️  Failed to get current price for {ticker}")
-                    cursor.execute("""
-                        UPDATE price_tracking
-                        SET status = 'FAILED',
-                            notes = 'Failed to fetch final price',
-                            evaluated_at = NOW()
-                        WHERE id = %s
-                    """, (tracking_id,))
-                    conn.commit()
+                    logger.warning(f"│ ⚠️  Failed to get current price for {record.ticker}")
+                    repo.mark_failed(record, "Failed to fetch final price")
                     failed_count += 1
                     logger.info(f"└─────────────────────────────────────────\n")
                     continue
 
                 final_price = price_data["current_price"]
-                final_timestamp = datetime.now()
 
                 # Calculate returns
-                price_change = final_price - initial_price
-                return_pct = (price_change / initial_price) * 100
+                price_change = final_price - record.initial_price
+                return_pct = (price_change / record.initial_price) * 100
 
                 # Evaluate performance
                 is_correct, performance_score = evaluate_performance(
-                    consensus_action=consensus_action,
+                    consensus_action=record.consensus_action,
                     return_pct=return_pct,
-                    consensus_confidence=consensus_confidence
+                    consensus_confidence=record.consensus_confidence
                 )
 
-                # Update database
-                cursor.execute("""
-                    UPDATE price_tracking
-                    SET final_price = %s,
-                        final_timestamp = %s,
-                        price_change = %s,
-                        return_pct = %s,
-                        is_correct = %s,
-                        performance_score = %s,
-                        status = 'COMPLETED',
-                        evaluated_at = NOW()
-                    WHERE id = %s
-                """, (
-                    final_price,
-                    final_timestamp,
-                    price_change,
-                    return_pct,
-                    is_correct,
-                    performance_score,
-                    tracking_id
-                ))
-                conn.commit()
+                # Update database via Repository
+                repo.update_evaluation(record, {
+                    "final_price": final_price,
+                    "price_change": price_change,
+                    "return_pct": return_pct,
+                    "is_correct": is_correct,
+                    "performance_score": performance_score
+                })
 
                 # Log results
                 logger.info(f"│ ")
@@ -221,15 +163,8 @@ async def evaluate_pending_tracking():
                 evaluated_count += 1
 
             except Exception as e:
-                logger.error(f"│ ❌ Error evaluating #{tracking_id}: {e}")
-                cursor.execute("""
-                    UPDATE price_tracking
-                    SET status = 'FAILED',
-                        notes = %s,
-                        evaluated_at = NOW()
-                    WHERE id = %s
-                """, (str(e), tracking_id))
-                conn.commit()
+                logger.error(f"│ ❌ Error evaluating #{record.id}: {e}")
+                repo.mark_failed(record, str(e))
                 failed_count += 1
                 logger.info(f"└─────────────────────────────────────────\n")
 
@@ -242,46 +177,24 @@ async def evaluate_pending_tracking():
         logger.info(f"📊 Total: {len(pending_records)}")
         logger.info("=" * 80)
 
-    except Exception as e:
-        logger.error(f"❌ Error in evaluation: {e}", exc_info=True)
-        conn.rollback()
-
-    finally:
-        cursor.close()
-        conn.close()
-
 
 async def evaluate_agent_votes_tracking():
-    """
-    Evaluate PENDING agent vote tracking records (24h+ old)
-
-    Phase 25.3: Agent Performance Tracking
-    """
-    from backend.database.repository import get_database_url
-    import psycopg2
+    """Evaluate PENDING agent vote records (24h+ old) using Repository"""
 
     logger.info("=" * 80)
     logger.info("🔍 Agent Vote Tracking Evaluation - 24h Later")
     logger.info("=" * 80)
 
-    # Connect to database
-    db_url = get_database_url()
-    conn = psycopg2.connect(db_url)
-    cursor = conn.cursor()
+    # Get KIS Broker
+    broker = get_kis_broker()
+    if not broker:  # Reuse broker logic
+        logger.error("KIS Broker not available - skipping agent votes")
+        return
 
-    try:
-        # Find PENDING agent votes that are 24+ hours old
-        cursor.execute("""
-            SELECT
-                id, session_id, agent_name, vote_action, vote_confidence,
-                ticker, initial_price, initial_timestamp
-            FROM agent_vote_tracking
-            WHERE status = 'PENDING'
-                AND initial_timestamp <= NOW() - INTERVAL '24 hours'
-            ORDER BY initial_timestamp ASC
-        """)
-
-        pending_votes = cursor.fetchall()
+    with get_sync_session() as session:
+        repo = TrackingRepository(session)
+        
+        pending_votes = repo.get_pending_agent_votes(hours_old=24)
 
         if not pending_votes:
             logger.info("✅ No pending agent votes to evaluate")
@@ -293,78 +206,42 @@ async def evaluate_agent_votes_tracking():
         failed_count = 0
 
         for vote in pending_votes:
-            (
-                vote_id, session_id, agent_name, vote_action, vote_confidence,
-                ticker, initial_price, initial_timestamp
-            ) = vote
-
             try:
-                logger.info(f"┌─ Evaluating Agent Vote #{vote_id} ─────────────────────")
-                logger.info(f"│ Session: #{session_id}")
-                logger.info(f"│ Agent: {agent_name}")
-                logger.info(f"│ Ticker: {ticker}")
-                logger.info(f"│ Vote: {vote_action} ({vote_confidence * 100:.1f}%)")
-                logger.info(f"│ Initial Price: ${initial_price}")
-                logger.info(f"│ Initial Time: {initial_timestamp}")
-                logger.info(f"│ ")
+                logger.info(f"┌─ Evaluating Agent Vote #{vote.id} ─────────────────────")
+                logger.info(f"│ Agent: {vote.agent_name}")
+                logger.info(f"│ Ticker: {vote.ticker}")
+                logger.info(f"│ Vote: {vote.vote_action} ({vote.vote_confidence * 100:.1f}%)")
 
                 # Get current price
-                account_no = os.environ.get("KIS_ACCOUNT_NUMBER", "")
-                is_virtual = os.environ.get("KIS_IS_VIRTUAL", "true").lower() == "true"
-
-                if not account_no:
-                    logger.warning("KIS_ACCOUNT_NUMBER not set - skipping")
-                    failed_count += 1
-                    continue
-
-                broker = KISBroker(account_no=account_no, is_virtual=is_virtual)
-                price_data = broker.get_price(ticker, exchange="NASDAQ")
+                price_data = broker.get_price(vote.ticker, exchange="NASDAQ")
 
                 if not price_data:
-                    logger.warning(f"Failed to get price for {ticker} - marking as FAILED")
-                    cursor.execute("""
-                        UPDATE agent_vote_tracking
-                        SET status = 'FAILED', evaluated_at = NOW()
-                        WHERE id = %s
-                    """, (vote_id,))
-                    conn.commit()
+                    logger.warning(f"Failed to get price for {vote.ticker} - marking as FAILED")
+                    repo.mark_failed(vote, "Failed to get price")
                     failed_count += 1
                     continue
 
                 final_price = price_data["current_price"]
-                final_timestamp = datetime.now()
 
                 # Calculate return
-                price_change = final_price - initial_price
-                return_pct = (price_change / initial_price) * 100
+                price_change = final_price - vote.initial_price
+                return_pct = (price_change / vote.initial_price) * 100
 
                 # Evaluate performance (same logic as consensus)
                 is_correct, performance_score = evaluate_performance(
-                    consensus_action=vote_action,
+                    consensus_action=vote.vote_action,
                     return_pct=return_pct,
-                    consensus_confidence=vote_confidence
+                    consensus_confidence=vote.vote_confidence
                 )
 
                 # Update database
-                cursor.execute("""
-                    UPDATE agent_vote_tracking
-                    SET final_price = %s,
-                        final_timestamp = %s,
-                        return_pct = %s,
-                        is_correct = %s,
-                        performance_score = %s,
-                        status = 'COMPLETED',
-                        evaluated_at = NOW()
-                    WHERE id = %s
-                """, (
-                    final_price,
-                    final_timestamp,
-                    return_pct,
-                    is_correct,
-                    performance_score,
-                    vote_id
-                ))
-                conn.commit()
+                repo.update_evaluation(vote, {
+                    "final_price": final_price,
+                    "return_pct": return_pct,
+                    "price_change": price_change, # Added price_change for completeness
+                    "is_correct": is_correct,
+                    "performance_score": performance_score
+                })
 
                 # Log results
                 logger.info(f"│ 📈 Final Price: ${final_price}")
@@ -377,13 +254,8 @@ async def evaluate_agent_votes_tracking():
                 evaluated_count += 1
 
             except Exception as e:
-                logger.error(f"│ ❌ Error evaluating vote #{vote_id}: {e}")
-                cursor.execute("""
-                    UPDATE agent_vote_tracking
-                    SET status = 'FAILED', evaluated_at = NOW()
-                    WHERE id = %s
-                """, (vote_id,))
-                conn.commit()
+                logger.error(f"│ ❌ Error evaluating vote #{vote.id}: {e}")
+                repo.mark_failed(vote, str(e))
                 failed_count += 1
                 logger.info(f"└─────────────────────────────────────────\n")
 
@@ -395,13 +267,6 @@ async def evaluate_agent_votes_tracking():
         logger.info(f"❌ Failed: {failed_count}")
         logger.info(f"📊 Total: {len(pending_votes)}")
         logger.info("=" * 80)
-
-    except Exception as e:
-        logger.error(f"❌ Error in agent vote evaluation: {e}", exc_info=True)
-        conn.rollback()
-
-    finally:
-        conn.close()
 
 
 async def daily_learning_cycle():

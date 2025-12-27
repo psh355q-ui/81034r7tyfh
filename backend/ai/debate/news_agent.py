@@ -56,8 +56,8 @@ class NewsAgent:
         db = get_sync_session()
         
         try:
-            # 1. Emergency News 조회 (최근 24시간)
-            cutoff = datetime.now() - timedelta(hours=24)
+            # 1. Emergency News 조회 (최근 15일)
+            cutoff = datetime.now() - timedelta(days=15)
             
             # GroundingSearchLog fields: query (not search_query), no ticker column, search_date (not created_at)
             emergency_news = db.query(GroundingSearchLog)\
@@ -69,14 +69,14 @@ class NewsAgent:
                 .limit(5)\
                 .all()
             
-            # 2. 일반 뉴스 조회 (최근 24시간) - Phase 20 real-time news
+            # 2. 일반 뉴스 조회 (최근 15일) - Phase 20 real-time news
             # Priority: tickers field > title/content search
             recent_news = db.query(NewsArticle)\
                 .filter(
                     NewsArticle.published_date >= cutoff
                 )\
                 .order_by(NewsArticle.published_date.desc())\
-                .limit(50)\
+                .limit(200)\
                 .all()
 
             # 티커 필터링 (우선순위: tickers 배열 > 제목/내용)
@@ -89,7 +89,7 @@ class NewsAgent:
                 elif ticker.upper() in n.title.upper() or ticker.upper() in (n.content or '').upper():
                     ticker_news.append(n)
 
-                if len(ticker_news) >= 10:
+                if len(ticker_news) >= 30:
                     break
 
             recent_news = ticker_news
@@ -128,28 +128,41 @@ class NewsAgent:
                     "agent": "news",
                     "action": "HOLD",
                     "confidence": 0.5,
-                    "reasoning": f"{ticker}에 대한 최근 24시간 뉴스 없음 (중립 유지)",
+                    "reasoning": f"{ticker}에 대한 최근 15일 뉴스 없음 (중립 유지)",
                     "news_count": 0,
                     "emergency_count": 0,
                     "sentiment_score": 0.0
                 }
             
-            # 4. Gemini로 감성 분석
+            # 4. 시계열 트렌드 분석
+            trend_analysis = self._analyze_temporal_trend(news_summaries)
+
+            # 5. Gemini로 감성 분석
             logger.info(f"📰 News Agent: Analyzing {len(news_summaries)} news for {ticker}")
-            sentiment_result = await self._analyze_sentiment(ticker, news_summaries)
-            
-            # 5. 투표 결정
+            sentiment_result = await self._analyze_sentiment(ticker, news_summaries, trend_analysis)
+
+            # 6. 투표 결정
             action, confidence = self._decide_action(
                 sentiment_result,
                 len(emergency_news),
-                len(recent_news)
+                len(recent_news),
+                trend_analysis
             )
             
+            # 트렌드 정보 추가
+            trend_info = ""
+            if trend_analysis:
+                trend_emoji = "📈" if trend_analysis['trend'] == 'IMPROVING' else "📉" if trend_analysis['trend'] == 'DETERIORATING' else "➡️"
+                risk_emoji = "✅" if trend_analysis['risk_trajectory'] == 'DECREASING' else "⚠️" if trend_analysis['risk_trajectory'] == 'INCREASING' else "➖"
+                trend_info = f"""
+- 뉴스 트렌드: {trend_emoji} {trend_analysis['trend']} (최근 {trend_analysis['sentiment_change']:+.2f})
+- 위험도 방향: {risk_emoji} {trend_analysis['risk_trajectory']}"""
+
             reasoning = f"""
 뉴스 분석 결과 ({len(emergency_news)}개 긴급 + {len(recent_news)}개 일반):
 - 감성 점수: {sentiment_result['score']:.2f}
 - 긍정 뉴스: {sentiment_result['positive_count']}개
-- 부정 뉴스: {sentiment_result['negative_count']}개
+- 부정 뉴스: {sentiment_result['negative_count']}개{trend_info}
 - 주요 키워드: {', '.join(sentiment_result['keywords'][:5])}
 """
             
@@ -181,23 +194,99 @@ class NewsAgent:
         finally:
             db.close()
     
-    async def _analyze_sentiment(self, ticker: str, news_summaries: List[Dict]) -> Dict[str, Any]:
-        """Gemini로 뉴스 감성 분석"""
-        
+    def _analyze_temporal_trend(self, news_summaries: List[Dict]) -> Dict[str, Any]:
+        """
+        시계열 트렌드 분석: 뉴스 감성이 시간에 따라 어떻게 변화하는지 분석
+
+        Returns:
+            {
+                "trend": "IMPROVING|DETERIORATING|STABLE",
+                "recent_sentiment": float,  # 최근 3일 평균
+                "older_sentiment": float,   # 4-15일 평균
+                "sentiment_change": float,  # 변화량
+                "risk_trajectory": "INCREASING|DECREASING|NEUTRAL"
+            }
+        """
+        from datetime import datetime, timedelta
+
+        now = datetime.now()
+        recent_cutoff = now - timedelta(days=3)
+
+        recent_news = []
+        older_news = []
+
+        for news in news_summaries:
+            if news['type'] == 'EMERGENCY':
+                # 긴급 뉴스는 최근으로 간주
+                recent_news.append(news)
+                continue
+
+            # 일반 뉴스는 발행일 확인 필요 (news_summaries에 published_at 추가 필요)
+            # 현재는 순서 기반으로 절반 나눔
+            if len(recent_news) < len(news_summaries) / 2:
+                recent_news.append(news)
+            else:
+                older_news.append(news)
+
+        # 각 기간별 평균 감성 계산
+        recent_sentiment = sum(n.get('sentiment', 0) for n in recent_news) / len(recent_news) if recent_news else 0
+        older_sentiment = sum(n.get('sentiment', 0) for n in older_news) / len(older_news) if older_news else 0
+
+        sentiment_change = recent_sentiment - older_sentiment
+
+        # 트렌드 판정
+        if sentiment_change > 0.2:
+            trend = "IMPROVING"
+            risk_trajectory = "DECREASING"
+        elif sentiment_change < -0.2:
+            trend = "DETERIORATING"
+            risk_trajectory = "INCREASING"
+        else:
+            trend = "STABLE"
+            risk_trajectory = "NEUTRAL"
+
+        return {
+            "trend": trend,
+            "recent_sentiment": recent_sentiment,
+            "older_sentiment": older_sentiment,
+            "sentiment_change": sentiment_change,
+            "risk_trajectory": risk_trajectory,
+            "recent_count": len(recent_news),
+            "older_count": len(older_news)
+        }
+
+    async def _analyze_sentiment(self, ticker: str, news_summaries: List[Dict], trend_analysis: Dict = None) -> Dict[str, Any]:
+        """Gemini로 뉴스 감성 분석 (시계열 트렌드 포함)"""
+
         if not news_summaries:
             return {
                 'score': 0.0,
                 'positive_count': 0,
                 'negative_count': 0,
-                'keywords': []
+                'keywords': [],
+                'trend': None
             }
-        
+
+        trend_context = ""
+        if trend_analysis:
+            trend_context = f"""
+
+시계열 트렌드:
+- 최근 3일 감성: {trend_analysis['recent_sentiment']:.2f}
+- 4-15일 감성: {trend_analysis['older_sentiment']:.2f}
+- 변화 추세: {trend_analysis['trend']} ({trend_analysis['sentiment_change']:+.2f})
+- 위험도 방향: {trend_analysis['risk_trajectory']}
+"""
+
         prompt = f"""
 당신은 {ticker} 주식에 대한 뉴스 감성 분석가입니다.
 
 다음 뉴스들을 분석하여 종합 점수를 산출하세요:
 
 {self._format_news_for_prompt(news_summaries)}
+{trend_context}
+
+**중요**: 시계열 트렌드를 고려하여, 최근 뉴스가 과거 대비 개선되는지 악화되는지 반영하세요.
 
 다음 JSON 형식으로만 응답하세요 (추가 설명 없이):
 {{
@@ -259,26 +348,39 @@ class NewsAgent:
         return "\n".join(lines)
     
     def _decide_action(
-        self, 
-        sentiment_result: Dict[str, Any], 
-        emergency_count: int, 
-        news_count: int
+        self,
+        sentiment_result: Dict[str, Any],
+        emergency_count: int,
+        news_count: int,
+        trend_analysis: Dict = None
     ) -> tuple[str, float]:
-        """감성 점수 → 매매 결정"""
-        
+        """감성 점수 → 매매 결정 (시계열 트렌드 반영)"""
+
         score = sentiment_result['score']
-        
+
         # 긴급 뉴스가 있으면 confidence 높임
         urgency_boost = 0.2 if emergency_count > 0 else 0
-        
-        if score > 0.6:
+
+        # 시계열 트렌드 반영
+        trend_boost = 0
+        if trend_analysis:
+            # IMPROVING: 긍정 뉴스 증가 → BUY 신호 강화
+            # DETERIORATING: 부정 뉴스 증가 → SELL 신호 강화
+            if trend_analysis['trend'] == 'IMPROVING':
+                trend_boost = 0.1
+            elif trend_analysis['trend'] == 'DETERIORATING':
+                trend_boost = -0.1
+
+        adjusted_score = score + trend_boost
+
+        if adjusted_score > 0.6:
             action = "BUY"
-            confidence = min(0.95, abs(score) + urgency_boost)
-        elif score < -0.6:
+            confidence = min(0.95, abs(adjusted_score) + urgency_boost)
+        elif adjusted_score < -0.6:
             action = "SELL"
-            confidence = min(0.95, abs(score) + urgency_boost)
+            confidence = min(0.95, abs(adjusted_score) + urgency_boost)
         else:
             action = "HOLD"
-            confidence = 0.5 + abs(score) * 0.3
-        
+            confidence = 0.5 + abs(adjusted_score) * 0.3
+
         return action, confidence

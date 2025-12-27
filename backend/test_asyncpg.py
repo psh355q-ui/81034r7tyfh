@@ -1,6 +1,7 @@
 """Test asyncpg connection to Docker PostgreSQL"""
 import asyncio
 import asyncpg
+import os
 
 async def test_connection():
     try:
@@ -9,7 +10,7 @@ async def test_connection():
             port=5434,
             database='ai_trading',
             user='postgres',
-            password='postgres123'
+            password=os.getenv('DB_PASSWORD', '')
         )
         async with pool.acquire() as conn:
             version = await conn.fetchval('SELECT version()')

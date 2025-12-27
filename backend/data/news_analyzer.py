@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 # Google Generative AI SDK
 try:
@@ -30,7 +31,8 @@ except ImportError:
     GENAI_AVAILABLE = False
     genai = None
 
-from backend.data.news_models import NewsArticle, NewsAnalysis, NewsTickerRelevance, SessionLocal
+from backend.database.models import NewsArticle, NewsAnalysis, NewsTickerRelevance
+from backend.database.repository import get_sync_session
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -102,8 +104,9 @@ class NewsDeepAnalyzer:
     - 비용: $0
     """
     
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, db: Session = None):
+        self.db = db if db else get_sync_session()
+        self._owned_session = db is None
         
         if not GENAI_AVAILABLE:
             raise ImportError("google-generativeai 패키지를 설치하세요: pip install google-generativeai")
@@ -123,16 +126,14 @@ class NewsDeepAnalyzer:
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model_name)
         logger.info(f"NewsDeepAnalyzer initialized with model: {model_name}")
+        
+    def __del__(self):
+        if hasattr(self, '_owned_session') and self._owned_session:
+            self.db.close()
     
     def extract_tickers_from_title(self, title: str) -> List[str]:
         """
         Extract stock tickers from article title
-        
-        Patterns:
-        - (NASDAQ:AAPL)
-        - (NYSE:NVDA)
-        - $AAPL
-        - AAPL stock
         """
         tickers = []
         
@@ -207,59 +208,32 @@ CRITICAL:
             text = text.split("```")[1].split("```")[0]
         
         text = text.strip()
-        
-        # 제어 문자 제거
         text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
-        
-        # 이스케이프되지 않은 개행 문자 처리
         text = text.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
         
-        # JSON 파싱 시도
         try:
             parsed = json.loads(text)
-            
-            # ✅ FIX: Handle list responses from Gemini
             if isinstance(parsed, list):
                 if len(parsed) > 0 and isinstance(parsed[0], dict):
-                    print(f"⚠️ Gemini returned a list, using first element")
                     return parsed[0]
                 else:
-                    print(f"⚠️ Gemini returned empty or invalid list")
                     return {"error": "Invalid list response"}
-            
             return parsed
-            
-        except json.JSONDecodeError as e:
-            # 더 적극적인 정리
+        except json.JSONDecodeError:
             try:
                 # 역슬래시 이스케이프 문제 수정
                 text = text.replace('\\\\', '\\')
-                parsed = json.loads(text)
-                
-                # Check for list again
-                if isinstance(parsed, list) and len(parsed) > 0:
-                    return parsed[0] if isinstance(parsed[0], dict) else {"error": "Invalid list"}
-                    
-                return parsed
+                return json.loads(text)
             except:
                 pass
             
-            # JSON5 스타일 정리 (trailing commas 등)
+            # Simple fix for trailing commas
             try:
-                # 마지막 콤마 제거
                 text = re.sub(r',(\s*[}\]])', r'\1', text)
-                parsed = json.loads(text)
-                
-                # Check for list again
-                if isinstance(parsed, list) and len(parsed) > 0:
-                    return parsed[0] if isinstance(parsed[0], dict) else {"error": "Invalid list"}
-                    
-                return parsed
+                return json.loads(text)
             except:
                 pass
-            
-            # 최후의 수단: 빈 구조 반환
-            print(f"⚠️ JSON parse failed after all attempts: {str(e)[:100]}")
+
             return {
                 "error": "JSON parse failed",
                 "raw_preview": response_text[:200]
@@ -274,9 +248,8 @@ CRITICAL:
         if article.analysis:
             return article.analysis
         
-        # 본문 확인 - content_text 또는 content_summary 사용
+        # 본문 확인
         if not article.content_text or len(article.content_text) < 50:
-            # content_text가 없으면 content_summary 사용
             if not article.content_summary or len(article.content_summary) < 50:
                 return None
         
@@ -287,26 +260,26 @@ CRITICAL:
         import time
         start_time = time.time()
         
-        response = self.model.generate_content(
-            prompt,
-            generation_config=genai.GenerationConfig(
-                temperature=0.1,  # Very low for consistent structured output
-                max_output_tokens=2000,
-                response_mime_type="application/json",  # Force JSON response
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    temperature=0.1,  # Very low for consistent structured output
+                    max_output_tokens=2000,
+                    response_mime_type="application/json",  # Force JSON response
+                )
             )
-        )
+        except Exception as e:
+            logger.error(f"Gemini API error: {e}")
+            return None
         
-        elapsed_ms = int((time.time() - start_time) * 1000)
-        
-        # 토큰 추정
+        # 토큰 추정 및 사용량
         input_tokens = len(prompt) // 4
         output_tokens = len(response.text) // 4
-        
         if hasattr(response, 'usage_metadata') and response.usage_metadata:
             input_tokens = response.usage_metadata.prompt_token_count
             output_tokens = response.usage_metadata.candidates_token_count
         
-        # 사용량 업데이트
         update_daily_usage(input_tokens, output_tokens)
         
         # 응답 파싱
@@ -316,91 +289,56 @@ CRITICAL:
             print(f"⚠️ Parse error for {article.title[:50]}: {analysis_data['error']}")
             return None
         
-        # Helper function to convert string booleans safely
         def _safe_bool(value: Any) -> bool:
-            """Convert any value to boolean safely"""
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, str):
-                return value.lower() in ('true', '1', 'yes')
+            if isinstance(value, bool): return value
+            if isinstance(value, str): return value.lower() in ('true', '1', 'yes')
             return bool(value)
         
-        # DB에 저장 (simplified schema)
+        # DB에 저장
         news_analysis = NewsAnalysis(
             article_id=article.id,
-            
-            # Sentiment
             sentiment_overall=analysis_data.get("sentiment", "neutral"),
             sentiment_score=float(analysis_data.get("sentiment_score", 0.0)),
-            sentiment_confidence=0.8,  # Default confidence
-            
-            # Tone
-            tone_objective_score=0.5,  # Default
+            sentiment_confidence=0.8,
+            tone_objective_score=0.5,
             urgency=analysis_data.get("urgency", "medium"),
             sensationalism=0.0,
-            
-            # Market Impact
             market_impact_short=analysis_data.get("market_impact_short", "neutral"),
             market_impact_long=analysis_data.get("market_impact_long", "neutral"),
             impact_magnitude=float(analysis_data.get("impact_magnitude", 0.0)),
             affected_sectors=[],
-            
-            # Key Findings (minimal)
             key_facts=[],
             key_opinions=[],
             key_implications=[],
             key_warnings=[],
-            
-            # Indirect Expressions (minimal)
             indirect_expressions=[],
             red_flags=[],
-            
-            # Trading Relevance - Fixed Boolean conversion
             trading_actionable=_safe_bool(analysis_data.get("actionable", False)),
             risk_category=analysis_data.get("risk_category", "none"),
             recommendation="",
-            
-            # Credibility (defaults) - Fixed Boolean conversion
             source_reliability=0.7,
             data_backed=_safe_bool(analysis_data.get("data_backed", False)),
             multiple_sources_cited=_safe_bool(analysis_data.get("multiple_sources", False)),
             potential_bias="",
-            
-            # Model Info
             model_used=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
             tokens_used=input_tokens + output_tokens,
-            analysis_cost=0.0,  # 무료!
+            analysis_cost=0.0
         )
         
         self.db.add(news_analysis)
         
-        # Extract tickers from title
-        print(f"🔍 Extracting tickers from title: {article.title}")
+        # Extract tickers
         extracted_tickers = self.extract_tickers_from_title(article.title)
-        print(f"📌 Found {len(extracted_tickers)} tickers: {extracted_tickers}")
         
         # Save ticker relevances
         for ticker in extracted_tickers:
             ticker_rel = NewsTickerRelevance(
                 article_id=article.id,
                 ticker=ticker.upper(),
-                relevance_score=0.8,  # High relevance since it's in the title
+                relevance_score=0.8,
                 sentiment_for_ticker=float(analysis_data.get("sentiment_score", 0.0)),
             )
             self.db.add(ticker_rel)
-            logger.info(f"Added ticker {ticker} for article {article.id}")
-        
-        # Also process AI-detected companies (if provided)
-        companies = analysis_data.get("related_entities", {}).get("companies", [])
-        for company in companies:
-            if company.get("ticker") and company["ticker"] not in extracted_tickers:
-                ticker_rel = NewsTickerRelevance(
-                    article_id=article.id,
-                    ticker=company["ticker"],
-                    relevance_score=company.get("relevance", 0.5),
-                    sentiment_for_ticker=company.get("sentiment", 0.0),
-                )
-                self.db.add(ticker_rel)
         
         self.db.commit()
         self.db.refresh(news_analysis)
@@ -419,10 +357,6 @@ CRITICAL:
         for i, article in enumerate(articles[:max_count]):
             if not check_rate_limit():
                 results["errors"] += 1
-                results["details"].append({
-                    "title": article.title,
-                    "error": "Rate limit reached"
-                })
                 break
             
             try:
@@ -431,22 +365,15 @@ CRITICAL:
                     results["analyzed"] += 1
                     results["details"].append({
                         "title": article.title[:60],
-                        "sentiment": analysis.sentiment_overall,
-                        "score": analysis.sentiment_score,
-                        "actionable": analysis.trading_actionable
+                        "sentiment": analysis.sentiment_overall
                     })
                 else:
                     results["skipped"] += 1
             except Exception as e:
                 results["errors"] += 1
-                results["details"].append({
-                    "title": article.title,
-                    "error": str(e)
-                })
+                results["details"].append({"error": str(e)})
             
-            # Rate limiting (15 RPM)
             if (i + 1) % 10 == 0:
-                print(f"  Processed {i + 1}/{len(articles[:max_count])} articles...")
                 import time
                 time.sleep(1)
         
@@ -494,40 +421,10 @@ def get_ticker_news(db: Session, ticker: str, limit: int = 20) -> List[Dict[str,
             "source": article.source,
             "published_at": article.published_at.isoformat() if article.published_at else None,
             "relevance": rel.relevance_score,
-            "sentiment": rel.sentiment_for_ticker,
-            "analysis": {
-                "overall_sentiment": article.analysis.sentiment_overall if article.analysis else None,
-                "impact": article.analysis.market_impact_short if article.analysis else None,
-                "actionable": article.analysis.trading_actionable if article.analysis else False,
-            } if article.analysis else None
+            "sentiment": rel.sentiment_for_ticker
         })
     
     return results
-
-
-def get_high_impact_news(db: Session, min_magnitude: float = 0.6) -> List[NewsArticle]:
-    """높은 영향도 뉴스"""
-    return (
-        db.query(NewsArticle)
-        .join(NewsAnalysis)
-        .filter(NewsAnalysis.impact_magnitude >= min_magnitude)
-        .order_by(NewsAnalysis.impact_magnitude.desc())
-        .limit(20)
-        .all()
-    )
-
-
-def get_warning_news(db: Session) -> List[NewsArticle]:
-    """경고 신호가 있는 뉴스"""
-    return (
-        db.query(NewsArticle)
-        .join(NewsAnalysis)
-        .filter(NewsAnalysis.key_warnings != None)
-        .filter(NewsAnalysis.key_warnings != "[]")
-        .order_by(NewsArticle.published_at.desc())
-        .limit(20)
-        .all()
-    )
 
 
 # ============================================================================
@@ -535,17 +432,22 @@ def get_warning_news(db: Session) -> List[NewsArticle]:
 # ============================================================================
 
 if __name__ == "__main__":
-    print("🧠 News Deep Analysis Test")
+    print("🧠 News Deep Analysis Test (PostgreSQL)")
     
-    from news_models import init_db
-    init_db()
-    
-    db = SessionLocal()
+    db = get_sync_session()
     
     try:
         # Get unanalyzed articles
-        from rss_crawler import get_unanalyzed_articles
-        unanalyzed = get_unanalyzed_articles(db, limit=5)
+        # This function was in rss_crawler, let's redefine simplified or import from there if available
+        # Actually it's better to raw query here to be self-contained for test
+        unanalyzed = (
+            db.query(NewsArticle)
+            .outerjoin(NewsArticle.analysis)
+            .filter(NewsArticle.analysis == None)
+            .order_by(NewsArticle.published_at.desc())
+            .limit(5)
+            .all()
+        )
         
         print(f"\n📰 Found {len(unanalyzed)} unanalyzed articles")
         
@@ -553,25 +455,9 @@ if __name__ == "__main__":
             analyzer = NewsDeepAnalyzer(db)
             
             print("\n🔬 Analyzing articles...")
-            results = analyzer.analyze_batch(unanalyzed, max_count=5)
+            results = analyzer.analyze_batch(unanalyzed, max_count=2)
             
-            print(f"\n✅ Analysis Complete!")
-            print(f"  Analyzed: {results['analyzed']}")
-            print(f"  Skipped: {results['skipped']}")
-            print(f"  Errors: {results['errors']}")
+            print(f"\n✅ Analysis Complete: {results['analyzed']} analyzed")
             
-            print("\n📊 Results:")
-            for detail in results['details']:
-                if "error" not in detail:
-                    print(f"  - {detail['title']}")
-                    print(f"    Sentiment: {detail['sentiment']} ({detail['score']:.2f})")
-                    print(f"    Actionable: {detail['actionable']}")
-                else:
-                    print(f"  - {detail['title']}: ERROR - {detail['error']}")
-        
-        # Check usage
-        usage = get_daily_usage()
-        print(f"\n📈 Daily Usage: {usage['request_count']}/1500 requests")
-        
     finally:
         db.close()

@@ -18,8 +18,6 @@ import redis
 import json
 import logging
 import os
-import asyncpg
-from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +46,6 @@ class DividendCollector:
         
         # 캐시 TTL (24시간)
         self.CACHE_TTL = 86400
-        
-        # DB 설정
-        self.db_config = {
-            'host': os.getenv('DB_HOST', 'localhost'),
-            'port': int(os.getenv('DB_PORT', 5432)),
-            'database': os.getenv('DB_NAME', 'trading_db'),
-            'user': os.getenv('DB_USER', 'postgres'),
-            'password': os.getenv('DB_PASSWORD', '')
-        }
     
     async def calculate_ttm_yield(self, ticker: str) -> Dict:
         """
@@ -223,39 +212,31 @@ class DividendCollector:
         """
         
         try:
-            conn = await asyncpg.connect(**self.db_config)
+            from backend.database.repository import DividendRepository, get_sync_session
+            from datetime import date, timedelta
             
-            today = datetime.now().date()
-            target_date = today + timedelta(days=days)
-            
-            query = """
-                SELECT 
-                    ticker,
-                    ex_dividend_date,
-                    payment_date,
-                    amount,
-                    ex_dividend_date - CURRENT_DATE as days_until
-                FROM dividend_history
-                WHERE ex_dividend_date BETWEEN CURRENT_DATE AND $1
-                ORDER BY ex_dividend_date, ticker
-            """
-            
-            rows = await conn.fetch(query, target_date)
-            
-            upcoming = []
-            for row in rows:
-                upcoming.append({
-                    "ticker": row['ticker'],
-                    "ex_dividend_date": row['ex_dividend_date'].isoformat(),
-                    "payment_date": row['payment_date'].isoformat() if row['payment_date'] else None,
-                    "amount": float(row['amount']),
-                    "days_until": row['days_until']
-                })
-            
-            await conn.close()
-            
-            logger.info(f"📅 Found {len(upcoming)} upcoming ex-dividend dates")
-            return upcoming
+            session = get_sync_session()
+            try:
+                repo = DividendRepository(session)
+                records = repo.get_upcoming_ex_dates(days)
+                
+                upcoming = []
+                today = date.today()
+                for record in records:
+                    days_until = (record.ex_dividend_date - today).days
+                    upcoming.append({
+                        "ticker": record.ticker,
+                        "ex_dividend_date": record.ex_dividend_date.isoformat(),
+                        "payment_date": record.payment_date.isoformat() if record.payment_date else None,
+                        "amount": float(record.amount),
+                        "days_until": days_until
+                    })
+                
+                logger.info(f"📅 Found {len(upcoming)} upcoming ex-dividend dates")
+                return upcoming
+                
+            finally:
+                session.close()
         
         except Exception as e:
             logger.error(f"Failed to get upcoming ex-dates: {e}")
@@ -283,35 +264,27 @@ class DividendCollector:
             # 배당 주기 자동 감지
             frequency = await self.detect_payment_frequency(ticker)
             
-            conn = await asyncpg.connect(**self.db_config)
+            from backend.database.repository import DividendRepository, get_sync_session
             
-            saved_count = 0
-            for date, amount in dividends.items():
-                # 중복 체크 & INSERT
-                insert_query = """
-                    INSERT INTO dividend_history 
-                        (ticker, ex_dividend_date, amount, frequency)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (ticker, ex_dividend_date) 
-                    DO UPDATE SET 
-                        amount = $3,
-                        frequency = $4,
-                        updated_at = CURRENT_TIMESTAMP
-                """
+            session = get_sync_session()
+            try:
+                repo = DividendRepository(session)
                 
-                await conn.execute(
-                    insert_query,
-                    ticker,
-                    date.date(),
-                    Decimal(str(amount)),
-                    frequency
-                )
-                saved_count += 1
-            
-            await conn.close()
-            
-            logger.info(f"✅ Saved {saved_count} dividend records for {ticker}")
-            return saved_count
+                saved_count = 0
+                for date, amount in dividends.items():
+                    repo.save_dividend(
+                        ticker=ticker,
+                        ex_dividend_date=date.date(),
+                        amount=float(amount),
+                        frequency=frequency
+                    )
+                    saved_count += 1
+                
+                logger.info(f"✅ Saved {saved_count} dividend records for {ticker}")
+                return saved_count
+                
+            finally:
+                session.close()
         
         except Exception as e:
             logger.error(f"Failed to save dividend history for {ticker}: {e}")

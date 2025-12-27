@@ -1,0 +1,133 @@
+{
+    "table_name": "data_collection_progress",
+    "description": "데이터 수집 작업 진행 상황 추적",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "task_name",
+            "type": "VARCHAR(100)",
+            "nullable": true,
+            "description": "작업 이름"
+        },
+        {
+            "name": "source",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "데이터 소스"
+        },
+        {
+            "name": "collection_type",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "수집 타입"
+        },
+        {
+            "name": "status",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "default": "pending",
+            "description": "작업 상태"
+        },
+        {
+            "name": "progress_pct",
+            "type": "DOUBLE PRECISION",
+            "nullable": false,
+            "default": 0.0,
+            "description": "진행률 (0~100)"
+        },
+        {
+            "name": "items_processed",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": 0,
+            "description": "처리된 아이템"
+        },
+        {
+            "name": "items_total",
+            "type": "INTEGER",
+            "nullable": true,
+            "description": "전체 아이템"
+        },
+        {
+            "name": "error_message",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "에러 메시지"
+        },
+        {
+            "name": "start_date",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "수집 시작일"
+        },
+        {
+            "name": "end_date",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "수집 종료일"
+        },
+        {
+            "name": "job_metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "작업 메타데이터"
+        },
+        {
+            "name": "started_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "작업 시작 시각"
+        },
+        {
+            "name": "completed_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "작업 완료 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "업데이트 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_collection_source",
+            "columns": [
+                "source"
+            ],
+            "unique": false
+        },
+        {
+            "name": "idx_collection_type",
+            "columns": [
+                "collection_type"
+            ],
+            "unique": false
+        },
+        {
+            "name": "idx_collection_status",
+            "columns": [
+                "status"
+            ],
+            "unique": false
+        }
+    ],
+    "metadata": {
+        "category": "tracking",
+        "repository": "DataCollectionRepository",
+        "module": "Data Backfill",
+        "created": "2025-12-27",
+        "last_updated": "2025-12-27",
+        "notes": "실제 DB는 DOUBLE PRECISION 사용 (FLOAT 대신)"
+    }
+}

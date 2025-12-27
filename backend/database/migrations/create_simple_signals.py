@@ -3,12 +3,14 @@
 """
 import asyncio
 import asyncpg
+import os
 from datetime import datetime, timedelta
 
 
 async def create_simple_signals():
     # 5541 포트로 연결 (docker-compose.yml의 host port)
-    conn_str = 'postgresql://postgres:postgres123@localhost:5541/ai_trading'
+    db_password = os.getenv('DB_PASSWORD', '')
+    conn_str = f'postgresql://postgres:{db_password}@localhost:5541/ai_trading'
     
     conn = await asyncpg.connect(conn_str)
     

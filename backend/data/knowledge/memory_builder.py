@@ -20,7 +20,7 @@ class MemoryBuilder:
 
     def __init__(self):
         if not os.getenv("DATABASE_URL"):
-            db_user = os.getenv("DB_USER", "ai_trading_user")
+            db_user = os.getenv("DB_USER", "postgres")
             db_password = os.getenv("DB_PASSWORD", "")
             db_host = os.getenv("TIMESCALE_HOST", os.getenv("DB_HOST", "localhost"))
             db_port = os.getenv("TIMESCALE_PORT", os.getenv("DB_PORT", "5541"))

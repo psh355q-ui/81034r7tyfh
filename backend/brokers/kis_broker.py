@@ -162,8 +162,15 @@ class KISBroker:
                 symb=symbol.upper()
             )
 
-            if data_list and len(data_list) > 0:
-                row = data_list[0]
+            # Handle _DictWrapper or list responses
+            if data_list:
+                # Try to get first row (handle both list and dict-like objects)
+                try:
+                    row = data_list[0] if isinstance(data_list, list) else data_list
+                except (IndexError, TypeError, KeyError):
+                    logger.error(f"Cannot access price data for {symbol}")
+                    return None
+
                 if row is None:
                     logger.error(f"Price data row is None for {symbol}")
                     return None
