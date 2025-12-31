@@ -4,7 +4,8 @@ import {
   LayoutDashboard, TrendingUp, Activity, Newspaper, Rss, FileText,
   FileSearch, Settings, X, MessageSquare, TrendingDown, BarChart3,
   LineChart, Brain, Zap, PieChart, TestTube2, Wallet, Globe,
-  ChevronDown, ChevronRight, DollarSign, Database
+  ChevronDown, ChevronRight, DollarSign, Database, Target, Coins, GraduationCap,
+  Network
 } from 'lucide-react';
 
 interface NavItem {
@@ -25,7 +26,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
   const location = useLocation();
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Overview', 'Trading & Strategy']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Overview', 'Trading & Strategy', 'Portfolio & Risk']);
 
   const navCategories: NavCategory[] = [
     {
@@ -41,7 +42,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       items: [
         { path: '/war-room', icon: MessageSquare, label: 'AI War Room' },
         { path: '/trading', icon: Zap, label: 'Trading Signals' },
-        { path: '/signal-consolidation', icon: BarChart3, label: 'Signal Consolidation' },
         { path: '/backtest', icon: TestTube2, label: 'Backtest' },
         { path: '/deep-reasoning', icon: Brain, label: 'Deep Reasoning' },
       ]
@@ -69,10 +69,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       title: 'System & Operations',
       items: [
         { path: '/monitor', icon: Activity, label: 'Monitor' },
+        { path: '/accountability', icon: Target, label: 'Accountability' },
+        { path: '/learning', icon: GraduationCap, label: 'Auto-Learning' },
         { path: '/reports', icon: BarChart3, label: 'Reports' },
         { path: '/incremental', icon: TrendingDown, label: 'Cost Savings' },
         { path: '/logs', icon: FileSearch, label: 'Logs' },
         { path: '/settings', icon: Settings, label: 'Settings' },
+      ]
+    },
+    {
+      title: 'Under Development',
+      items: [
+        { path: '/signal-consolidation', icon: BarChart3, label: 'Signal Consolidation' },
+        { path: '/multi-asset', icon: Coins, label: 'Multi-Asset' },
+        { path: '/portfolio-optimization', icon: Target, label: 'Portfolio Optimization' },
+        { path: '/correlation', icon: Network, label: 'Asset Correlation' },
       ]
     }
   ];

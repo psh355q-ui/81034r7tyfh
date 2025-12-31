@@ -27,8 +27,8 @@ from backend.database.repository import (
 )
 from backend.database.models import NewsMarketReaction
 
-# TODO: KIS API integration
-# from backend.services.kis_api import KISAPIClient
+# KIS API integration
+from backend.brokers.kis_broker import KISBroker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,12 +50,13 @@ class PriceTrackingVerifier:
     """
 
     def __init__(self):
-        # TODO: KIS API client initialization
-        # self.kis_client = KISAPIClient(
-        #     app_key=os.getenv("KIS_APP_KEY"),
-        #     app_secret=os.getenv("KIS_APP_SECRET")
-        # )
-        pass
+        # KIS API client initialization (Paper Trading)
+        self.kis_broker = KISBroker(
+            account_no=os.getenv("KIS_PAPER_ACCOUNT", "50096724"),
+            product_code='01',
+            is_virtual=True
+        )
+        logger.info("✅ PriceTrackingVerifier initialized with KIS Broker")
 
     async def verify_interpretations(self, time_horizon: str = "1h") -> Dict:
         """
@@ -102,8 +103,14 @@ class PriceTrackingVerifier:
                         logger.warning(f"⚠️ Failed to get price for {reaction.ticker}")
                         continue
 
-                    # Calculate price change
-                    price_change = ((current_price - reaction.price_at_news) / reaction.price_at_news) * 100
+                    # Calculate price change (convert Decimal to float)
+                    price_at_news_float = float(reaction.price_at_news) if reaction.price_at_news else 0.0
+
+                    if price_at_news_float == 0.0:
+                        logger.warning(f"⚠️ price_at_news is zero for {reaction.ticker}, skipping")
+                        continue
+
+                    price_change = ((current_price - price_at_news_float) / price_at_news_float) * 100
 
                     # Check correctness
                     interpretation = reaction.interpretation
@@ -207,17 +214,23 @@ class PriceTrackingVerifier:
         Returns:
             float: 현재 가격 (실패 시 None)
         """
-        # TODO: Implement KIS API call
-        # try:
-        #     quote = await self.kis_client.get_quote(ticker)
-        #     return quote["current_price"]
-        # except Exception as e:
-        #     logger.error(f"Failed to get price for {ticker}: {e}")
-        #     return None
+        try:
+            # KIS Broker (sync) call wrapped in async
+            price_data = await asyncio.to_thread(
+                self.kis_broker.get_price,
+                ticker,
+                'NASDAQ'
+            )
 
-        # Mock implementation
-        logger.warning(f"⚠️ Using MOCK price for {ticker} (KIS API not integrated)")
-        return 100.0  # Mock price
+            if price_data and 'current_price' in price_data:
+                return price_data['current_price']
+            else:
+                logger.warning(f"⚠️ No price data for {ticker}")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Failed to get price for {ticker}: {e}")
+            return None
 
     def _check_correctness(self, headline_bias: str, actual_price_change: float) -> bool:
         """

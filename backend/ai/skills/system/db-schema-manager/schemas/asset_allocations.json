@@ -1,0 +1,98 @@
+{
+    "table_name": "asset_allocations",
+    "description": "자산 배분 전략 및 리밸런싱 기록",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "strategy_name",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "description": "전략 이름",
+            "example": "60/40, All Weather, Risk Parity"
+        },
+        {
+            "name": "target_allocations",
+            "type": "JSONB",
+            "nullable": false,
+            "description": "목표 자산 배분 (JSON)",
+            "example": "{\"STOCK\": 0.60, \"BOND\": 0.40}"
+        },
+        {
+            "name": "current_allocations",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "현재 실제 배분 (JSON)",
+            "example": "{\"STOCK\": 0.62, \"BOND\": 0.38}"
+        },
+        {
+            "name": "deviation",
+            "type": "NUMERIC(6,4)",
+            "nullable": true,
+            "description": "목표 대비 최대 편차 (%)",
+            "example": "2.5000"
+        },
+        {
+            "name": "rebalance_threshold",
+            "type": "NUMERIC(6,4)",
+            "nullable": false,
+            "default": "0.0500",
+            "description": "리밸런싱 임계값 (%)",
+            "example": "5.0000"
+        },
+        {
+            "name": "last_rebalanced",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "마지막 리밸런싱 시각"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "수정 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_allocations_strategy",
+            "columns": ["strategy_name"],
+            "unique": false,
+            "description": "전략명별 조회"
+        },
+        {
+            "name": "idx_allocations_rebalanced",
+            "columns": ["last_rebalanced"],
+            "unique": false,
+            "description": "리밸런싱 시각별 조회"
+        }
+    ],
+    "metadata": {
+        "category": "multi-asset",
+        "repository": "AllocationRepository",
+        "module": "Multi-Asset System",
+        "created": "2025-12-30",
+        "last_updated": "2025-12-30",
+        "update_frequency": "Daily",
+        "data_source": "Portfolio Management System",
+        "related_files": [
+            "backend/database/models_assets.py",
+            "backend/services/allocation_service.py"
+        ],
+        "notes": "Phase 30: Multi-Asset Support - 자산 배분 전략"
+    }
+}

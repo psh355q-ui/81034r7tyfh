@@ -252,11 +252,36 @@ async def lifespan(app: FastAPI):
         from datetime import time
         import asyncio
 
-        learning_scheduler = DailyLearningScheduler(run_time=time(0, 0))  # Midnight UTC
+        # Run twice daily:
+        # 1. 10:00 KST - After US after-hours close (20:00 EST = 10:00 KST next day)
+        # 2. 16:00 KST - After Korean market close (15:30 KST)
+        learning_scheduler = DailyLearningScheduler(
+            run_times=[time(10, 0), time(16, 0)]
+        )
+
+        # Run in background task to avoid blocking main event loop
         asyncio.create_task(learning_scheduler.start())
-        logger.info("✅ Daily Learning Scheduler started (00:00 UTC)")
+        logger.info("✅ Daily Learning Scheduler started (10:00 & 16:00 KST - 2x daily)")
     except Exception as e:
         logger.warning(f"⚠️ Failed to start Daily Learning Scheduler: {e}")
+
+    # 🆕 Start Accountability Scheduler (News Interpretation Accuracy Tracking)
+    try:
+        from backend.automation.accountability_scheduler import AccountabilityScheduler
+        import asyncio
+
+        # Run hourly to verify 1h/1d/3d price changes after news interpretations
+        accountability_scheduler = AccountabilityScheduler(
+            run_interval_minutes=60,
+            retry_on_failure=True,
+            trigger_failure_learning=True
+        )
+
+        # Run in background task
+        asyncio.create_task(accountability_scheduler.start())
+        logger.info("✅ Accountability Scheduler started (hourly)")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to start Accountability Scheduler: {e}")
 
     yield
 
@@ -397,6 +422,52 @@ if SIGNALS_AVAILABLE:    # Phase 4: Trading Signals
     from backend.api.dividend_router import router as dividend_router
     app.include_router(dividend_router)
     logger.info("Dividend router registered")
+
+    # 🆕 Accountability API (Phase 29: News Interpretation Accuracy Tracking)
+    from backend.api.accountability_router import router as accountability_router
+    app.include_router(accountability_router)
+    logger.info("Accountability router registered")
+
+try:
+    # 🆕 Multi-Asset API (Phase 30: Multi-Asset Support)
+    from backend.api.multi_asset_router import router as multi_asset_router
+    app.include_router(multi_asset_router)
+    logger.info("Multi-Asset router registered")
+    MULTI_ASSET_AVAILABLE = True
+except ImportError as e:
+    MULTI_ASSET_AVAILABLE = False
+    logger.warning(f"Multi-Asset router not available: {e}")
+
+try:
+    # 🆕 Portfolio Optimization API (Phase 31: MPT & Efficient Frontier)
+    from backend.api.portfolio_optimization_router import router as portfolio_opt_router
+    app.include_router(portfolio_opt_router)
+    logger.info("Portfolio Optimization router registered")
+    PORTFOLIO_OPT_AVAILABLE = True
+except ImportError as e:
+    PORTFOLIO_OPT_AVAILABLE = False
+    logger.warning(f"Portfolio Optimization router not available: {e}")
+
+try:
+    # 🆕 Failure Learning API (Phase 29 확장: Auto-Learning System)
+    from backend.api.failure_learning_router import router as failure_learning_router
+    app.include_router(failure_learning_router)
+    logger.info("Failure Learning router registered")
+    FAILURE_LEARNING_AVAILABLE = True
+except ImportError as e:
+    FAILURE_LEARNING_AVAILABLE = False
+    logger.warning(f"Failure Learning router not available: {e}")
+
+try:
+    # 🆕 Correlation API (Phase 32: Asset Correlation)
+    from backend.api.correlation_router import router as correlation_router
+    app.include_router(correlation_router)
+    logger.info("Correlation router registered")
+    CORRELATION_AVAILABLE = True
+except ImportError as e:
+    CORRELATION_AVAILABLE = False
+    logger.warning(f"Correlation router not available: {e}")
+
 if NOTIFICATIONS_AVAILABLE:
     app.include_router(notifications_router)
     logger.info("Notifications router registered")

@@ -700,14 +700,15 @@ class MacroContextSnapshot(Base):
     snapshot_date = Column(Date, nullable=False, unique=True)
     regime = Column(String(30), nullable=False)  # RISK_ON, RISK_OFF, ROTATION, UNCERTAINTY
     fed_stance = Column(String(20), nullable=False)  # HAWKISH, DOVISH, NEUTRAL
-    vix_level = Column(Float, nullable=False)
-    vix_category = Column(String(20), nullable=False)  # LOW, NORMAL, ELEVATED, HIGH, EXTREME
+    vix_level = Column(Numeric(6, 2), nullable=True)
+    vix_category = Column(String(20), nullable=True)  # LOW, NORMAL, ELEVATED, HIGH, EXTREME
     sector_rotation = Column(String(50), nullable=True)
-    dominant_narrative = Column(Text, nullable=False)
-    geopolitical_risk = Column(String(20), nullable=False)  # HIGH, MEDIUM, LOW
-    earnings_season = Column(Boolean, nullable=False, default=False)
-    market_sentiment = Column(String(20), nullable=False)  # EXTREME_FEAR, FEAR, NEUTRAL, GREED, EXTREME_GREED
-    sp500_trend = Column(String(20), nullable=False)  # STRONG_UPTREND, UPTREND, SIDEWAYS, DOWNTREND, STRONG_DOWNTREND
+    dominant_narrative = Column(Text, nullable=True)
+    geopolitical_risk = Column(String(20), nullable=True)  # HIGH, MEDIUM, LOW
+    earnings_season = Column(Boolean, nullable=True, default=False)
+    market_sentiment = Column(String(20), nullable=True)  # EXTREME_FEAR, FEAR, NEUTRAL, GREED, EXTREME_GREED
+    sp500_trend = Column(String(20), nullable=True)  # STRONG_UPTREND, UPTREND, SIDEWAYS, DOWNTREND, STRONG_DOWNTREND
+    snapshot_metadata = Column(JSONB, nullable=True)  # Additional flexible metadata
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
@@ -730,12 +731,12 @@ class NewsInterpretation(Base):
     __tablename__ = "news_interpretations"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    news_article_id = Column(Integer, ForeignKey('news_articles.id', ondelete='CASCADE'), nullable=False)
+    news_article_id = Column(Integer, ForeignKey('news_articles.id', ondelete='CASCADE'), nullable=True)
     ticker = Column(String(20), nullable=False)
     headline_bias = Column(String(20), nullable=False)  # BULLISH, BEARISH, NEUTRAL
     expected_impact = Column(String(20), nullable=False)  # HIGH, MEDIUM, LOW
     time_horizon = Column(String(20), nullable=False)  # IMMEDIATE, INTRADAY, MULTI_DAY
-    confidence = Column(Float, nullable=False)
+    confidence = Column(Integer, nullable=False)  # 0-100
     reasoning = Column(Text, nullable=False)
     macro_context_id = Column(Integer, ForeignKey('macro_context_snapshots.id', ondelete='SET NULL'), nullable=True)
     interpreted_at = Column(DateTime, nullable=False, default=datetime.now)
@@ -767,18 +768,30 @@ class NewsMarketReaction(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     interpretation_id = Column(Integer, ForeignKey('news_interpretations.id', ondelete='CASCADE'), nullable=False, unique=True)
     ticker = Column(String(20), nullable=False)
-    price_at_news = Column(Float, nullable=False)
-    price_1h_after = Column(Float, nullable=True)
-    price_1d_after = Column(Float, nullable=True)
-    price_3d_after = Column(Float, nullable=True)
-    actual_price_change_1h = Column(Float, nullable=True)
-    actual_price_change_1d = Column(Float, nullable=True)
-    actual_price_change_3d = Column(Float, nullable=True)
+    price_at_news = Column(Numeric(12, 2), nullable=True)  # Fixed: nullable=True to match DB
+    price_1h_after = Column(Numeric(12, 2), nullable=True)  # Fixed: NUMERIC(12,2) instead of Float
+    price_1d_after = Column(Numeric(12, 2), nullable=True)  # Fixed: NUMERIC(12,2) instead of Float
+    price_3d_after = Column(Numeric(12, 2), nullable=True)  # Fixed: NUMERIC(12,2) instead of Float
+    actual_price_change_1h = Column(Numeric(8, 4), nullable=True)  # Fixed: NUMERIC(8,4) instead of Float
+    actual_price_change_1d = Column(Numeric(8, 4), nullable=True)  # Fixed: NUMERIC(8,4) instead of Float
+    actual_price_change_3d = Column(Numeric(8, 4), nullable=True)  # Fixed: NUMERIC(8,4) instead of Float
     interpretation_correct = Column(Boolean, nullable=True)
-    confidence_justified = Column(Float, nullable=True)
-    magnitude_accuracy = Column(Float, nullable=True)
+    confidence_justified = Column(Boolean, nullable=True)  # Fixed: Boolean instead of Float
+    magnitude_accuracy = Column(Numeric(4, 2), nullable=True)  # Fixed: NUMERIC(4,2) instead of Float
     verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    # Accountability System 컬럼 (Phase 29)
+    news_at = Column(DateTime, nullable=True)  # 뉴스 발생 시각
+    price_change_1h = Column(Numeric(8, 4), nullable=True)  # 1시간 후 가격 변화율 (%)
+    price_change_1d = Column(Numeric(8, 4), nullable=True)  # 1일 후 가격 변화율 (%)
+    price_change_3d = Column(Numeric(8, 4), nullable=True)  # 3일 후 가격 변화율 (%)
+    accuracy_1h = Column(Numeric(4, 2), nullable=True)  # 1시간 예측 정확도 (0.0~1.0)
+    accuracy_1d = Column(Numeric(4, 2), nullable=True)  # 1일 예측 정확도 (0.0~1.0)
+    accuracy_3d = Column(Numeric(4, 2), nullable=True)  # 3일 예측 정확도 (0.0~1.0)
+    verified_at_1h = Column(DateTime, nullable=True)  # 1시간 검증 완료 시각
+    verified_at_1d = Column(DateTime, nullable=True)  # 1일 검증 완료 시각
+    verified_at_3d = Column(DateTime, nullable=True)  # 3일 검증 완료 시각
 
     # Relationships
     interpretation = relationship("NewsInterpretation", back_populates="market_reaction")
@@ -803,10 +816,10 @@ class NewsDecisionLink(Base):
     debate_session_id = Column(Integer, ForeignKey('ai_debate_sessions.id', ondelete='SET NULL'), nullable=True)
     trading_signal_id = Column(Integer, ForeignKey('trading_signals.id', ondelete='SET NULL'), nullable=True)
     ticker = Column(String(20), nullable=False)
-    final_decision = Column(String(10), nullable=False)  # BUY, SELL, HOLD
-    decision_outcome = Column(String(20), nullable=False, default='PENDING')  # SUCCESS, FAILURE, PENDING
-    profit_loss = Column(Float, nullable=True)
-    news_influence_weight = Column(Float, nullable=True)
+    final_decision = Column(String(10), nullable=True)  # BUY, SELL, HOLD
+    decision_outcome = Column(String(20), nullable=True, default='PENDING')  # SUCCESS, FAILURE, PENDING
+    profit_loss = Column(Numeric(12, 2), nullable=True)
+    news_influence_weight = Column(Numeric(4, 2), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     outcome_verified_at = Column(DateTime, nullable=True)
 
@@ -835,14 +848,14 @@ class NewsNarrative(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     report_date = Column(Date, nullable=False)
     report_type = Column(String(20), nullable=False)  # DAILY, WEEKLY, MONTHLY, QUARTERLY, HALF_YEARLY, ANNUAL
-    page_number = Column(Integer, nullable=False)
-    section = Column(String(50), nullable=False)
+    page_number = Column(Integer, nullable=True)
+    section = Column(String(50), nullable=True)
     narrative_text = Column(Text, nullable=False)
     interpretation_id = Column(Integer, ForeignKey('news_interpretations.id', ondelete='SET NULL'), nullable=True)
     ticker = Column(String(20), nullable=True)
-    claim_type = Column(String(30), nullable=False)  # PREDICTION, ANALYSIS, OBSERVATION, RECOMMENDATION
-    accuracy_score = Column(Float, nullable=True)
-    verified = Column(Boolean, nullable=False, default=False)
+    claim_type = Column(String(30), nullable=True)  # PREDICTION, ANALYSIS, OBSERVATION, RECOMMENDATION
+    accuracy_score = Column(Numeric(4, 2), nullable=True)
+    verified = Column(Boolean, nullable=True, default=False)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     verified_at = Column(DateTime, nullable=True)
 
@@ -871,19 +884,19 @@ class FailureAnalysis(Base):
     ticker = Column(String(20), nullable=False)
     failure_type = Column(String(50), nullable=False)  # WRONG_DIRECTION, WRONG_MAGNITUDE, WRONG_TIMING, WRONG_CONFIDENCE, MISSED_SIGNAL, FALSE_POSITIVE
     severity = Column(String(20), nullable=False)  # CRITICAL, HIGH, MEDIUM, LOW
-    expected_outcome = Column(Text, nullable=False)
-    actual_outcome = Column(Text, nullable=False)
+    expected_outcome = Column(Text, nullable=True)
+    actual_outcome = Column(Text, nullable=True)
     root_cause = Column(Text, nullable=False)
     lesson_learned = Column(Text, nullable=False)
     recommended_fix = Column(Text, nullable=False)
-    fix_applied = Column(Boolean, nullable=False, default=False)
+    fix_applied = Column(Boolean, nullable=True, default=False)
     fix_description = Column(Text, nullable=True)
     fix_effective = Column(Boolean, nullable=True)
-    rag_context_updated = Column(Boolean, nullable=False, default=False)
-    analyzed_by = Column(String(50), nullable=False, default='failure_learning_agent')
-    analyzed_at = Column(DateTime, nullable=False, default=datetime.now)
+    rag_context_updated = Column(Boolean, nullable=True, default=False)
+    analyzed_by = Column(String(50), nullable=True, default='failure_learning_agent')
+    analyzed_at = Column(DateTime, nullable=True, default=datetime.now)
     created_at = Column(DateTime, nullable=False, default=datetime.now)
-    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
 
     # Relationships
     interpretation = relationship("NewsInterpretation", back_populates="failure_analyses")

@@ -1,7 +1,7 @@
 # AI Trading System - Phase 마스터 인덱스
 
-**최종 업데이트**: 2025-12-25  
-**현재 시스템 버전**: Phase 28 (Sector Data Integration 완료)
+**최종 업데이트**: 2025-12-30
+**현재 시스템 버전**: Phase 31 (Portfolio Optimization 완료)
 
 ---
 
@@ -165,9 +165,37 @@
 - Python 파일 문서화 (9개 핵심 파일)
 - 문서: `docs/Phase_28_Sector_Integration.md`
 
+### Phase 29: Accountability System ✅
+- **완료일**: 2025-12-30 (세션 1)
+- NIA (News Interpretation Accuracy) 계산
+- 1h/1d/3d 시계열 검증
+- Failure Learning Agent
+- Accountability Frontend (NIA Dashboard)
+- 5개 API 엔드포인트
+- 문서: `docs/251230_work_summary.md`
+
+### Phase 30: Multi-Asset Support ✅
+- **완료일**: 2025-12-30 (세션 2)
+- 6개 자산 클래스 (STOCK, BOND, CRYPTO, COMMODITY, ETF, REIT)
+- 4개 DB 테이블 (assets, multi_asset_positions, asset_correlations, asset_allocations)
+- 27개 인기 자산 생성
+- Asset Service 구현
+- 리스크 레벨 & S&P500 상관계수 계산
+- 문서: `docs/251230_Development_Complete.md`
+
+### Phase 31: Portfolio Optimization ✅
+- **완료일**: 2025-12-30 (세션 2)
+- Modern Portfolio Theory (MPT) 구현
+- Sharpe Ratio 최대화
+- 최소 분산 포트폴리오
+- 효율적 투자선 계산 (50 points)
+- Monte Carlo 시뮬레이션 (10,000개)
+- Risk Parity 배분
+- 문서: `docs/251230_Development_Complete.md`
+
 ---
 
-## 📈 현재 시스템 상태 (2025-12-25)
+## 📈 현재 시스템 상태 (2025-12-30)
 
 ### War Room 구성 (9 Agents)
 1. **Trader Agent** (15%) - 기술적 분석
@@ -197,10 +225,13 @@
 - News: `news_articles`, `sec_filings`
 - Dividend: `dividend_history`, `dividend_snapshot`, `dividend_aristocrats`
 - Knowledge: `knowledge_graphs`, `graph_nodes`, `graph_edges`
+- Accountability: `news_interpretations`, `news_market_reactions`, `macro_context_snapshots`, `news_decision_links`, `news_narratives`, `failure_analysis` ⭐ NEW
+- Multi-Asset: `assets`, `multi_asset_positions`, `asset_correlations`, `asset_allocations` ⭐ NEW
 
-### API 엔드포인트 (50+)
+### API 엔드포인트 (55+)
 - `/api/war-room/*` - War Room
-- `/api/dividend/*` - 배당 인텔리전스 ⭐ NEW
+- `/api/dividend/*` - 배당 인텔리전스
+- `/api/accountability/*` - Accountability System (5개) ⭐ NEW
 - `/api/weights/*` - 가중치 조정
 - `/api/alerts/*` - 알림 시스템
 - `/api/performance/*` - 성과 추적
@@ -234,16 +265,21 @@
 
 ### 최신 완료 보고서
 - Phase 20: `docs/phase20_completion_report.md`
-- **Phase 21**: `docs/phase_21_completion.md`
+- Phase 21: `docs/phase_21_completion.md`
 - Phase 24: `10_Progress_Reports/251223_Phase24_Complete.md`
 - Phase 25: `10_Progress_Reports/251223_Phase25_Complete.md`
 - Phase 26: `10_Progress_Reports/251223_Phase26_REAL_MODE_완료.md`
 - Phase 27: `10_Progress_Reports/251223_Phase27_Final_완료.md`
-- **Phase 28**: `docs/Phase_28_Sector_Integration.md` ⭐ NEW
+- Phase 28: `docs/Phase_28_Sector_Integration.md`
+- **Phase 29**: `docs/251230_work_summary.md` ⭐ NEW
+- **Phase 30-31**: `docs/251230_Development_Complete.md` ⭐ NEW
+- **DB 검증**: `docs/DB_SCHEMA_VERIFICATION_REPORT.md` ⭐ NEW
 
 ### 작업 요약
-- 2025-12-22: `docs/251225_work_summary.md`
+- 2025-12-22: `docs/251222_work_summary.md`
 - 2025-12-24: `docs/251224_work_summary.md`
+- 2025-12-25: `docs/251225_work_summary.md`
+- **2025-12-30**: `docs/251230_work_summary.md`, `docs/251230_Development_Complete.md` ⭐ NEW
 
 ---
 
@@ -254,12 +290,79 @@
 - 스케줄러에 배당 데이터 수집 등록
 
 ### 제안 Phase (미구현)
-- Phase 28: Multi-Asset Support (채권, 코인)
-- Phase 29: Portfolio Optimization (MPT)
-- Phase 30: Social Sentiment (Reddit, Twitter)
+- Phase 30: Multi-Asset Support (채권, 코인)
+- Phase 31: Portfolio Optimization (MPT)
+- Phase 32: Social Sentiment (Reddit, Twitter)
 
 ---
 
-**최종 상태**: Phase 0-28 완료 (Phase 19, 22, 23 제외)  
-**마지막 Phase**: Phase 28 - Sector Data Integration (2025-12-25)  
+## 🆕 Phase 29: Accountability System ✅
+
+**완료일**: 2025-12-30
+**위치**: `backend/automation/accountability_*.py`, `backend/api/accountability_router.py`
+
+### 핵심 기능
+- **Price Tracking Verifier**: 1h/1d/3d 시계열 검증
+- **NIA Score**: News Interpretation Accuracy (0.0~1.0)
+- **Accountability Scheduler**: 매시간 자동 검증
+- **5개 API 엔드포인트**: `/api/accountability/*`
+
+### DB 테이블
+- `macro_context_snapshots` - 일일 거시 경제 스냅샷
+- `news_interpretations` - AI 뉴스 해석 예측
+- `news_market_reactions` - 실제 시장 반응 추적
+- `news_decision_links` - 의사결정 연결
+- `news_narratives` - 서사 추적
+- `failure_analysis` - 실패 분석
+
+### 문서
+- 스크립트: `backend/automation/create_accountability_tables.py`
+- 테스트 데이터: `backend/automation/create_test_interpretations.py`
+- API 라우터: `backend/api/accountability_router.py`
+
+---
+
+## 🔬 Meta War Room (별도 프로젝트) ✅
+
+**완료일**: 2025-12-30
+**위치**: `D:\code\Advanced Development\meta-war-room\`
+
+### 개요
+3-AI 토론 오케스트레이터 - Claude Code, GPT-4, Gemini가 개발 결정에 대해 토론하고 합의 도출
+
+### AI 참여자
+1. **Claude Code (Architect)** - 35% 가중치
+   - 기술 아키텍처, 장기 유지보수성
+   - ✅ 자동화 (내장)
+
+2. **GPT-4 (Pragmatist)** - 35% 가중치
+   - 실용적 구현, 리스크 평가
+   - ⚠️ 수동 (ChatGPT 복사-붙여넣기)
+
+3. **Gemini (Innovator)** - 30% 가중치
+   - 창의적 솔루션, 최신 기술
+   - ✅ 자동화 (무료 API)
+
+### 토론 프로토콜
+- **Round 1**: 초기 입장 (AGREE/DISAGREE/NEUTRAL)
+- **Round 2**: 반박 및 공통점 찾기
+- **Round 3**: 최종 합의 (가중 투표)
+
+### 주요 파일
+- `meta_war_room.py` - 메인 오케스트레이터
+- `agents/` - 3개 AI 에이전트 래퍼
+- `prompts/` - 역할별 프롬프트 템플릿
+- `debates/` - Markdown 토론 기록 출력
+
+### 사용 예시
+```bash
+python meta_war_room.py "Should we implement GraphQL?"
+# → 3-round debate → Weighted consensus → Full transcript
+```
+
+---
+
+**최종 상태**: Phase 0-29 완료 (Phase 19, 22, 23 제외)
+**마지막 Phase**: Phase 29 - Accountability System (2025-12-30)
+**별도 프로젝트**: Meta War Room (3-AI Debate Orchestrator)
 **다음 작업**: Multi-Asset Support 또는 Portfolio Optimization

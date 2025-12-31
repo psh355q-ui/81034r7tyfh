@@ -1,0 +1,173 @@
+{
+    "table_name": "assets",
+    "description": "Multi-asset support - 주식, 채권, 코인, 원자재 등 모든 자산 클래스",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "symbol",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "자산 심볼 (AAPL, BTC-USD, GLD, TLT 등)",
+            "example": "BTC-USD"
+        },
+        {
+            "name": "asset_class",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "description": "자산 클래스 (STOCK, BOND, CRYPTO, COMMODITY, ETF, REIT)",
+            "example": "CRYPTO"
+        },
+        {
+            "name": "name",
+            "type": "VARCHAR(200)",
+            "nullable": false,
+            "description": "자산 이름",
+            "example": "Bitcoin"
+        },
+        {
+            "name": "exchange",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "거래소 (NYSE, NASDAQ, BINANCE, COMEX 등)",
+            "example": "COINBASE"
+        },
+        {
+            "name": "currency",
+            "type": "VARCHAR(10)",
+            "nullable": false,
+            "default": "USD",
+            "description": "기준 통화",
+            "example": "USD"
+        },
+        {
+            "name": "sector",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "섹터 (주식인 경우)",
+            "example": "Technology"
+        },
+        {
+            "name": "bond_type",
+            "type": "VARCHAR(30)",
+            "nullable": true,
+            "description": "채권 유형 (TREASURY, CORPORATE, MUNICIPAL, JUNK)",
+            "example": "TREASURY"
+        },
+        {
+            "name": "maturity_date",
+            "type": "DATE",
+            "nullable": true,
+            "description": "만기일 (채권인 경우)"
+        },
+        {
+            "name": "coupon_rate",
+            "type": "NUMERIC(6,4)",
+            "nullable": true,
+            "description": "쿠폰 이자율 (%) (채권인 경우)",
+            "example": "3.5000"
+        },
+        {
+            "name": "crypto_type",
+            "type": "VARCHAR(30)",
+            "nullable": true,
+            "description": "코인 유형 (LAYER1, LAYER2, DEFI, STABLECOIN, MEME)",
+            "example": "LAYER1"
+        },
+        {
+            "name": "commodity_type",
+            "type": "VARCHAR(30)",
+            "nullable": true,
+            "description": "원자재 유형 (PRECIOUS_METAL, ENERGY, AGRICULTURE)",
+            "example": "PRECIOUS_METAL"
+        },
+        {
+            "name": "risk_level",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "default": "MEDIUM",
+            "description": "리스크 레벨 (VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH)",
+            "example": "VERY_HIGH"
+        },
+        {
+            "name": "correlation_to_sp500",
+            "type": "NUMERIC(4,2)",
+            "nullable": true,
+            "description": "S&P500과의 상관계수 (-1.0 ~ 1.0)",
+            "example": "0.65"
+        },
+        {
+            "name": "is_active",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": true,
+            "description": "활성 상태"
+        },
+        {
+            "name": "extra_data",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "추가 메타데이터 (자산별 특수 정보)"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "수정 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_assets_symbol",
+            "columns": ["symbol"],
+            "unique": true,
+            "description": "심볼별 조회 (고유)"
+        },
+        {
+            "name": "idx_assets_class",
+            "columns": ["asset_class"],
+            "unique": false,
+            "description": "자산 클래스별 조회"
+        },
+        {
+            "name": "idx_assets_risk",
+            "columns": ["risk_level"],
+            "unique": false,
+            "description": "리스크 레벨별 조회"
+        },
+        {
+            "name": "idx_assets_active",
+            "columns": ["is_active"],
+            "unique": false,
+            "description": "활성 자산 조회"
+        }
+    ],
+    "metadata": {
+        "category": "multi-asset",
+        "repository": "AssetRepository",
+        "module": "Multi-Asset System",
+        "created": "2025-12-30",
+        "last_updated": "2025-12-30",
+        "update_frequency": "Daily",
+        "data_source": "Yahoo Finance, CoinGecko, FRED",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/services/asset_service.py"
+        ],
+        "notes": "Phase 30: Multi-Asset Support - 주식 외 자산 클래스 지원"
+    }
+}

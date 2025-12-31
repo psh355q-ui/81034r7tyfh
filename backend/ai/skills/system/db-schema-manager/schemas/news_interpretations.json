@@ -13,7 +13,7 @@
         {
             "name": "news_article_id",
             "type": "INTEGER",
-            "nullable": false,
+            "nullable": true,
             "description": "뉴스 기사 ID (Foreign Key)",
             "foreign_key": {
                 "table": "news_articles",
@@ -63,10 +63,10 @@
         },
         {
             "name": "confidence",
-            "type": "FLOAT",
+            "type": "INTEGER",
             "nullable": false,
-            "description": "신뢰도 (0.0 ~ 1.0)",
-            "example": 0.85
+            "description": "신뢰도 (0 ~ 100)",
+            "example": 85
         },
         {
             "name": "reasoning",

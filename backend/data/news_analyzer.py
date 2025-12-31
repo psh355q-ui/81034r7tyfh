@@ -411,7 +411,7 @@ def get_ticker_news(db: Session, ticker: str, limit: int = 20) -> List[Dict[str,
         .limit(limit)
         .all()
     )
-    
+
     results = []
     for rel in relevances:
         article = rel.article
@@ -423,7 +423,63 @@ def get_ticker_news(db: Session, ticker: str, limit: int = 20) -> List[Dict[str,
             "relevance": rel.relevance_score,
             "sentiment": rel.sentiment_for_ticker
         })
-    
+
+    return results
+
+
+def get_high_impact_news(db: Session, limit: int = 20) -> List[Dict[str, Any]]:
+    """고영향도 뉴스 조회"""
+    from backend.data.news_models import NewsArticle, NewsAnalysis
+
+    articles = (
+        db.query(NewsArticle)
+        .join(NewsAnalysis)
+        .filter(NewsAnalysis.impact_magnitude >= 0.7)
+        .order_by(NewsArticle.published_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for article in articles:
+        analysis = article.analysis
+        results.append({
+            "id": article.id,
+            "title": article.title,
+            "source": article.source,
+            "published_at": article.published_at.isoformat() if article.published_at else None,
+            "impact_magnitude": analysis.impact_magnitude if analysis else 0,
+            "urgency": analysis.urgency if analysis else "unknown"
+        })
+
+    return results
+
+
+def get_warning_news(db: Session, limit: int = 20) -> List[Dict[str, Any]]:
+    """경고성 뉴스 조회"""
+    from backend.data.news_models import NewsArticle, NewsAnalysis
+
+    articles = (
+        db.query(NewsArticle)
+        .join(NewsAnalysis)
+        .filter(NewsAnalysis.red_flags.isnot(None))
+        .order_by(NewsArticle.published_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for article in articles:
+        analysis = article.analysis
+        results.append({
+            "id": article.id,
+            "title": article.title,
+            "source": article.source,
+            "published_at": article.published_at.isoformat() if article.published_at else None,
+            "red_flags": analysis.red_flags if analysis else [],
+            "risk_category": analysis.risk_category if analysis else "unknown"
+        })
+
     return results
 
 

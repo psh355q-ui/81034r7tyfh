@@ -1,0 +1,112 @@
+{
+    "table_name": "asset_correlations",
+    "description": "자산 간 상관관계 매트릭스",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "asset1_id",
+            "type": "INTEGER",
+            "nullable": false,
+            "description": "첫 번째 자산 ID (FK to assets.id)",
+            "foreign_key": {
+                "table": "assets",
+                "column": "id",
+                "on_delete": "CASCADE"
+            }
+        },
+        {
+            "name": "asset2_id",
+            "type": "INTEGER",
+            "nullable": false,
+            "description": "두 번째 자산 ID (FK to assets.id)",
+            "foreign_key": {
+                "table": "assets",
+                "column": "id",
+                "on_delete": "CASCADE"
+            }
+        },
+        {
+            "name": "correlation_30d",
+            "type": "NUMERIC(4,2)",
+            "nullable": true,
+            "description": "30일 상관계수 (-1.0 ~ 1.0)",
+            "example": "0.75"
+        },
+        {
+            "name": "correlation_90d",
+            "type": "NUMERIC(4,2)",
+            "nullable": true,
+            "description": "90일 상관계수 (-1.0 ~ 1.0)",
+            "example": "0.68"
+        },
+        {
+            "name": "correlation_1y",
+            "type": "NUMERIC(4,2)",
+            "nullable": true,
+            "description": "1년 상관계수 (-1.0 ~ 1.0)",
+            "example": "0.62"
+        },
+        {
+            "name": "calculated_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "계산 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_correlations_assets",
+            "columns": ["asset1_id", "asset2_id"],
+            "unique": true,
+            "description": "자산 쌍별 조회 (고유)"
+        },
+        {
+            "name": "idx_correlations_calculated",
+            "columns": ["calculated_at"],
+            "unique": false,
+            "description": "계산 시각별 조회"
+        }
+    ],
+    "foreign_keys": [
+        {
+            "name": "fk_correlation_asset1",
+            "columns": ["asset1_id"],
+            "references": {
+                "table": "assets",
+                "columns": ["id"]
+            },
+            "on_delete": "CASCADE"
+        },
+        {
+            "name": "fk_correlation_asset2",
+            "columns": ["asset2_id"],
+            "references": {
+                "table": "assets",
+                "columns": ["id"]
+            },
+            "on_delete": "CASCADE"
+        }
+    ],
+    "metadata": {
+        "category": "multi-asset",
+        "repository": "CorrelationRepository",
+        "module": "Multi-Asset System",
+        "created": "2025-12-30",
+        "last_updated": "2025-12-30",
+        "update_frequency": "Daily",
+        "data_source": "Yahoo Finance Price Data",
+        "related_files": [
+            "backend/database/models_assets.py",
+            "backend/services/asset_service.py"
+        ],
+        "notes": "Phase 30: Multi-Asset Support - 상관관계 분석"
+    }
+}

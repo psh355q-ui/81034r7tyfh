@@ -1,0 +1,127 @@
+{
+    "table_name": "multi_asset_positions",
+    "description": "Multi-asset 포트폴리오 포지션 관리",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "asset_id",
+            "type": "INTEGER",
+            "nullable": false,
+            "description": "자산 ID (FK to assets.id)",
+            "foreign_key": {
+                "table": "assets",
+                "column": "id",
+                "on_delete": "CASCADE"
+            }
+        },
+        {
+            "name": "quantity",
+            "type": "NUMERIC(18,8)",
+            "nullable": false,
+            "description": "보유 수량 (코인은 소수점 8자리 지원)",
+            "example": "1.50000000"
+        },
+        {
+            "name": "average_cost",
+            "type": "NUMERIC(12,2)",
+            "nullable": false,
+            "description": "평균 매수 단가",
+            "example": "45000.00"
+        },
+        {
+            "name": "current_price",
+            "type": "NUMERIC(12,2)",
+            "nullable": true,
+            "description": "현재가",
+            "example": "50000.00"
+        },
+        {
+            "name": "market_value",
+            "type": "NUMERIC(18,2)",
+            "nullable": true,
+            "description": "평가액 (quantity * current_price)",
+            "example": "75000.00"
+        },
+        {
+            "name": "unrealized_pnl",
+            "type": "NUMERIC(18,2)",
+            "nullable": true,
+            "description": "미실현 손익",
+            "example": "7500.00"
+        },
+        {
+            "name": "unrealized_pnl_percent",
+            "type": "NUMERIC(8,4)",
+            "nullable": true,
+            "description": "미실현 손익률 (%)",
+            "example": "11.1111"
+        },
+        {
+            "name": "portfolio_weight",
+            "type": "NUMERIC(6,4)",
+            "nullable": true,
+            "description": "포트폴리오 비중 (%)",
+            "example": "25.5000"
+        },
+        {
+            "name": "opened_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "포지션 오픈 시각"
+        },
+        {
+            "name": "last_updated",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "마지막 업데이트 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_multi_positions_asset",
+            "columns": ["asset_id"],
+            "unique": false,
+            "description": "자산별 포지션 조회"
+        },
+        {
+            "name": "idx_multi_positions_updated",
+            "columns": ["last_updated"],
+            "unique": false,
+            "description": "최근 업데이트 조회"
+        }
+    ],
+    "foreign_keys": [
+        {
+            "name": "fk_position_asset",
+            "columns": ["asset_id"],
+            "references": {
+                "table": "assets",
+                "columns": ["id"]
+            },
+            "on_delete": "CASCADE"
+        }
+    ],
+    "metadata": {
+        "category": "multi-asset",
+        "repository": "PositionRepository",
+        "module": "Multi-Asset System",
+        "created": "2025-12-30",
+        "last_updated": "2025-12-30",
+        "update_frequency": "Real-time",
+        "data_source": "Portfolio Management System",
+        "related_files": [
+            "backend/database/models_assets.py",
+            "backend/services/position_service.py"
+        ],
+        "notes": "Phase 30: Multi-Asset Support - 포지션 관리"
+    }
+}

@@ -53,7 +53,7 @@
         {
             "name": "final_decision",
             "type": "VARCHAR(10)",
-            "nullable": false,
+            "nullable": true,
             "description": "최종 의사결정",
             "enum": [
                 "BUY",
@@ -64,7 +64,7 @@
         {
             "name": "decision_outcome",
             "type": "VARCHAR(20)",
-            "nullable": false,
+            "nullable": true,
             "default": "PENDING",
             "description": "의사결정 결과",
             "enum": [
@@ -75,13 +75,13 @@
         },
         {
             "name": "profit_loss",
-            "type": "FLOAT",
+            "type": "NUMERIC(12,2)",
             "nullable": true,
             "description": "손익 (%)"
         },
         {
             "name": "news_influence_weight",
-            "type": "FLOAT",
+            "type": "NUMERIC(4,2)",
             "nullable": true,
             "description": "뉴스가 의사결정에 미친 영향도 (0.0 ~ 1.0)"
         },

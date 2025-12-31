@@ -37,28 +37,29 @@ class DailyLearningScheduler:
     
     def __init__(
         self,
-        run_time: time = time(0, 0),  # Default: midnight
+        run_times: list[time] = None,  # Multiple run times per day
         retry_on_failure: bool = True,
         max_retries: int = 3
     ):
         """
         Initialize scheduler.
-        
+
         Args:
-            run_time: Time of day to run learning (default: midnight)
+            run_times: List of times to run learning each day (e.g., [time(10,0), time(16,0)])
+                      If None, defaults to [time(0, 0)] (midnight)
             retry_on_failure: Retry if learning fails (default: True)
             max_retries: Max retry attempts (default: 3)
         """
-        self.run_time = run_time
+        self.run_times = run_times if run_times else [time(0, 0)]
         self.retry_on_failure = retry_on_failure
         self.max_retries = max_retries
-        
+
         self.orchestrator = LearningOrchestrator()
         self.is_running = False
-        
+
         logger.info(
             f"DailyLearningScheduler initialized: "
-            f"run_time={run_time}, "
+            f"run_times={[t.strftime('%H:%M') for t in self.run_times]}, "
             f"retry={retry_on_failure}, "
             f"max_retries={max_retries}"
         )
@@ -66,57 +67,66 @@ class DailyLearningScheduler:
     async def start(self):
         """
         Start the scheduler (runs indefinitely).
-        
+
+        Supports multiple run times per day (e.g., after US market close and after KR market close).
+
         This should be run in a background task:
             asyncio.create_task(scheduler.start())
-        
+
         Example:
-            >>> scheduler = DailyLearningScheduler()
+            >>> scheduler = DailyLearningScheduler(run_times=[time(10,0), time(16,0)])
             >>> await scheduler.start()  # Blocks until stopped
         """
         self.is_running = True
-        logger.info("🕐 Daily learning scheduler started")
-        
+        logger.info(f"🕐 Daily learning scheduler started with {len(self.run_times)} run times per day")
+
         while self.is_running:
-            # Calculate time until next run
+            # Calculate time until next run (from all run times)
             now = datetime.now()
-            next_run = datetime.combine(now.date(), self.run_time)
-            
-            # If we've passed today's run time, schedule for tomorrow
-            if now >= next_run:
-                next_run = datetime.combine(
-                    now.date(),
-                    self.run_time
-                ) + timedelta(days=1)
-            
+            upcoming_runs = []
+
+            for run_time in self.run_times:
+                next_run = datetime.combine(now.date(), run_time)
+
+                # If we've passed today's run time, schedule for tomorrow
+                if now >= next_run:
+                    next_run = datetime.combine(now.date(), run_time) + timedelta(days=1)
+
+                upcoming_runs.append(next_run)
+
+            # Get the earliest upcoming run
+            next_run = min(upcoming_runs)
             wait_seconds = (next_run - now).total_seconds()
-            
-            logger.info(f"⏰ Next learning cycle scheduled for: {next_run}")
+
+            logger.info(f"⏰ Next learning cycle scheduled for: {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
             logger.info(f"⏱️  Waiting {wait_seconds/3600:.1f} hours...")
-            
+
             # Wait until next run time
             await asyncio.sleep(wait_seconds)
-            
+
             # Run learning cycle
             if self.is_running:
                 await self._execute_with_retry()
     
     async def _execute_with_retry(self):
-        """Execute learning cycle with retry logic."""
+        """Execute learning cycle with retry logic (non-blocking)."""
         for attempt in range(1, self.max_retries + 1):
             try:
                 logger.info(f"🚀 Executing daily learning cycle (attempt {attempt}/{self.max_retries})")
-                
+                logger.info("⚡ Running in background - main server remains responsive")
+
+                # Execute learning cycle (already async, won't block event loop)
                 results = await self.orchestrator.run_daily_learning_cycle()
-                
+
                 logger.info(f"✅ Learning cycle completed: {results['agents_learned']}/6 agents")
-                
+                logger.info(f"⏱️  Duration: {results.get('duration_seconds', 0):.1f}s")
+
                 # Success - exit retry loop
                 break
-                
+
             except Exception as e:
                 logger.error(f"❌ Learning cycle failed (attempt {attempt}): {str(e)}", exc_info=True)
-                
+
                 if attempt < self.max_retries and self.retry_on_failure:
                     wait_minutes = attempt * 5  # Exponential backoff: 5, 10, 15 min
                     logger.info(f"⏳ Retrying in {wait_minutes} minutes...")
@@ -155,11 +165,12 @@ if __name__ == "__main__":
     print("🧪 Testing DailyLearningScheduler\n")
     
     async def test_scheduler():
-        # Create scheduler that runs every minute (for testing)
+        # Create scheduler with multiple run times (for testing)
         now = datetime.now()
-        test_time = (now + timedelta(seconds=10)).time()
-        
-        scheduler = DailyLearningScheduler(run_time=test_time)
+        test_time_1 = (now + timedelta(seconds=10)).time()
+        test_time_2 = (now + timedelta(seconds=20)).time()
+
+        scheduler = DailyLearningScheduler(run_times=[test_time_1, test_time_2])
         
         # Run once for testing
         print("Running single learning cycle...")

@@ -33,13 +33,13 @@
         {
             "name": "page_number",
             "type": "INTEGER",
-            "nullable": false,
+            "nullable": true,
             "description": "페이지 번호"
         },
         {
             "name": "section",
             "type": "VARCHAR(50)",
-            "nullable": false,
+            "nullable": true,
             "description": "섹션 이름",
             "example": "market_narrative"
         },
@@ -70,7 +70,7 @@
         {
             "name": "claim_type",
             "type": "VARCHAR(30)",
-            "nullable": false,
+            "nullable": true,
             "description": "주장 유형",
             "enum": [
                 "PREDICTION",
@@ -81,14 +81,14 @@
         },
         {
             "name": "accuracy_score",
-            "type": "FLOAT",
+            "type": "NUMERIC(4,2)",
             "nullable": true,
             "description": "정확도 점수 (0.0 ~ 1.0) - 나중에 계산"
         },
         {
             "name": "verified",
             "type": "BOOLEAN",
-            "nullable": false,
+            "nullable": true,
             "default": false,
             "description": "검증 완료 여부"
         },

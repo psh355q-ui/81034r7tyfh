@@ -107,10 +107,20 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 6. Execute implementation following the task plan:
    - **Phase-by-phase execution**: Complete each phase before moving to the next
-   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  
+   - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
+   - **Database Schema Management (CRITICAL)**:
+     - **MANDATORY**: All database schema modifications MUST use the DB Schema Manager skill
+     - **NEVER** directly modify `backend/database/models.py` without first updating schema definitions
+     - **WORKFLOW** for any DB changes:
+       1. Run `python backend/ai/skills/system/db-schema-manager/scripts/compare_to_db.py <table_name>` to detect mismatches
+       2. Update `backend/ai/skills/system/db-schema-manager/schemas/<table_name>.json` first
+       3. Update `backend/database/models.py` to match the schema
+       4. Re-verify with `compare_to_db.py` to confirm schema synchronization
+     - **Zero Tolerance**: Direct SQL writing, legacy driver usage, or schema bypass will be rejected
+     - See `backend/ai/skills/system/db-schema-manager/SKILL.md` for complete guidelines
 
 7. Implementation execution rules:
    - **Setup first**: Initialize project structure, dependencies, configuration

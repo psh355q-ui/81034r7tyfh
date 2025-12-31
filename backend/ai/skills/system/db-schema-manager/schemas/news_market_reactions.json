@@ -30,43 +30,43 @@
         },
         {
             "name": "price_at_news",
-            "type": "FLOAT",
-            "nullable": false,
+            "type": "NUMERIC(12,2)",
+            "nullable": true,
             "description": "뉴스 발생 시점 가격"
         },
         {
             "name": "price_1h_after",
-            "type": "FLOAT",
+            "type": "NUMERIC(12,2)",
             "nullable": true,
             "description": "1시간 후 가격"
         },
         {
             "name": "price_1d_after",
-            "type": "FLOAT",
+            "type": "NUMERIC(12,2)",
             "nullable": true,
             "description": "1일 후 가격"
         },
         {
             "name": "price_3d_after",
-            "type": "FLOAT",
+            "type": "NUMERIC(12,2)",
             "nullable": true,
             "description": "3일 후 가격"
         },
         {
             "name": "actual_price_change_1h",
-            "type": "FLOAT",
+            "type": "NUMERIC(8,4)",
             "nullable": true,
             "description": "1시간 후 가격 변화율 (%)"
         },
         {
             "name": "actual_price_change_1d",
-            "type": "FLOAT",
+            "type": "NUMERIC(8,4)",
             "nullable": true,
             "description": "1일 후 가격 변화율 (%)"
         },
         {
             "name": "actual_price_change_3d",
-            "type": "FLOAT",
+            "type": "NUMERIC(8,4)",
             "nullable": true,
             "description": "3일 후 가격 변화율 (%)"
         },
@@ -78,15 +78,15 @@
         },
         {
             "name": "confidence_justified",
-            "type": "FLOAT",
+            "type": "BOOLEAN",
             "nullable": true,
-            "description": "신뢰도 적절성 점수 (0.0 ~ 1.0)"
+            "description": "신뢰도 적절성 여부 (높은 신뢰도가 정당화되었는지)"
         },
         {
             "name": "magnitude_accuracy",
-            "type": "FLOAT",
+            "type": "NUMERIC(4,2)",
             "nullable": true,
-            "description": "크기 정확도 (예상 vs 실제 차이)"
+            "description": "크기 정확도 점수 (0.0 ~ 1.0)"
         },
         {
             "name": "verified_at",

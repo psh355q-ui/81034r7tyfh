@@ -68,13 +68,13 @@
         {
             "name": "expected_outcome",
             "type": "TEXT",
-            "nullable": false,
+            "nullable": true,
             "description": "예상했던 결과"
         },
         {
             "name": "actual_outcome",
             "type": "TEXT",
-            "nullable": false,
+            "nullable": true,
             "description": "실제 발생한 결과"
         },
         {
@@ -98,7 +98,7 @@
         {
             "name": "fix_applied",
             "type": "BOOLEAN",
-            "nullable": false,
+            "nullable": true,
             "default": false,
             "description": "수정 적용 여부"
         },
@@ -117,14 +117,14 @@
         {
             "name": "rag_context_updated",
             "type": "BOOLEAN",
-            "nullable": false,
+            "nullable": true,
             "default": false,
             "description": "RAG 컨텍스트 업데이트 여부"
         },
         {
             "name": "analyzed_by",
             "type": "VARCHAR(50)",
-            "nullable": false,
+            "nullable": true,
             "default": "failure_learning_agent",
             "description": "분석 주체",
             "example": "failure_learning_agent"
@@ -132,7 +132,7 @@
         {
             "name": "analyzed_at",
             "type": "TIMESTAMP",
-            "nullable": false,
+            "nullable": true,
             "default": "CURRENT_TIMESTAMP",
             "description": "분석 시각"
         },
@@ -146,7 +146,7 @@
         {
             "name": "updated_at",
             "type": "TIMESTAMP",
-            "nullable": false,
+            "nullable": true,
             "default": "CURRENT_TIMESTAMP",
             "description": "레코드 수정 시각"
         }

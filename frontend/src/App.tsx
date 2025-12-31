@@ -30,6 +30,11 @@ import Orders from './pages/Orders';  // 🆕 Phase 27
 import Portfolio from './pages/Portfolio';  // 🆕 Phase 27 (new portfolio page)
 import Performance from './pages/Performance';  // 🆕 Phase 25.2 (performance dashboard)
 import DividendDashboard from './pages/DividendDashboard';  // 🆕 Phase 21 (dividend intelligence)
+import AccountabilityDashboard from './pages/AccountabilityDashboard';  // 🆕 Phase 29 (AI accountability)
+import FailureLearningDashboard from './pages/FailureLearningDashboard';  // 🆕 Phase 29 확장 (auto-learning)
+import MultiAssetDashboard from './pages/MultiAssetDashboard';  // 🆕 Phase 30 (multi-asset support)
+import PortfolioOptimizationPage from './pages/PortfolioOptimizationPage';  // 🆕 Phase 31 (portfolio optimization)
+import CorrelationDashboard from './pages/CorrelationDashboard';  // 🆕 Phase 32 (asset correlation)
 // import { AIChatButton } from './components/AIChat/AIChatButton';
 // import { GeminiFreeButton } from './components/GeminiFree/GeminiFreeButton';
 
@@ -60,6 +65,11 @@ const App: React.FC = () => {
             <Route path="/orders" element={<Orders />} />  {/* 🆕 Phase 27 Orders Page */}
             <Route path="/performance" element={<Performance />} />  {/* 🆕 Phase 25.2 Performance Dashboard */}
             <Route path="/dividend" element={<DividendDashboard />} />  {/* 🆕 Phase 21 Dividend Intelligence */}
+            <Route path="/accountability" element={<AccountabilityDashboard />} />  {/* 🆕 Phase 29 Accountability System */}
+            <Route path="/learning" element={<FailureLearningDashboard />} />  {/* 🆕 Phase 29 확장 Auto-Learning */}
+            <Route path="/multi-asset" element={<MultiAssetDashboard />} />  {/* 🆕 Phase 30 Multi-Asset Support */}
+            <Route path="/portfolio-optimization" element={<PortfolioOptimizationPage />} />  {/* 🆕 Phase 31 Portfolio Optimization */}
+            <Route path="/correlation" element={<CorrelationDashboard />} />  {/* 🆕 Phase 32 Asset Correlation */}
             <Route path="/global-macro" element={<GlobalMacro />} />
             <Route path="/war-room" element={<WarRoomPage />} />
             <Route path="/signal-consolidation" element={<SignalConsolidationPage />} />

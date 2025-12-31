@@ -6,7 +6,6 @@ Features:
 - newspaper3k로 본문 전체 추출
 - 무제한 요청 (무료)
 - 중복 제거 (URL 기반)
-- Storage: PostgreSQL (via NewsRepository)
 """
 
 import asyncio
@@ -16,7 +15,6 @@ from typing import List, Optional, Dict, Any
 from pathlib import Path
 import json
 import time
-import logging
 from urllib.parse import urlparse
 
 # newspaper3k for content extraction
@@ -29,11 +27,8 @@ except ImportError:
     Config = None
 
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from backend.database.repository import get_sync_session, NewsRepository, NewsArticle
-from backend.database.models import RSSFeed  # Now in main models
+from backend.data.news_models import NewsArticle, RSSFeed, SessionLocal, init_db
 
-logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Configuration
@@ -54,7 +49,7 @@ if NEWSPAPER_AVAILABLE:
 
 class RSSCrawler:
     """
-    자체 RSS 크롤러 (PostgreSQL Integration)
+    자체 RSS 크롤러
     
     Features:
     - 실시간 뉴스 수집 (지연 없음)
@@ -63,10 +58,8 @@ class RSSCrawler:
     - 중복 제거 (URL 기반)
     """
     
-    def __init__(self, db: Session = None):
-        # Allow passing session, otherwise create new one
-        self.db = db if db else get_sync_session()
-        self.repo = NewsRepository(self.db)
+    def __init__(self, db: Session):
+        self.db = db
         self.stats = {
             "feeds_processed": 0,
             "articles_found": 0,
@@ -123,6 +116,17 @@ class RSSCrawler:
     def extract_full_content(self, url: str) -> Dict[str, Any]:
         """
         뉴스 본문 전체 추출 (newspaper3k)
+        
+        Returns:
+            {
+                "title": str,
+                "text": str,  # 전체 본문
+                "authors": List[str],
+                "publish_date": datetime,
+                "top_image": str,
+                "keywords": List[str],
+                "summary": str  # 자동 요약
+            }
         """
         if not NEWSPAPER_AVAILABLE:
             return {"error": "newspaper3k not installed"}
@@ -154,7 +158,6 @@ class RSSCrawler:
             }
             
         except Exception as e:
-            # logger.warning(f"Failed to extract content from {url}: {e}") # Reduce noise
             return {
                 "error": str(e),
                 "url": url,
@@ -169,46 +172,32 @@ class RSSCrawler:
         if not url:
             return None
         
-        # 중복 체크 via Repository
-        if self.repo.get_article_by_url(url):
+        # 중복 체크
+        existing = self.db.query(NewsArticle).filter(NewsArticle.url == url).first()
+        if existing:
             self.stats["articles_skipped"] += 1
-            return None
+            return existing
         
         # 새 기사 저장
-        try:
-            # NewsRepository expects a dict for save_processed_article
-            # Map keys to match schema expected by repository if needed
-            
-            # Repository save_processed_article handles:
-            # url, title, content, source, published_at, summary, keywords (tags), metadata
-            
-            save_data = {
-                'url': url,
-                'title': article_data.get("title", ""),
-                'content': article_data.get("text", "") or article_data.get("summary", ""),
-                'source': article_data.get("source", "RSS"),
-                'published_at': article_data.get("published_at") or datetime.utcnow(),
-                'summary': article_data.get("summary", ""),
-                'tags': article_data.get("keywords", []),
-                # Metadata for extra fields
-                'metadata': {
-                    'feed_source': article_data.get("feed_source", "rss"),
-                    'authors': article_data.get("authors", []),
-                    'top_image': article_data.get("top_image", "")
-                }
-            }
-            
-            saved = self.repo.save_processed_article(save_data)
-            # Commit handled by repo generally or here? 
-            # save_processed_article usually commits. 
-            # If we want batch commit we might need different method, 
-            # but for RSS crawling article by article is safer.
-            
-            self.stats["articles_new"] += 1
-            return saved
-        except Exception as e:
-            logger.error(f"Failed to save article {url}: {e}")
-            return None
+        news_article = NewsArticle(
+            url=url,
+            title=article_data.get("title", ""),
+            source=article_data.get("source", ""),
+            feed_source=article_data.get("feed_source", "rss"),
+            published_at=article_data.get("published_at"),
+            content_text=article_data.get("text", ""),
+            content_summary=article_data.get("summary", ""),
+            keywords=article_data.get("keywords", []),
+            authors=article_data.get("authors", []),
+            top_image=article_data.get("top_image", ""),
+        )
+        
+        self.db.add(news_article)
+        self.db.commit()
+        self.db.refresh(news_article)
+        
+        self.stats["articles_new"] += 1
+        return news_article
     
     def crawl_feed(self, feed: RSSFeed, extract_content: bool = True) -> List[NewsArticle]:
         """단일 피드 크롤링"""
@@ -223,70 +212,33 @@ class RSSCrawler:
             
             # DB 저장
             saved = self.save_article(article_data)
-            if saved:
+            if saved and saved.id:
                 saved_articles.append(saved)
         
         # 피드 통계 업데이트
-        try:
-            feed.last_fetched = datetime.utcnow()
-            feed.total_articles = (feed.total_articles or 0) + len(saved_articles)
-            self.db.commit()
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Failed to update feed stats: {e}")
+        feed.last_fetched = datetime.utcnow()
+        feed.total_articles += len(saved_articles)
+        self.db.commit()
         
         self.stats["feeds_processed"] += 1
         return saved_articles
     
     def crawl_all_feeds(self, extract_content: bool = True) -> Dict[str, Any]:
         """모든 활성화된 피드 크롤링"""
-        try:
-            feeds = self.db.query(RSSFeed).filter(RSSFeed.enabled == True).all()
-            
-            # If no feeds, initialize defaults
-            if not feeds:
-                self.init_default_feeds()
-                feeds = self.db.query(RSSFeed).filter(RSSFeed.enabled == True).all()
-
-            all_articles = []
-            for feed in feeds:
-                print(f"📰 Crawling: {feed.name}...")
-                articles = self.crawl_feed(feed, extract_content)
-                all_articles.extend(articles)
-                time.sleep(0.5)  # Rate limiting (예의)
-            
-            return {
-                "total_articles": len(all_articles),
-                "stats": self.stats,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        except Exception as e:
-            logger.error(f"Crawl all feeds failed: {e}")
-            return {"error": str(e), "stats": self.stats}
-
-    def init_default_feeds(self):
-        """기본 RSS 피드 초기화"""
-        default_feeds = [
-            RSSFeed(name="CNBC Top News", url="https://www.cnbc.com/id/100003114/device/rss/rss.html", category="global"),
-            RSSFeed(name="MarketWatch", url="https://feeds.marketwatch.com/marketwatch/topstories/", category="global"),
-            RSSFeed(name="Seeking Alpha", url="https://seekingalpha.com/feed.xml", category="global"),
-            RSSFeed(name="Investing.com", url="https://www.investing.com/rss/news.rss", category="global"),
-            RSSFeed(name="연합뉴스 경제", url="https://www.yna.co.kr/rss/economy.xml", category="korea"),
-            RSSFeed(name="한국경제", url="https://www.hankyung.com/feed/all-news", category="korea"),
-            RSSFeed(name="매일경제", url="https://www.mk.co.kr/rss/30000001/", category="korea"),
-        ]
+        feeds = self.db.query(RSSFeed).filter(RSSFeed.enabled == True).all()
         
-        try:
-            for feed in default_feeds:
-                # Check exist
-                exists = self.db.query(RSSFeed).filter(RSSFeed.name == feed.name).first()
-                if not exists:
-                    self.db.add(feed)
-            self.db.commit()
-            print(f"[OK] Added default RSS feeds")
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Failed to init default feeds: {e}")
+        all_articles = []
+        for feed in feeds:
+            print(f"📰 Crawling: {feed.name}...")
+            articles = self.crawl_feed(feed, extract_content)
+            all_articles.extend(articles)
+            time.sleep(0.5)  # Rate limiting (예의)
+        
+        return {
+            "total_articles": len(all_articles),
+            "stats": self.stats,
+            "timestamp": datetime.utcnow().isoformat()
+        }
     
     def crawl_ticker_news(self, ticker: str) -> List[NewsArticle]:
         """특정 티커 관련 뉴스 (Yahoo Finance RSS)"""
@@ -299,11 +251,6 @@ class RSSCrawler:
             full_content = self.extract_full_content(article_data["url"])
             article_data.update(full_content)
             article_data["source"] = f"Yahoo Finance ({ticker})"
-            # Add ticker tag
-            keywords = article_data.get("keywords", [])
-            if ticker not in keywords:
-                keywords.append(ticker)
-            article_data["keywords"] = keywords
             
             saved = self.save_article(article_data)
             if saved:
@@ -317,18 +264,52 @@ class RSSCrawler:
 # ============================================================================
 
 def get_recent_articles(
+    db: Session,
     limit: int = 50,
     hours: int = 24,
     source: Optional[str] = None
 ) -> List[NewsArticle]:
     """최근 기사 조회"""
-    session = get_sync_session()
-    repo = NewsRepository(session)
-    try:
-        # Use repo method
-        return repo.get_latest_news(limit=limit)
-    finally:
-        session.close()
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    
+    query = db.query(NewsArticle).filter(NewsArticle.published_at >= cutoff)
+    
+    if source:
+        query = query.filter(NewsArticle.source.ilike(f"%{source}%"))
+    
+    return query.order_by(NewsArticle.published_at.desc()).limit(limit).all()
+
+
+def get_unanalyzed_articles(db: Session, limit: int = 100) -> List[NewsArticle]:
+    """분석되지 않은 기사 조회"""
+    return (
+        db.query(NewsArticle)
+        .outerjoin(NewsArticle.analysis)
+        .filter(NewsArticle.analysis == None)
+        .filter(NewsArticle.content_text != None)
+        .filter(NewsArticle.content_text != "")
+        .order_by(NewsArticle.published_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_feed_stats(db: Session) -> List[Dict[str, Any]]:
+    """피드별 통계"""
+    feeds = db.query(RSSFeed).all()
+    return [
+        {
+            "id": f.id,
+            "name": f.name,
+            "url": f.url,
+            "category": f.category,
+            "enabled": f.enabled,
+            "last_fetched": f.last_fetched.isoformat() if f.last_fetched else None,
+            "total_articles": f.total_articles,
+            "error_count": f.error_count,
+        }
+        for f in feeds
+    ]
 
 
 # ============================================================================
@@ -336,11 +317,18 @@ def get_recent_articles(
 # ============================================================================
 
 if __name__ == "__main__":
-    print("🚀 RSS Crawler Test (PostgreSQL)")
+    print("🚀 RSS Crawler Test")
     
-    crawler = RSSCrawler()
+    # Initialize DB
+    init_db()
+    
+    # Create session
+    db = SessionLocal()
     
     try:
+        # Create crawler
+        crawler = RSSCrawler(db)
+        
         # Crawl all feeds
         print("\n📡 Crawling all RSS feeds...")
         result = crawler.crawl_all_feeds(extract_content=True)
@@ -352,7 +340,19 @@ if __name__ == "__main__":
         print(f"  Skipped (duplicate): {result['stats']['articles_skipped']}")
         print(f"  Content extracted: {result['stats']['content_extracted']}")
         
+        if result['stats']['errors']:
+            print(f"\n⚠️ Errors:")
+            for err in result['stats']['errors']:
+                print(f"  - {err['feed']}: {err['error']}")
+        
+        # Show recent articles
+        print("\n📰 Recent Articles:")
+        recent = get_recent_articles(db, limit=5)
+        for article in recent:
+            print(f"  - {article.title[:60]}...")
+            print(f"    Source: {article.source}")
+            print(f"    Content: {len(article.content_text or '')} chars")
+            print()
+        
     finally:
-        # Close session if it was created internally
-        if hasattr(crawler, 'db'):
-            crawler.db.close()
+        db.close()

@@ -43,30 +43,50 @@ allowed-tools:
 
 ## 🤖 AI 개발 도구 통합
 
-### 코드 작성 시 자동 검증
+### ⚠️ **CRITICAL: DB 수정 시 필수 사용 규칙**
 
-**VSCode / Antigravity / Claude**: DB 관련 코드를 작성하거나 검토할 때:
+**VSCode Claude Code / Antigravity**: 데이터베이스를 수정하거나 추가할 때 **반드시** DB Agent를 통해서만 수정하세요.
 
-1. **새 테이블 추가 시**:
+#### 필수 워크플로우
+
+1. **테이블 컬럼 타입 변경 시**:
    ```bash
-   # 1단계: 스키마 먼저 작성
-   cat schemas/{table_name}.json
-   
+   # 1단계: 실제 DB 스키마와 모델 비교
+   python backend/ai/skills/system/db-schema-manager/scripts/compare_to_db.py {table_name}
+
+   # 2단계: 불일치 발견 시 스키마 정의부터 수정
+   # Edit: backend/ai/skills/system/db-schema-manager/schemas/{table_name}.json
+
+   # 3단계: 모델 수정
+   # Edit: backend/database/models.py
+
+   # 4단계: 재검증
+   python backend/ai/skills/system/db-schema-manager/scripts/compare_to_db.py {table_name}
+   ```
+
+2. **새 테이블 추가 시**:
+   ```bash
+   # 1단계: 스키마 정의 파일 먼저 작성
+   # Create: backend/ai/skills/system/db-schema-manager/schemas/{table_name}.json
+
    # 2단계: 검증
-   python scripts/validate_schema.py {table_name}
-   
-   # 3단계: SQL 생성
-   python scripts/generate_migration.py {table_name}
+   python backend/ai/skills/system/db-schema-manager/scripts/validate_schema.py {table_name}
+
+   # 3단계: SQL 마이그레이션 생성
+   python backend/ai/skills/system/db-schema-manager/scripts/generate_migration.py {table_name}
+
+   # 4단계: 모델 추가
+   # Edit: backend/database/models.py
    ```
 
-2. **데이터 저장 전 검증**:
+3. **데이터 저장 전 검증**:
    ```bash
-   python scripts/validate_data.py {table_name} '{...json_data...}'
+   python backend/ai/skills/system/db-schema-manager/scripts/validate_data.py {table_name} '{...json_data...}'
    ```
 
-3. **스키마 동기화 확인**:
+4. **스키마 동기화 확인** (정기적으로):
    ```bash
-   python scripts/compare_to_db.py {table_name}
+   python backend/ai/skills/system/db-schema-manager/scripts/compare_to_db.py {table_name}
    ```
 
 ### 필수 확인사항
