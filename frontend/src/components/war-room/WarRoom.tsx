@@ -322,7 +322,10 @@ const WarRoom: React.FC<WarRoomProps> = ({
                                                 </div>
                                                 <button
                                                     className="view-constitution-btn"
-                                                    onClick={() => setShowConstitution(!showConstitution)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowConstitution(!showConstitution);
+                                                    }}
                                                 >
                                                     {showConstitution ? '❌ 헌법 닫기' : '📜 헌법 전문 보기'}
                                                 </button>
