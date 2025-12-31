@@ -71,7 +71,7 @@ const WarRoomCard: React.FC<WarRoomCardProps> = ({ session, isExpanded, onToggle
                     {session.messages.length > 0 && (
                         <>
                             <span className="debate-progress">
-                                AI 토론 {session.messages.filter(m => !m.isDecision).length}/8
+                                AI 토론 {session.messages.filter(m => !m.isDecision).length}/3
                             </span>
                             {session.consensus > 0 && (
                                 <span className="consensus-indicator">
