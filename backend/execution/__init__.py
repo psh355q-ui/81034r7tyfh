@@ -56,3 +56,18 @@ __all__ = [
 __version__ = "1.0.0"
 __author__ = "AI Trading System Team"
 __phase__ = 6
+
+# MVP Execution Layer (NEW - 2025-12-31)
+try:
+    from .execution_router import ExecutionRouter, ExecutionMode
+    from .order_validator import OrderValidator, ValidationResult
+    
+    # Add to __all__
+    __all__.extend([
+        "ExecutionRouter",
+        "ExecutionMode",
+        "OrderValidator",
+        "ValidationResult",
+    ])
+except ImportError:
+    pass

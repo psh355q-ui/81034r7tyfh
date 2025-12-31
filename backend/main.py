@@ -1072,3 +1072,10 @@ async def execute_trade(request: AnalyzeRequest):
             execution_data=execution,
         )
     return execution
+# MVP War Room (3+1 Agent System) - Phase: MVP Consolidation (2025-12-31)
+try:
+    from backend.routers.war_room_mvp_router import router as war_room_mvp_router
+    app.include_router(war_room_mvp_router)
+    logger.info("✅ War Room MVP router registered (3+1 Agent System)")
+except Exception as e:
+    logger.warning(f"❌ War Room MVP router not available: {e}")
