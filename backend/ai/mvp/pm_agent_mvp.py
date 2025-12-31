@@ -442,8 +442,8 @@ class PMAgentMVP:
             f"Risk Level: {risk_opinion.get('risk_level', 'N/A')}",
             f"Confidence: {risk_opinion.get('confidence', 0):.2f}",
             f"Recommendation: {risk_opinion.get('recommendation', 'N/A')}",
-            f"Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({risk_opinion.get('position_size_pct', 0)*100:.1f}%)",
-            f"Stop Loss: {risk_opinion.get('stop_loss_pct', 0)*100:.1f}%",
+            f"Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({(risk_opinion.get('position_size_pct', 0) * 100):.1f}%)",
+            f"Stop Loss: {(risk_opinion.get('stop_loss_pct', 0) * 100):.1f}%",
             f"Reasoning: {risk_opinion.get('reasoning', 'N/A')}",
             "",
             "=== Analyst Agent (30% weight) ===",
@@ -457,7 +457,7 @@ class PMAgentMVP:
             f"Total Value: ${portfolio_state.get('total_value', 0):,.0f}",
             f"Available Cash: ${portfolio_state.get('available_cash', 0):,.0f}",
             f"Current Positions: {len(portfolio_state.get('current_positions', []))}",
-            f"Total Risk: {portfolio_state.get('total_risk', 0)*100:.1f}%",
+            f"Total Risk: {(portfolio_state.get('total_risk', 0) * 100):.1f}%",
         ]
 
         if correlation_data:

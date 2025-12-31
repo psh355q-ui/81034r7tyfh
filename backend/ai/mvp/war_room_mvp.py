@@ -185,8 +185,8 @@ class WarRoomMVP:
         )
         print(f"    → Risk Level: {risk_opinion['risk_level']}")
         print(f"    → Recommendation: {risk_opinion['recommendation']}")
-        print(f"    → Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({risk_opinion.get('position_size_pct', 0)*100:.1f}%)")
-        print(f"    → Stop Loss: {risk_opinion['stop_loss_pct']*100:.1f}%\n")
+        print(f"    → Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({(risk_opinion.get('position_size_pct', 0) * 100):.1f}%)")
+        print(f"    → Stop Loss: {(risk_opinion['stop_loss_pct'] * 100):.1f}%\n")
 
         # ================================================================
         # STEP 3: PM FINAL DECISION (Hard Rules + Silence Policy)
@@ -308,8 +308,8 @@ class WarRoomMVP:
             "",
             f"[Risk Agent - 35%] {risk_opinion['recommendation'].upper()}",
             f"  Risk Level: {risk_opinion['risk_level']}",
-            f"  Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({risk_opinion.get('position_size_pct', 0)*100:.1f}%)",
-            f"  Stop Loss: {risk_opinion['stop_loss_pct']*100:.1f}%",
+            f"  Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({(risk_opinion.get('position_size_pct', 0) * 100):.1f}%)",
+            f"  Stop Loss: {(risk_opinion['stop_loss_pct'] * 100):.1f}%",
             f"  Reasoning: {risk_opinion['reasoning'][:150]}...",
             "",
             f"[Analyst Agent - 30%] {analyst_opinion['action'].upper()}",

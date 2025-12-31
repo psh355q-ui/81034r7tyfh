@@ -225,7 +225,7 @@ class RiskAgentMVP:
             f"현재가: ${price_data.get('current_price', 'N/A')}",
             f"52주 고가: ${price_data.get('high_52w', 'N/A')}",
             f"52주 저가: ${price_data.get('low_52w', 'N/A')}",
-            f"변동성 (연): {price_data.get('volatility', 0) * 100:.1f}%",
+            f"변동성 (연): {(price_data.get('volatility', 0) * 100):.1f}%",
         ]
 
         # Trader opinion
@@ -456,5 +456,5 @@ if __name__ == "__main__":
     print(f"Risk Level: {result['risk_level']}")
     print(f"Recommendation: {result['recommendation']}")
     print(f"Position Size: ${result.get('position_size_usd', 0):,.2f} ({result.get('position_size_shares', 0)} shares)")
-    print(f"Stop Loss: {result['stop_loss_pct'] * 100:.1f}%")
+    print(f"Stop Loss: {(result['stop_loss_pct'] * 100):.1f}%")
     print(f"Reasoning: {result['reasoning']}")

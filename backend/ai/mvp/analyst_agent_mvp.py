@@ -299,7 +299,10 @@ class AnalystAgentMVP:
                     for trade in trades[:3]:  # Top 3
                         trade_type = trade.get('type', 'N/A')
                         amount = trade.get('amount', 0)
-                        prompt_parts.append(f"  - {trade_type.upper()}: ${amount:,.0f}")
+                        if isinstance(amount, (int, float)):
+                            prompt_parts.append(f"  - {trade_type.upper()}: ${amount:,.0f}")
+                        else:
+                            prompt_parts.append(f"  - {trade_type.upper()}: ${amount}")
 
         # ChipWar events
         if chipwar_events and len(chipwar_events) > 0:

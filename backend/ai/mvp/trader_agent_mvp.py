@@ -184,7 +184,7 @@ class TraderAgentMVP:
             f"시가: ${price_data.get('open', 'N/A')}",
             f"고가: ${price_data.get('high', 'N/A')}",
             f"저가: ${price_data.get('low', 'N/A')}",
-            f"거래량: {price_data.get('volume', 'N/A'):,}",
+            f"거래량: {price_data.get('volume', 0):,}" if isinstance(price_data.get('volume'), (int, float)) else f"거래량: {price_data.get('volume', 'N/A')}",
         ]
 
         # Technical indicators
