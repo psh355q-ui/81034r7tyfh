@@ -53,28 +53,58 @@ const WarRoomList: React.FC = () => {
 
             agentOrder.forEach((agent) => {
                 const vote = votesDict[agent] || votesDetail.find((v: any) => v.agent === agent);
-                
+
                 if (vote) {
+                    // Risk Agent uses 'recommendation' instead of 'action'
+                    const action = vote.action || vote.recommendation || 'hold';
+
                     messages.push({
                         id: `msg-${session.id}-${agent}`,
                         agent: agent,
-                        action: vote.action,
+                        action: action,
                         confidence: vote.confidence,
-                        reasoning: vote.reasoning || `${agent} agent vote: ${vote.action}`,
-                        timestamp: new Date(session.created_at),
+                        reasoning: vote.reasoning || `${agent} agent vote: ${action}`,
+                        timestamp: new Date(session.created_at + 'Z'),  // Force UTC interpretation
                         isDecision: false
                     });
                 }
             });
 
             // Add PM decision
+            const actionLabels: { [key: string]: string } = {
+                'buy': '매수',
+                'sell': '매도',
+                'hold': '보류',
+                'reject': '거부',
+                'approve': '승인',
+                'BUY': '매수',
+                'SELL': '매도',
+                'HOLD': '보류',
+                'REJECT': '거부',
+                'APPROVE': '승인'
+            };
+
+            // Use PM decision details if available
+            const pmDecision = (session as any).pm_decision;
+            const finalAction = pmDecision?.final_decision || session.consensus_action;
+            const finalConfidence = pmDecision?.confidence ?? session.consensus_confidence;
+            const pmReasoning = pmDecision?.reasoning || '';
+
+            const actionLabel = actionLabels[finalAction] || finalAction;
+
+            // Create detailed PM reasoning
+            let pmMessage = `PM 최종 결정: ${actionLabel} (${(finalConfidence * 100).toFixed(0)}% 신뢰도)`;
+            if (pmReasoning) {
+                pmMessage = pmReasoning;
+            }
+
             messages.push({
                 id: `msg-${session.id}-pm`,
                 agent: 'pm',
-                action: session.consensus_action,
-                confidence: session.consensus_confidence,
-                reasoning: `PM Final Decision: ${session.consensus_action} (${(session.consensus_confidence * 100).toFixed(0)}% confidence)`,
-                timestamp: new Date(session.created_at),
+                action: finalAction,
+                confidence: finalConfidence,
+                reasoning: pmMessage,
+                timestamp: new Date(session.created_at + 'Z'),  // Force UTC interpretation
                 isDecision: true
             });
 
@@ -82,8 +112,8 @@ const WarRoomList: React.FC = () => {
                 id: session.id.toString(),
                 ticker: session.ticker,
                 status: 'completed', // All sessions with votes are completed
-                startedAt: new Date(session.created_at),
-                completedAt: new Date(session.created_at),
+                startedAt: new Date(session.created_at + 'Z'),  // Force UTC interpretation
+                completedAt: new Date(session.created_at + 'Z'),
                 messages: messages,
                 consensus: session.consensus_confidence,
                 finalDecision: {
@@ -102,19 +132,24 @@ const WarRoomList: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
-    // 필터링된 세션
+    // 필터링 및 정렬된 세션 (최신순)
     const filteredSessions = useMemo(() => {
-        return sessions.filter(session => {
-            // 티커 검색
-            const matchesTicker = searchTicker === '' ||
-                session.ticker.toUpperCase().includes(searchTicker.toUpperCase());
+        return sessions
+            .filter(session => {
+                // 티커 검색
+                const matchesTicker = searchTicker === '' ||
+                    session.ticker.toUpperCase().includes(searchTicker.toUpperCase());
 
-            // 상태 필터
-            const matchesStatus = statusFilter === 'all' ||
-                session.status === statusFilter;
+                // 상태 필터
+                const matchesStatus = statusFilter === 'all' ||
+                    session.status === statusFilter;
 
-            return matchesTicker && matchesStatus;
-        });
+                return matchesTicker && matchesStatus;
+            })
+            .sort((a, b) => {
+                // 최신순 정렬 (created_at 기준 내림차순)
+                return b.startedAt.getTime() - a.startedAt.getTime();
+            });
     }, [sessions, searchTicker, statusFilter]);
 
     // 통계
@@ -157,8 +192,11 @@ const WarRoomList: React.FC = () => {
             // 입력 초기화
             setNewDebateTicker('');
 
-            // 알림
-            alert(`✅ ${result.ticker} War Room 토론 완료!\n결과: ${result.consensus.action} (${(result.consensus.confidence * 100).toFixed(0)}%)`);
+            // 알림 (latency 정보 포함)
+            const latencyInfo = result.latency_ms
+                ? `\n⏱️ 응답 시간: ${(result.latency_ms / 1000).toFixed(1)}초`
+                : '';
+            alert(`✅ ${result.ticker} War Room 토론 완료!\n결과: ${result.consensus.action} (${(result.consensus.confidence * 100).toFixed(0)}%)${latencyInfo}`);
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';

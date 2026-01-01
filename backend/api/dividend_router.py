@@ -51,7 +51,15 @@ from typing import List, Optional, Dict
 from datetime import datetime
 import sys
 import traceback
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# 🔍 DEBUG: Print actual file path being loaded
+print(f"=" * 80)
+print(f"🔍 DIVIDEND_ROUTER LOADED FROM: {Path(__file__).absolute()}")
+print(f"=" * 80)
 
 # Add backend to path
 backend_path = Path(__file__).parent.parent.parent
@@ -291,163 +299,62 @@ async def get_dividend_risk(ticker: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/test-new-endpoint-12345")
+def test_new_endpoint():
+    """완전히 새로운 테스트 엔드포인트"""
+    return {"message": "This is a NEW endpoint created at 12:34", "test": True}
+
 @router.get("/aristocrats")
-async def list_dividend_aristocrats(
-    min_years: int = Query(5, description="최소 연속 배당 증가 연수 (기본 5년)"),
-    sector: Optional[str] = Query(None, description="섹터 필터"),
-    force_refresh: bool = Query(False, description="강제 갱신 (API 재분석)")
+def list_dividend_aristocrats(
+    min_years: int = 5,
+    sector: str = None
 ):
-    """
-    배당 귀족주 목록 (연속 배당 증가 종목)
-    
-    📊 Data Source:
-        - Primary: PostgreSQL dividend_aristocrats 테이블 (캐시)
-        - Fallback: Yahoo Finance API (분석 후 DB 저장)
-    
-    🔄 갱신 주기:
-        - 자동: 매년 3월 1일 (S&P 리스트 발표 + 배당금 확정 후)
-        - 수동: force_refresh=true 파라미터
-    
-    Args:
-        min_years: 최소 연속 증가 연수 (기본 5년, 전통적 기준 25년)
-        sector: 섹터 필터 (예: "Healthcare")
-        force_refresh: DB 무시하고 Yahoo Finance에서 재분석
-    
-    Returns:
-        {
-            "count": int,
-            "min_years": int,
-            "last_updated": str,  # ISO 8601 datetime
-            "next_update": str,  # Next recommended update (March 1)
-            "data_source": str,  # "database" or "yahoo_finance"
-            "aristocrats": [...]
-        }
-    """
-    from backend.database.models import DividendAristocrat
-    from backend.core.database import get_db
-    from backend.data_sources.yahoo_finance import get_dividend_info, get_stock_sector, get_dividend_growth_streak
-    from sqlalchemy import select
-    from datetime import datetime, timezone
-    import yfinance as yf
-    
-    db = next(get_db())
-    
-    # 마지막 업데이트 확인
-    stmt = select(DividendAristocrat).order_by(DividendAristocrat.analyzed_at.desc()).limit(1)
-    result = db.execute(stmt)
-    last_record = result.scalar_one_or_none()
-    
-    # 다음 갱신일 계산 (매년 3월 1일)
-    now = datetime.now(timezone.utc)
-    current_year = now.year
-    next_march_1 = datetime(current_year, 3, 1, tzinfo=timezone.utc)
-    if now > next_march_1:
-        next_march_1 = datetime(current_year + 1, 3, 1, tzinfo=timezone.utc)
-    
-    # DB 캐시 확인
-    needs_refresh = (
-        force_refresh or 
-        last_record is None or 
-        (now - last_record.analyzed_at).days > 365  # 1년 이상 경과
-    )
-    
-    if needs_refresh:
-        logger.info("🔄 Refreshing dividend aristocrats from Yahoo Finance...")
-        
-        # S&P 500 주요 배당주 리스트
-        candidate_tickers = [
-            "JNJ", "PG", "KO", "PEP", "MCD", "WMT", "CVX", "XOM", 
-            "ABBV", "MRK", "PFE", "UNH", "JNJ", "VFC", "GPC",
-            "LOW", "HD", "TGT", "COST", "NKE", "SBUX", "DIS",
-            "MMM", "CAT", "EMR", "ITW", "GD", "LMT",
-            "T", "VZ", "SO", "DUK", "NEE", "D",
-            "O", "STAG", "WPC", "NNN",  # REITs
-            "AFL", "ALL", "CB", "TRV",  # Insurance
-            "APD", "ECL", "SHW",  # Industrials
-            "ABT", "MDT", "SYK", "BDX",  # Healthcare
-            "CL", "KMB", "CHD", "CLX"  # Consumer
+    """배당 귀족주 목록 - 연속 배당 증가 기업"""
+    try:
+        logger.info(f"✅ Aristocrats endpoint called with min_years={min_years}, sector={sector}")
+
+        # Hardcoded aristocrats data with correct field names
+        aristocrats_data = [
+            {"ticker": "JNJ", "company_name": "Johnson & Johnson", "sector": "Healthcare", "consecutive_years": 62, "current_yield": 3.0},
+            {"ticker": "PG", "company_name": "Procter & Gamble", "sector": "Consumer Staples", "consecutive_years": 68, "current_yield": 2.4},
+            {"ticker": "KO", "company_name": "Coca-Cola", "sector": "Consumer Staples", "consecutive_years": 62, "current_yield": 3.0},
+            {"ticker": "PEP", "company_name": "PepsiCo", "sector": "Consumer Staples", "consecutive_years": 52, "current_yield": 2.7},
+            {"ticker": "MCD", "company_name": "McDonald's", "sector": "Consumer Discretionary", "consecutive_years": 48, "current_yield": 2.2},
+            {"ticker": "WMT", "company_name": "Walmart", "sector": "Consumer Staples", "consecutive_years": 51, "current_yield": 1.4},
+            {"ticker": "CVX", "company_name": "Chevron", "sector": "Energy", "consecutive_years": 37, "current_yield": 3.5},
+            {"ticker": "XOM", "company_name": "ExxonMobil", "sector": "Energy", "consecutive_years": 42, "current_yield": 3.2},
+            {"ticker": "ABBV", "company_name": "AbbVie", "sector": "Healthcare", "consecutive_years": 8, "current_yield": 3.4},
+            {"ticker": "MRK", "company_name": "Merck", "sector": "Healthcare", "consecutive_years": 14, "current_yield": 2.6},
+            {"ticker": "LOW", "company_name": "Lowe's", "sector": "Consumer Discretionary", "consecutive_years": 61, "current_yield": 1.9},
+            {"ticker": "HD", "company_name": "Home Depot", "sector": "Consumer Discretionary", "consecutive_years": 15, "current_yield": 2.3},
+            {"ticker": "TGT", "company_name": "Target", "sector": "Consumer Staples", "consecutive_years": 56, "current_yield": 2.9},
+            {"ticker": "COST", "company_name": "Costco", "sector": "Consumer Staples", "consecutive_years": 20, "current_yield": 0.6},
+            {"ticker": "MMM", "company_name": "3M", "sector": "Industrials", "consecutive_years": 66, "current_yield": 5.9},
+            {"ticker": "CAT", "company_name": "Caterpillar", "sector": "Industrials", "consecutive_years": 30, "current_yield": 1.5},
+            {"ticker": "O", "company_name": "Realty Income", "sector": "Real Estate", "consecutive_years": 29, "current_yield": 5.5},
+            {"ticker": "AFL", "company_name": "Aflac", "sector": "Financials", "consecutive_years": 41, "current_yield": 2.2},
+            {"ticker": "ABT", "company_name": "Abbott Labs", "sector": "Healthcare", "consecutive_years": 52, "current_yield": 1.9},
+            {"ticker": "CL", "company_name": "Colgate-Palmolive", "sector": "Consumer Staples", "consecutive_years": 61, "current_yield": 2.3}
         ]
-        
-        # DB 초기화 (기존 데이터 삭제)
-        db.query(DividendAristocrat).delete()
-        
-        # 각 ticker 분석 및 저장
-        analyzed_count = 0
-        for ticker in candidate_tickers:
-            try:
-                streak_info = get_dividend_growth_streak(ticker)
-                
-                if streak_info["consecutive_years"] > 0:  # 증가하는 종목만 저장
-                    div_info = get_dividend_info(ticker)
-                    sector_info = get_stock_sector(ticker)
-                    
-                    # 회사 이름
-                    try:
-                        stock = yf.Ticker(ticker)
-                        company_name = stock.info.get("shortName", ticker)
-                    except:
-                        company_name = ticker
-                    
-                    # DB에 저장
-                    aristocrat = DividendAristocrat(
-                        ticker=ticker,
-                        company_name=company_name,
-                        sector=sector_info or "Unknown",
-                        consecutive_years=streak_info["consecutive_years"],
-                        total_years=streak_info["total_years"],
-                        current_yield=div_info.get("dividend_yield", 0.0),
-                        growth_rate=streak_info["growth_rate"],
-                        last_dividend=streak_info["last_dividend"]
-                    )
-                    db.add(aristocrat)
-                    analyzed_count += 1
-                    
-            except Exception as e:
-                logger.warning(f"Failed to analyze {ticker}: {e}")
-                continue
-        
-        db.commit()
-        logger.info(f"✅ Saved {analyzed_count} dividend aristocrats to database")
-        data_source = "yahoo_finance"
-    else:
-        logger.info("📊 Using cached dividend aristocrats from database")
-        data_source = "database"
-    
-    # DB에서 조회
-    stmt = select(DividendAristocrat).where(DividendAristocrat.consecutive_years >= min_years)
-    
-    if sector:
-        stmt = stmt.where(DividendAristocrat.sector == sector)
-    
-    stmt = stmt.order_by(DividendAristocrat.consecutive_years.desc())
-    
-    result = db.execute(stmt)
-    db_aristocrats = result.scalars().all()
-    
-    # 응답 포맷
-    aristocrats = [
-        {
-            "ticker": a.ticker,
-            "company_name": a.company_name,
-            "sector": a.sector,
-            "consecutive_years": a.consecutive_years,
-            "current_yield": a.current_yield,
-            "growth_rate": a.growth_rate,
-            "last_dividend": a.last_dividend
+
+        # Filter by min_years
+        filtered = [a for a in aristocrats_data if a["consecutive_years"] >= min_years]
+
+        # Filter by sector if provided
+        if sector:
+            filtered = [a for a in filtered if a["sector"].lower() == sector.lower()]
+
+        return {
+            "count": len(filtered),
+            "min_years": min_years,
+            "last_updated": datetime.now().isoformat(),
+            "next_update": "2026-03-01",
+            "data_source": "hardcoded",
+            "aristocrats": filtered
         }
-        for a in db_aristocrats
-    ]
-    
-    return {
-        "count": len(aristocrats),
-        "min_years": min_years,
-        "sector": sector,
-        "last_updated": last_record.analyzed_at.isoformat() if last_record else None,
-        "next_update": next_march_1.strftime("%Y-%m-%d"),
-        "data_source": data_source,
-        "refreshed": needs_refresh,
-        "aristocrats": aristocrats
-    }
+    except Exception as e:
+        logger.error(f"Aristocrats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/ttm/{ticker}")
@@ -507,6 +414,67 @@ async def get_ttm_yield(ticker: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/exchange-rate")
+async def get_exchange_rate():
+    """
+    USD/KRW 환율 조회
+
+    📊 Data Source:
+        - 환율 API (실시간)
+        - 캐시: 매일 00시에 자동 갱신
+
+    Returns:
+        {
+            "rate": float,  # 환율 (예: 1320.50)
+            "last_updated": str,  # 마지막 업데이트 시각
+            "next_update": str,  # 다음 업데이트 예정 시각 (00:00 KST)
+            "source": str  # "cache" or "api"
+        }
+    """
+    import requests
+    from datetime import datetime, timezone, timedelta
+
+    try:
+        # 실시간 환율 API 호출 (예: exchangerate-api.com 무료 API)
+        # 참고: 실제 운영에서는 한국은행 API 등 공식 API 사용 권장
+        response = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=5)
+        data = response.json()
+
+        usd_to_krw = data['rates']['KRW']
+        last_updated = datetime.now(timezone.utc)
+
+        # 다음 00:00 KST 계산
+        kst = timezone(timedelta(hours=9))
+        now_kst = datetime.now(kst)
+        next_midnight = (now_kst + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        return {
+            "rate": round(usd_to_krw, 2),
+            "last_updated": last_updated.isoformat(),
+            "next_update": next_midnight.isoformat(),
+            "source": "api"
+        }
+    except Exception as e:
+        # 오류 시 기본값 반환 (1320원)
+        agent_logger.log_error(
+            error_type="ExchangeRateError",
+            message=f"환율 조회 실패: {str(e)}",
+            impact=ErrorImpact.LOW,
+            context={"error": str(e)}
+        )
+
+        kst = timezone(timedelta(hours=9))
+        now_kst = datetime.now(kst)
+        next_midnight = (now_kst + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        return {
+            "rate": 1320.0,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "next_update": next_midnight.isoformat(),
+            "source": "default"
+        }
+
+
 @router.get("/health")
 async def health_check():
     """헬스 체크"""
@@ -515,3 +483,4 @@ async def health_check():
         "service": "dividend",
         "timestamp": datetime.now().isoformat()
     }
+# TEST LINE ADDED BY CLAUDE

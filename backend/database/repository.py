@@ -40,7 +40,8 @@ from backend.database.models import (
     NewsMarketReaction,
     NewsDecisionLink,
     NewsNarrative,
-    FailureAnalysis
+    FailureAnalysis,
+    DeepReasoningAnalysis
 )
 
 if TYPE_CHECKING:
@@ -1326,3 +1327,186 @@ class FailureAnalysisRepository:
         return self.session.query(FailureAnalysis).filter(
             FailureAnalysis.ticker == ticker
         ).order_by(desc(FailureAnalysis.analyzed_at)).limit(limit).all()
+
+
+class DeepReasoningRepository:
+    """Deep Reasoning 분석 이력 저장 및 조회"""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create_analysis(self, analysis_data: Dict) -> DeepReasoningAnalysis:
+        """
+        Deep Reasoning 분석 결과 저장
+
+        Args:
+            analysis_data: Dict with analysis result data
+                - news_text: str
+                - theme: str
+                - primary_beneficiary_ticker: Optional[str]
+                - primary_beneficiary_action: Optional[str]
+                - primary_beneficiary_confidence: Optional[float]
+                - primary_beneficiary_reasoning: Optional[str]
+                - hidden_beneficiary_ticker: Optional[str]
+                - hidden_beneficiary_action: Optional[str]
+                - hidden_beneficiary_confidence: Optional[float]
+                - hidden_beneficiary_reasoning: Optional[str]
+                - loser_ticker: Optional[str]
+                - loser_action: Optional[str]
+                - loser_confidence: Optional[float]
+                - loser_reasoning: Optional[str]
+                - bull_case: str
+                - bear_case: str
+                - reasoning_trace: List[Dict]
+                - model_used: str
+                - processing_time_ms: int
+
+        Returns:
+            DeepReasoningAnalysis ORM object
+        """
+        db_analysis = DeepReasoningAnalysis(
+            news_text=analysis_data['news_text'],
+            theme=analysis_data['theme'],
+            primary_beneficiary_ticker=analysis_data.get('primary_beneficiary_ticker'),
+            primary_beneficiary_action=analysis_data.get('primary_beneficiary_action'),
+            primary_beneficiary_confidence=analysis_data.get('primary_beneficiary_confidence'),
+            primary_beneficiary_reasoning=analysis_data.get('primary_beneficiary_reasoning'),
+            hidden_beneficiary_ticker=analysis_data.get('hidden_beneficiary_ticker'),
+            hidden_beneficiary_action=analysis_data.get('hidden_beneficiary_action'),
+            hidden_beneficiary_confidence=analysis_data.get('hidden_beneficiary_confidence'),
+            hidden_beneficiary_reasoning=analysis_data.get('hidden_beneficiary_reasoning'),
+            loser_ticker=analysis_data.get('loser_ticker'),
+            loser_action=analysis_data.get('loser_action'),
+            loser_confidence=analysis_data.get('loser_confidence'),
+            loser_reasoning=analysis_data.get('loser_reasoning'),
+            bull_case=analysis_data['bull_case'],
+            bear_case=analysis_data['bear_case'],
+            reasoning_trace=analysis_data['reasoning_trace'],
+            model_used=analysis_data['model_used'],
+            processing_time_ms=analysis_data['processing_time_ms'],
+            created_at=datetime.now()
+        )
+        self.session.add(db_analysis)
+        self.session.commit()
+        self.session.refresh(db_analysis)
+        return db_analysis
+
+    def get_all(self, limit: int = 50, offset: int = 0) -> List[DeepReasoningAnalysis]:
+        """
+        모든 분석 이력 조회 (최신순)
+
+        Args:
+            limit: 최대 조회 개수 (default: 50)
+            offset: 시작 위치 (default: 0)
+
+        Returns:
+            List of DeepReasoningAnalysis
+        """
+        return (
+            self.session.query(DeepReasoningAnalysis)
+            .order_by(desc(DeepReasoningAnalysis.created_at))
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+
+    def get_by_id(self, analysis_id: int) -> Optional[DeepReasoningAnalysis]:
+        """ID로 특정 분석 조회"""
+        return self.session.query(DeepReasoningAnalysis).filter(
+            DeepReasoningAnalysis.id == analysis_id
+        ).first()
+
+    def get_by_date_range(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 100
+    ) -> List[DeepReasoningAnalysis]:
+        """
+        날짜 범위로 분석 조회
+
+        Args:
+            start_date: 시작 날짜
+            end_date: 종료 날짜
+            limit: 최대 조회 개수
+
+        Returns:
+            List of DeepReasoningAnalysis
+        """
+        return (
+            self.session.query(DeepReasoningAnalysis)
+            .filter(and_(
+                DeepReasoningAnalysis.created_at >= start_date,
+                DeepReasoningAnalysis.created_at <= end_date
+            ))
+            .order_by(desc(DeepReasoningAnalysis.created_at))
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_ticker(
+        self,
+        ticker: str,
+        limit: int = 20
+    ) -> List[DeepReasoningAnalysis]:
+        """
+        특정 티커가 포함된 분석 조회 (주 수혜주 또는 숨은 수혜주)
+
+        Args:
+            ticker: 종목 코드
+            limit: 최대 조회 개수
+
+        Returns:
+            List of DeepReasoningAnalysis
+        """
+        return (
+            self.session.query(DeepReasoningAnalysis)
+            .filter(or_(
+                DeepReasoningAnalysis.primary_beneficiary_ticker == ticker,
+                DeepReasoningAnalysis.hidden_beneficiary_ticker == ticker
+            ))
+            .order_by(desc(DeepReasoningAnalysis.created_at))
+            .limit(limit)
+            .all()
+        )
+
+    def delete_analysis(self, analysis_id: int) -> bool:
+        """
+        분석 삭제
+
+        Args:
+            analysis_id: 삭제할 분석 ID
+
+        Returns:
+            bool: 삭제 성공 여부
+        """
+        analysis = self.get_by_id(analysis_id)
+        if analysis:
+            self.session.delete(analysis)
+            self.session.commit()
+            return True
+        return False
+
+    def count_total(self) -> int:
+        """전체 분석 개수"""
+        return self.session.query(func.count(DeepReasoningAnalysis.id)).scalar()
+
+    def get_recent(self, hours: int = 24, limit: int = 20) -> List[DeepReasoningAnalysis]:
+        """
+        최근 N시간 내 분석 조회
+
+        Args:
+            hours: 조회 시간 범위 (시간)
+            limit: 최대 조회 개수
+
+        Returns:
+            List of DeepReasoningAnalysis
+        """
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+        return (
+            self.session.query(DeepReasoningAnalysis)
+            .filter(DeepReasoningAnalysis.created_at >= cutoff_time)
+            .order_by(desc(DeepReasoningAnalysis.created_at))
+            .limit(limit)
+            .all()
+        )

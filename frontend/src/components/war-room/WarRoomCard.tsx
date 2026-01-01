@@ -31,18 +31,39 @@ const WarRoomCard: React.FC<WarRoomCardProps> = ({ session, isExpanded, onToggle
     const getFinalDecisionBadge = () => {
         if (!session.finalDecision) return null;
 
-        const colors = {
-            BUY: '#4CAF50',
-            SELL: '#F44336',
-            HOLD: '#FF9800'
+        const actionLabels: { [key: string]: string } = {
+            'BUY': '매수',
+            'SELL': '매도',
+            'HOLD': '보류',
+            'buy': '매수',
+            'sell': '매도',
+            'hold': '보류'
         };
+
+        const colors: { [key: string]: string } = {
+            'BUY': '#4CAF50',
+            'SELL': '#F44336',
+            'HOLD': '#9E9E9E',
+            'buy': '#4CAF50',
+            'sell': '#F44336',
+            'hold': '#9E9E9E',
+            'REDUCE_SIZE': '#E65100',
+            'reduce_size': '#E65100',
+            'REJECT': '#D32F2F',
+            'reject': '#D32F2F',
+            'APPROVE': '#4CAF50',
+            'approve': '#4CAF50'
+        };
+
+        const action = session.finalDecision.action;
+        const label = actionLabels[action] || action;
 
         return (
             <span
                 className="final-decision-badge"
-                style={{ backgroundColor: colors[session.finalDecision.action] }}
+                style={{ backgroundColor: colors[action] || '#FF9800' }}
             >
-                {session.finalDecision.action} ({(session.finalDecision.confidence * 100).toFixed(0)}%)
+                {label} ({(session.finalDecision.confidence * 100).toFixed(0)}%)
             </span>
         );
     };
@@ -64,6 +85,40 @@ const WarRoomCard: React.FC<WarRoomCardProps> = ({ session, isExpanded, onToggle
                         style={{ backgroundColor: statusBadge.color }}
                     >
                         {statusBadge.icon} {statusBadge.text}
+                    </span>
+                    <span className="timestamp" style={{
+                        fontSize: '11px',
+                        color: '#999',
+                        marginLeft: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '2px'
+                    }}>
+                        <span style={{ fontWeight: '500' }}>
+                            🇰🇷 {session.startedAt.toLocaleString('ko-KR', {
+                                timeZone: 'Asia/Seoul',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false
+                            })} KST
+                        </span>
+                        <span style={{ opacity: 0.7 }}>
+                            🇺🇸 {session.startedAt.toLocaleString('en-US', {
+                                timeZone: 'America/New_York',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false
+                            })} EST
+                        </span>
                     </span>
                 </div>
 

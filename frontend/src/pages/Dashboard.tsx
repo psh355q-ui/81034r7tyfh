@@ -47,8 +47,9 @@ import {
   RiskMatrix
 } from '../components/Analysis/AdvancedCharts';
 import { InteractivePortfolio } from '../components/Portfolio/InteractivePortfolio';
+import GlobalMacroPanel from '../components/GlobalMacroPanel';
 
-type ChartTab = 'performance' | 'realtime' | 'sectors' | 'risk' | 'rebalance';
+type ChartTab = 'performance' | 'realtime' | 'sectors' | 'risk' | 'rebalance' | 'macro';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ChartTab>('performance');
@@ -113,6 +114,8 @@ export const Dashboard: React.FC = () => {
         return <RiskMatrix />;
       case 'rebalance':
         return <InteractivePortfolio />;
+      case 'macro':
+        return <GlobalMacroPanel />;
       default:
         return <PortfolioPerformanceChart />;
     }
@@ -255,6 +258,16 @@ export const Dashboard: React.FC = () => {
                 >
                   <RefreshCw size={16} />
                   Rebalance
+                </button>
+                <button
+                  onClick={() => setActiveTab('macro')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'macro'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  🌍
+                  Global Macro
                 </button>
               </div>
             </div>

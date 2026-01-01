@@ -98,8 +98,8 @@ class KISBalanceResponse(BaseModel):
 
 
 # 환경변수에서 기본 모드 로드
-KIS_ENV = os.environ.get("KIS_ENV", "sandbox").lower()
-DEFAULT_IS_VIRTUAL = KIS_ENV != "production"
+# KIS_IS_VIRTUAL 환경변수를 사용하여 모의투자/실전투자 결정 (기본값: true)
+DEFAULT_IS_VIRTUAL = os.environ.get("KIS_IS_VIRTUAL", "true").lower() == "true"
 
 def get_kis_broker(account_no: Optional[str] = None, is_virtual: Optional[bool] = None) -> KISBroker:
     """
@@ -122,14 +122,22 @@ def get_kis_broker(account_no: Optional[str] = None, is_virtual: Optional[bool] 
     if is_virtual is None:
         is_virtual = DEFAULT_IS_VIRTUAL
 
-    # 계좌번호 설정
+    # 계좌번호 설정 (모의/실전 구분)
     if account_no is None:
-        account_no = os.getenv("KIS_ACCOUNT_NUMBER", "")
-        if not account_no:
-            raise HTTPException(
-                status_code=400,
-                detail="계좌번호가 설정되지 않았습니다. KIS_ACCOUNT_NUMBER 환경변수를 확인하세요."
-            )
+        if is_virtual:
+            account_no = os.getenv("KIS_PAPER_ACCOUNT", "")
+            if not account_no:
+                raise HTTPException(
+                    status_code=400,
+                    detail="모의 투자 계좌번호가 설정되지 않았습니다. KIS_PAPER_ACCOUNT 환경변수를 확인하세요."
+                )
+        else:
+            account_no = os.getenv("KIS_ACCOUNT_NUMBER", "")
+            if not account_no:
+                raise HTTPException(
+                    status_code=400,
+                    detail="실전 계좌번호가 설정되지 않았습니다. KIS_ACCOUNT_NUMBER 환경변수를 확인하세요."
+                )
 
     # Broker 초기화
     try:

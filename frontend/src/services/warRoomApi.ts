@@ -40,6 +40,7 @@ export interface WarRoomDebateResponse {
     constitutional_valid: boolean;
     signal_id: number | null;
     timestamp: string;
+    latency_ms?: number;  // API 호출 소요 시간 (milliseconds)
 }
 
 export interface DebateSession {
@@ -71,25 +72,16 @@ export const warRoomApi = {
      * POST /api/war-room-mvp/deliberate
      */
     runDebate: async (ticker: string): Promise<WarRoomDebateResponse> => {
+        const startTime = performance.now();  // 호출 시작 시간
+
         const response = await fetch(`${API_BASE_URL}/deliberate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                symbol: ticker,
-                action_context: 'new_position',
-                market_data: {
-                    price_data: { current_price: 0 },
-                    market_conditions: { is_market_open: true }
-                },
-                portfolio_state: {
-                    total_value: 100000,
-                    available_cash: 50000,
-                    total_risk: 0.02,
-                    position_count: 0,
-                    current_positions: []
-                }
+                symbol: ticker
+                // market_data와 portfolio_state는 백엔드에서 자동으로 가져옴
             }),
         });
 
@@ -98,6 +90,8 @@ export const warRoomApi = {
         }
 
         const data = await response.json();
+        const endTime = performance.now();  // 호출 종료 시간
+        const latency_ms = Math.round(endTime - startTime);  // 소요 시간 (ms)
 
         // Convert MVP response to legacy format for compatibility
         return {
@@ -111,7 +105,8 @@ export const warRoomApi = {
             },
             constitutional_valid: data.can_execute || false,
             signal_id: null,
-            timestamp: data.timestamp || new Date().toISOString()
+            timestamp: data.timestamp || new Date().toISOString(),
+            latency_ms: latency_ms  // API 호출 시간 추가
         };
     },
 
@@ -139,10 +134,11 @@ export const warRoomApi = {
         return decisions.map((decision: any, index: number) => ({
             id: index,
             ticker: decision.symbol || '',
-            consensus_action: decision.recommended_action?.toUpperCase() || 'HOLD',
+            consensus_action: decision.final_decision?.toUpperCase() || 'HOLD',
             consensus_confidence: decision.confidence || 0,
             constitutional_valid: decision.can_execute || false,
             agent_votes: decision.agent_opinions || {},
+            pm_decision: decision.pm_decision || null,  // PM 결정 상세 정보 추가
             signal_generated: decision.can_execute || false,
             created_at: decision.timestamp || new Date().toISOString()
         }));

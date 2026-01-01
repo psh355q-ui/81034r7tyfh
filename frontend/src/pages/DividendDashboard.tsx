@@ -49,6 +49,32 @@ const DividendDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('holdings');
     const [loading, setLoading] = useState(false);
     const [portfolio, setPortfolio] = useState<any>(null);
+    const [exchangeRate, setExchangeRate] = useState<number>(1320);
+    const [exchangeRateInfo, setExchangeRateInfo] = useState<any>(null);
+
+    // 환율 정보 조회
+    const fetchExchangeRate = async () => {
+        try {
+            const response = await fetch('http://localhost:8001/api/dividend/exchange-rate');
+            const data = await response.json();
+
+            // API 오류 체크
+            if (data.detail) {
+                console.error('❌ 환율 API 오류:', data.detail);
+                setExchangeRate(1320); // 기본값
+                setExchangeRateInfo(null);
+                return;
+            }
+
+            setExchangeRate(data.rate);
+            setExchangeRateInfo(data);
+            console.log('✅ 환율 정보 로드:', data);
+        } catch (error: any) {
+            console.error('❌ 환율 조회 실패:', error.message);
+            setExchangeRate(1320); // 기본값
+            setExchangeRateInfo(null);
+        }
+    };
 
     // KIS 포트폴리오 데이터 조회 (배당 정보 포함)
     const fetchPortfolio = async () => {
@@ -67,6 +93,23 @@ const DividendDashboard: React.FC = () => {
 
     useEffect(() => {
         fetchPortfolio();
+        fetchExchangeRate();
+
+        // 매일 00시에 환율 자동 갱신 (24시간마다 체크)
+        const checkAndUpdateExchangeRate = () => {
+            const now = new Date();
+            const nextMidnight = new Date(now);
+            nextMidnight.setHours(24, 0, 0, 0);
+            const timeUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+            setTimeout(() => {
+                fetchExchangeRate();
+                // 매일 반복
+                setInterval(fetchExchangeRate, 24 * 60 * 60 * 1000);
+            }, timeUntilMidnight);
+        };
+
+        checkAndUpdateExchangeRate();
     }, []);
 
     // 포트폴리오 총 연간 배당 수익 계산
@@ -95,8 +138,6 @@ const DividendDashboard: React.FC = () => {
 
     // 보유 종목 배당 정보 테이블
     const renderHoldingsTable = () => {
-        const exchangeRate = 1320; // USD to KRW (실제로는 API에서 가져와야 함)
-
         return (
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {/* Mobile: Card Layout */}
@@ -240,9 +281,18 @@ const DividendDashboard: React.FC = () => {
                 </div>
 
                 <div className="hidden md:block p-4 bg-blue-50 border-t border-blue-100">
-                    <p className="text-sm text-blue-800">
-                        💡 <strong>참고:</strong> 배당률과 배당금은 예상 수치입니다. 환율은 1달러당 ₩{exchangeRate.toLocaleString()}원 기준입니다.
-                    </p>
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-blue-800">
+                            💡 <strong>참고:</strong> 배당률과 배당금은 예상 수치입니다. 환율은 1달러당 ₩{exchangeRate.toLocaleString()}원 기준입니다.
+                        </p>
+                        {exchangeRateInfo && (
+                            <div className="text-xs text-blue-600">
+                                <span className="font-semibold">환율 업데이트:</span> {new Date(exchangeRateInfo.last_updated).toLocaleString('ko-KR')}
+                                {' | '}
+                                <span className="font-semibold">다음 갱신:</span> 매일 00시
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         );

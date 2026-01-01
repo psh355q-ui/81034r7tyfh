@@ -38,6 +38,14 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from enum import Enum
+import os
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+from pathlib import Path
+
+# .env 파일 로드 (DB 연결용)
+env_path = Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 
 class ShadowTradingStatus(Enum):
@@ -69,12 +77,13 @@ class ShadowTrade:
 class ShadowTradingMVP:
     """MVP Shadow Trading System - Conditional Virtual Trading"""
 
-    def __init__(self, initial_capital: float = 100000.0):
+    def __init__(self, initial_capital: float = 100000.0, session_id: Optional[str] = None):
         """
         Initialize Shadow Trading System
 
         Args:
             initial_capital: 초기 자본금 (default: $100k)
+            session_id: 기존 세션 ID (복원 시 사용)
         """
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
@@ -84,6 +93,10 @@ class ShadowTradingMVP:
         self.status = ShadowTradingStatus.PAUSED
         self.start_date: Optional[datetime] = None
         self.end_date: Optional[datetime] = None
+        self.session_id = session_id or f"shadow_{datetime.utcnow().isoformat()}"
+
+        # DB 연결
+        self._db_engine = None
 
         # Trades
         self.open_positions: Dict[str, ShadowTrade] = {}
@@ -143,11 +156,17 @@ class ShadowTradingMVP:
         self.daily_returns = []
         self.equity_curve = []
 
+        # DB에 세션 저장
+        save_result = self.save_session_to_db()
+        if not save_result['success']:
+            print(f"⚠️  Warning: {save_result['message']}")
+
         return {
             'success': True,
             'message': f'Shadow Trading started: {reason}',
             'start_date': self.start_date.isoformat(),
-            'initial_capital': self.initial_capital
+            'initial_capital': self.initial_capital,
+            'session_id': self.session_id
         }
 
     def execute_trade(
@@ -207,6 +226,11 @@ class ShadowTradingMVP:
             self.open_positions[symbol] = trade
             self.available_cash -= trade_value
 
+            # DB에 Trade 저장
+            self.save_trade_to_db(trade)
+            # 세션 상태 업데이트
+            self.save_session_to_db()
+
             return {
                 'success': True,
                 'message': f'Shadow BUY: {symbol} x{quantity} @ ${price:.2f}',
@@ -242,6 +266,11 @@ class ShadowTradingMVP:
 
             # Update cash
             self.available_cash += exit_value
+
+            # DB에 Trade 업데이트 (exit 정보 저장)
+            self.save_trade_to_db(open_trade)
+            # 세션 상태 업데이트
+            self.save_session_to_db()
 
             return {
                 'success': True,
@@ -516,6 +545,247 @@ class ShadowTradingMVP:
             'failure_conditions': self.FAILURE_CONDITIONS,
             'shadow_triggers': self.SHADOW_TRIGGERS
         }
+
+    # ==================== DB Persistence Methods ====================
+
+    def _get_db_engine(self):
+        """DB 엔진 가져오기 (싱글톤 패턴)"""
+        if self._db_engine is None:
+            db_url = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5433/ai_trading')
+            # Convert asyncpg to psycopg2 for sync operations
+            if 'postgresql+asyncpg://' in db_url:
+                db_url = db_url.replace('postgresql+asyncpg://', 'postgresql://')
+            self._db_engine = create_engine(db_url)
+        return self._db_engine
+
+    def save_session_to_db(self) -> Dict[str, Any]:
+        """
+        현재 Shadow Trading 세션을 DB에 저장
+
+        Returns:
+            {'success': bool, 'message': str}
+        """
+        try:
+            engine = self._get_db_engine()
+            with engine.connect() as conn:
+                # Check if session exists
+                result = conn.execute(text("""
+                    SELECT id FROM shadow_trading_sessions WHERE session_id = :session_id
+                """), {'session_id': self.session_id})
+
+                existing = result.fetchone()
+
+                if existing:
+                    # Update existing session
+                    conn.execute(text("""
+                        UPDATE shadow_trading_sessions
+                        SET status = :status,
+                            end_date = :end_date,
+                            current_capital = :current_capital,
+                            available_cash = :available_cash,
+                            updated_at = NOW()
+                        WHERE session_id = :session_id
+                    """), {
+                        'session_id': self.session_id,
+                        'status': self.status.value,
+                        'end_date': self.end_date,
+                        'current_capital': self.current_capital,
+                        'available_cash': self.available_cash
+                    })
+                else:
+                    # Insert new session
+                    conn.execute(text("""
+                        INSERT INTO shadow_trading_sessions
+                        (session_id, status, start_date, end_date, initial_capital,
+                         current_capital, available_cash, reason, created_at, updated_at)
+                        VALUES (:session_id, :status, :start_date, :end_date, :initial_capital,
+                                :current_capital, :available_cash, :reason, NOW(), NOW())
+                    """), {
+                        'session_id': self.session_id,
+                        'status': self.status.value,
+                        'start_date': self.start_date,
+                        'end_date': self.end_date,
+                        'initial_capital': self.initial_capital,
+                        'current_capital': self.current_capital,
+                        'available_cash': self.available_cash,
+                        'reason': f'Shadow Trading Session - {self.status.value}'
+                    })
+
+                conn.commit()
+
+            return {
+                'success': True,
+                'message': f'Session {self.session_id} saved to DB'
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Failed to save session: {str(e)}'
+            }
+
+    def save_trade_to_db(self, trade: ShadowTrade) -> Dict[str, Any]:
+        """
+        개별 Shadow Trade를 DB에 저장
+
+        Args:
+            trade: ShadowTrade 객체
+
+        Returns:
+            {'success': bool, 'message': str}
+        """
+        try:
+            engine = self._get_db_engine()
+            with engine.connect() as conn:
+                # Check if trade exists
+                result = conn.execute(text("""
+                    SELECT id FROM shadow_trades WHERE trade_id = :trade_id
+                """), {'trade_id': trade.trade_id})
+
+                existing = result.fetchone()
+
+                if existing:
+                    # Update existing trade
+                    conn.execute(text("""
+                        UPDATE shadow_trades
+                        SET exit_price = :exit_price,
+                            exit_date = :exit_date,
+                            pnl = :pnl,
+                            pnl_pct = :pnl_pct
+                        WHERE trade_id = :trade_id
+                    """), {
+                        'trade_id': trade.trade_id,
+                        'exit_price': trade.exit_price,
+                        'exit_date': trade.exit_date,
+                        'pnl': trade.pnl,
+                        'pnl_pct': trade.pnl_pct
+                    })
+                else:
+                    # Insert new trade
+                    conn.execute(text("""
+                        INSERT INTO shadow_trades
+                        (session_id, trade_id, symbol, action, quantity, entry_price, entry_date,
+                         exit_price, exit_date, pnl, pnl_pct, stop_loss_price, reason,
+                         agent_decision, created_at)
+                        VALUES (:session_id, :trade_id, :symbol, :action, :quantity, :entry_price,
+                                :entry_date, :exit_price, :exit_date, :pnl, :pnl_pct,
+                                :stop_loss_price, :reason, :agent_decision, NOW())
+                    """), {
+                        'session_id': self.session_id,
+                        'trade_id': trade.trade_id,
+                        'symbol': trade.symbol,
+                        'action': trade.action,
+                        'quantity': trade.quantity,
+                        'entry_price': trade.entry_price,
+                        'entry_date': trade.entry_date,
+                        'exit_price': trade.exit_price,
+                        'exit_date': trade.exit_date,
+                        'pnl': trade.pnl,
+                        'pnl_pct': trade.pnl_pct,
+                        'stop_loss_price': trade.stop_loss_price,
+                        'reason': trade.reason,
+                        'agent_decision': str(trade.agent_decision) if trade.agent_decision else None
+                    })
+
+                conn.commit()
+
+            return {
+                'success': True,
+                'message': f'Trade {trade.trade_id} saved to DB'
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Failed to save trade: {str(e)}'
+            }
+
+    @classmethod
+    def load_active_session_from_db(cls) -> Optional['ShadowTradingMVP']:
+        """
+        DB에서 활성 Shadow Trading 세션을 로드
+
+        Returns:
+            ShadowTradingMVP 인스턴스 또는 None
+        """
+        try:
+            # DB 연결
+            db_url = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5433/ai_trading')
+            if 'postgresql+asyncpg://' in db_url:
+                db_url = db_url.replace('postgresql+asyncpg://', 'postgresql://')
+            engine = create_engine(db_url)
+
+            with engine.connect() as conn:
+                # 활성 세션 조회
+                result = conn.execute(text("""
+                    SELECT session_id, status, start_date, end_date, initial_capital,
+                           current_capital, available_cash, reason
+                    FROM shadow_trading_sessions
+                    WHERE status = 'active'
+                    ORDER BY start_date DESC
+                    LIMIT 1
+                """))
+
+                session = result.fetchone()
+
+                if not session:
+                    return None
+
+                # ShadowTradingMVP 인스턴스 생성
+                instance = cls(
+                    initial_capital=session[4],  # initial_capital
+                    session_id=session[0]  # session_id
+                )
+
+                # 세션 데이터 복원
+                instance.status = ShadowTradingStatus(session[1])  # status
+                instance.start_date = session[2]  # start_date
+                instance.end_date = session[3]  # end_date
+                instance.current_capital = session[5]  # current_capital
+                instance.available_cash = session[6]  # available_cash
+
+                # Trades 로드
+                trades_result = conn.execute(text("""
+                    SELECT trade_id, symbol, action, quantity, entry_price, entry_date,
+                           exit_price, exit_date, pnl, pnl_pct, stop_loss_price, reason
+                    FROM shadow_trades
+                    WHERE session_id = :session_id
+                    ORDER BY entry_date
+                """), {'session_id': instance.session_id})
+
+                for trade_row in trades_result:
+                    trade = ShadowTrade(
+                        trade_id=trade_row[0],
+                        symbol=trade_row[1],
+                        action=trade_row[2],
+                        quantity=trade_row[3],
+                        entry_price=trade_row[4],
+                        entry_date=trade_row[5],
+                        exit_price=trade_row[6],
+                        exit_date=trade_row[7],
+                        pnl=trade_row[8],
+                        pnl_pct=trade_row[9],
+                        stop_loss_price=trade_row[10],
+                        reason=trade_row[11]
+                    )
+
+                    # Open vs Closed
+                    if trade.exit_date is None:
+                        instance.open_positions[trade.symbol] = trade
+                    else:
+                        instance.closed_trades.append(trade)
+
+                print(f"✅ Loaded Shadow Trading session: {instance.session_id}")
+                print(f"   Status: {instance.status.value}")
+                print(f"   Capital: ${instance.current_capital:,.0f}")
+                print(f"   Open Positions: {len(instance.open_positions)}")
+                print(f"   Closed Trades: {len(instance.closed_trades)}")
+
+                return instance
+
+        except Exception as e:
+            print(f"❌ Failed to load session from DB: {str(e)}")
+            return None
 
 
 # Example usage

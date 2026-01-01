@@ -22,9 +22,11 @@ from backend.ai.reasoning.deep_reasoning import DeepReasoningStrategy, DeepReaso
 from backend.ai.ai_client_factory import AIClientFactory, MockAIClient
 from backend.data.knowledge_graph.knowledge_graph import KnowledgeGraph
 from backend.config_phase14 import settings, AIRole, get_model_config
+from backend.database.db_session import get_sync_session
+from backend.database.repository import DeepReasoningRepository
 
 
-router = APIRouter(prefix="/api/v1/reasoning", tags=["Deep Reasoning"])
+router = APIRouter(prefix="/api/reasoning", tags=["Deep Reasoning"])
 
 
 # ============================================
@@ -92,6 +94,37 @@ class BacktestRequest(BaseModel):
     use_mock: bool = False  # 실제 데이터 사용 (Mock은 테스트용)
 
 
+class HistoryItemResponse(BaseModel):
+    """분석 이력 항목"""
+    id: int
+    news_text: str
+    theme: str
+    primary_beneficiary_ticker: Optional[str]
+    primary_beneficiary_action: Optional[str]
+    primary_beneficiary_confidence: Optional[float]
+    primary_beneficiary_reasoning: Optional[str]
+    hidden_beneficiary_ticker: Optional[str]
+    hidden_beneficiary_action: Optional[str]
+    hidden_beneficiary_confidence: Optional[float]
+    hidden_beneficiary_reasoning: Optional[str]
+    loser_ticker: Optional[str]
+    loser_action: Optional[str]
+    loser_confidence: Optional[float]
+    loser_reasoning: Optional[str]
+    bull_case: str
+    bear_case: str
+    reasoning_trace: List[Dict[str, Any]]
+    model_used: str
+    processing_time_ms: int
+    created_at: str
+
+
+class HistoryListResponse(BaseModel):
+    """분석 이력 목록 응답"""
+    total: int
+    items: List[HistoryItemResponse]
+
+
 # ============================================
 # Singleton Instances
 # ============================================
@@ -103,17 +136,18 @@ _knowledge_graph: Optional[KnowledgeGraph] = None
 def get_strategy() -> DeepReasoningStrategy:
     """전략 인스턴스 획득"""
     global _strategy
-    global _strategy
     if _strategy is None:
-        # 실제 AI 클라이언트 사용 (설정된 모델 사용)
+        # 실제 AI 클라이언트 사용 (.env의 GEMINI_MODEL 사용)
         try:
-            # 기본 모델로 클라이언트 생성 (Gemini or OpenAI)
-            client = AIClientFactory.create()
+            import os
+            # .env에서 모델명 가져오기 (기본값: gemini-2.0-flash)
+            model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+            client = AIClientFactory.create(model_name)
             _strategy = DeepReasoningStrategy(ai_client=client)
-            print(f"✅ DeepReasoningStrategy initialized with REAL client: {client.model}")
+            print(f"✅ DeepReasoningStrategy initialized with REAL client: {client.model_name}")
         except Exception as e:
             print(f"⚠️ Failed to create real AI client, falling back to MOCK: {e}")
-            mock_client = MockAIClient("mock-api") 
+            mock_client = MockAIClient("mock-api")
             _strategy = DeepReasoningStrategy(ai_client=mock_client)
     return _strategy
 
@@ -134,27 +168,62 @@ def get_knowledge_graph() -> KnowledgeGraph:
 async def analyze_news(request: AnalyzeRequest):
     """
     뉴스에 대한 심층 추론 분석
-    
+
     3단계 CoT (Chain of Thought) 분석:
     1. Direct Impact - 직접 영향
     2. Secondary Impact - 파생 효과 (꼬리 물기)
     3. Strategic Conclusion - 투자 전략
+
+    분석 결과는 자동으로 DB에 저장됩니다.
     """
     start_time = datetime.now()
-    
+
     try:
         strategy = get_strategy()
-        
+
         # 모델 변경 (선택사항)
         if request.model:
             client = AIClientFactory.create(request.model)
             strategy.ai_client = client
-        
+
         # 분석 실행
         result = await strategy.analyze_news(request.news_text)
-        
+
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+
+        # DB에 저장 (Repository 사용)
+        try:
+            session = next(get_sync_session())
+            repo = DeepReasoningRepository(session)
+
+            analysis_data = {
+                'news_text': request.news_text,
+                'theme': result.theme,
+                'primary_beneficiary_ticker': result.primary_beneficiary.get('ticker') if result.primary_beneficiary else None,
+                'primary_beneficiary_action': result.primary_beneficiary.get('action') if result.primary_beneficiary else None,
+                'primary_beneficiary_confidence': result.primary_beneficiary.get('confidence') if result.primary_beneficiary else None,
+                'primary_beneficiary_reasoning': result.primary_beneficiary.get('reasoning') if result.primary_beneficiary else None,
+                'hidden_beneficiary_ticker': result.hidden_beneficiary.get('ticker') if result.hidden_beneficiary else None,
+                'hidden_beneficiary_action': result.hidden_beneficiary.get('action') if result.hidden_beneficiary else None,
+                'hidden_beneficiary_confidence': result.hidden_beneficiary.get('confidence') if result.hidden_beneficiary else None,
+                'hidden_beneficiary_reasoning': result.hidden_beneficiary.get('reasoning') if result.hidden_beneficiary else None,
+                'loser_ticker': result.loser.get('ticker') if result.loser else None,
+                'loser_action': result.loser.get('action') if result.loser else None,
+                'loser_confidence': result.loser.get('confidence') if result.loser else None,
+                'loser_reasoning': result.loser.get('reasoning') if result.loser else None,
+                'bull_case': result.bull_case,
+                'bear_case': result.bear_case,
+                'reasoning_trace': result.reasoning_trace,
+                'model_used': result.model_used,
+                'processing_time_ms': int(processing_time)
+            }
+
+            repo.create_analysis(analysis_data)
+            print(f"✅ Analysis saved to DB")
+        except Exception as db_error:
+            print(f"⚠️ Failed to save analysis to DB: {db_error}")
+            # 저장 실패해도 분석 결과는 반환
+
         return AnalyzeResponse(
             success=True,
             theme=result.theme,
@@ -168,7 +237,152 @@ async def analyze_news(request: AnalyzeRequest):
             analyzed_at=result.analyzed_at.isoformat(),
             processing_time_ms=processing_time
         )
-        
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/history", response_model=HistoryListResponse)
+async def get_analysis_history(
+    limit: int = 50,
+    offset: int = 0
+):
+    """
+    Deep Reasoning 분석 이력 조회 (최신순)
+
+    Args:
+        limit: 최대 조회 개수 (default: 50, max: 100)
+        offset: 시작 위치 (default: 0)
+
+    Returns:
+        HistoryListResponse with analysis history
+    """
+    try:
+        # Limit 제한
+        limit = min(limit, 100)
+
+        session = next(get_sync_session())
+        repo = DeepReasoningRepository(session)
+
+        # 전체 개수 조회
+        total = repo.count_total()
+
+        # 이력 조회
+        analyses = repo.get_all(limit=limit, offset=offset)
+
+        # Response 변환
+        items = []
+        for analysis in analyses:
+            items.append(HistoryItemResponse(
+                id=analysis.id,
+                news_text=analysis.news_text,
+                theme=analysis.theme,
+                primary_beneficiary_ticker=analysis.primary_beneficiary_ticker,
+                primary_beneficiary_action=analysis.primary_beneficiary_action,
+                primary_beneficiary_confidence=analysis.primary_beneficiary_confidence,
+                primary_beneficiary_reasoning=analysis.primary_beneficiary_reasoning,
+                hidden_beneficiary_ticker=analysis.hidden_beneficiary_ticker,
+                hidden_beneficiary_action=analysis.hidden_beneficiary_action,
+                hidden_beneficiary_confidence=analysis.hidden_beneficiary_confidence,
+                hidden_beneficiary_reasoning=analysis.hidden_beneficiary_reasoning,
+                loser_ticker=analysis.loser_ticker,
+                loser_action=analysis.loser_action,
+                loser_confidence=analysis.loser_confidence,
+                loser_reasoning=analysis.loser_reasoning,
+                bull_case=analysis.bull_case,
+                bear_case=analysis.bear_case,
+                reasoning_trace=analysis.reasoning_trace,
+                model_used=analysis.model_used,
+                processing_time_ms=analysis.processing_time_ms,
+                created_at=analysis.created_at.isoformat()
+            ))
+
+        return HistoryListResponse(
+            total=total,
+            items=items
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/history/{analysis_id}", response_model=HistoryItemResponse)
+async def get_analysis_by_id(analysis_id: int):
+    """
+    특정 분석 이력 조회
+
+    Args:
+        analysis_id: 분석 ID
+
+    Returns:
+        HistoryItemResponse with specific analysis
+    """
+    try:
+        session = next(get_sync_session())
+        repo = DeepReasoningRepository(session)
+
+        analysis = repo.get_by_id(analysis_id)
+
+        if not analysis:
+            raise HTTPException(status_code=404, detail=f"Analysis {analysis_id} not found")
+
+        return HistoryItemResponse(
+            id=analysis.id,
+            news_text=analysis.news_text,
+            theme=analysis.theme,
+            primary_beneficiary_ticker=analysis.primary_beneficiary_ticker,
+            primary_beneficiary_action=analysis.primary_beneficiary_action,
+            primary_beneficiary_confidence=analysis.primary_beneficiary_confidence,
+            primary_beneficiary_reasoning=analysis.primary_beneficiary_reasoning,
+            hidden_beneficiary_ticker=analysis.hidden_beneficiary_ticker,
+            hidden_beneficiary_action=analysis.hidden_beneficiary_action,
+            hidden_beneficiary_confidence=analysis.hidden_beneficiary_confidence,
+            hidden_beneficiary_reasoning=analysis.hidden_beneficiary_reasoning,
+            loser_ticker=analysis.loser_ticker,
+            loser_action=analysis.loser_action,
+            loser_confidence=analysis.loser_confidence,
+            loser_reasoning=analysis.loser_reasoning,
+            bull_case=analysis.bull_case,
+            bear_case=analysis.bear_case,
+            reasoning_trace=analysis.reasoning_trace,
+            model_used=analysis.model_used,
+            processing_time_ms=analysis.processing_time_ms,
+            created_at=analysis.created_at.isoformat()
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/history/{analysis_id}")
+async def delete_analysis(analysis_id: int):
+    """
+    분석 이력 삭제
+
+    Args:
+        analysis_id: 삭제할 분석 ID
+
+    Returns:
+        Success message
+    """
+    try:
+        session = next(get_sync_session())
+        repo = DeepReasoningRepository(session)
+
+        success = repo.delete_analysis(analysis_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Analysis {analysis_id} not found")
+
+        return {
+            "success": True,
+            "message": f"Analysis {analysis_id} deleted successfully"
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -32,6 +32,11 @@ echo API Documentation: http://localhost:8001/docs
 echo News API (Realtime): http://localhost:8001/news/realtime/health
 echo.
 
+REM Disable Python bytecode generation to prevent cache issues
+set PYTHONDONTWRITEBYTECODE=1
+echo [CACHE FIX] PYTHONDONTWRITEBYTECODE=1
+echo.
+
 REM Start uvicorn from PROJECT ROOT with backend.main:app
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
 

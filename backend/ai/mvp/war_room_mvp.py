@@ -52,6 +52,7 @@ class WarRoomMVP:
 
         # Initialize PM agent (final decision maker)
         self.pm_agent = PMAgentMVP()
+        print(f"🔍 DEBUG: PM Agent HARD_RULES loaded: max_agent_disagreement = {self.pm_agent.HARD_RULES['max_agent_disagreement']}")
 
         # Initialize execution layer
         self.execution_router = ExecutionRouter()

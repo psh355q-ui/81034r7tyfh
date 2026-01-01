@@ -9,13 +9,13 @@ Purpose:
     - 뉴스 분석 및 해석 (News Agent 흡수)
     - 글로벌 매크로 경제 분석 (Macro Agent 흡수)
     - 기관 투자자 동향 분석 (Institutional Agent 흡수)
-    - 칩워 지정학적 분석 (ChipWar Agent 일부 흡수)
+    - 반도체 패권 경쟁 지정학적 분석 (ChipWar Agent 일부 흡수)
 
 Key Responsibilities:
     1. 뉴스 이벤트 분석 및 영향 평가
     2. 매크로 경제 지표 해석
     3. 기관 투자자 포지션 변화 추적
-    4. 칩워 지정학적 리스크 평가
+    4. 반도체 패권 경쟁 지정학적 리스크 평가
     5. 종합 정보 분석 리포트 생성
 
 Absorbed Legacy Agents:
@@ -55,7 +55,7 @@ class AnalystAgentMVP:
 1. 뉴스 이벤트 분석 및 영향 평가
 2. 매크로 경제 지표 해석 (금리, 인플레이션, GDP 등)
 3. 기관 투자자 포지션 변화 추적 (13F filings, insider trading)
-4. 칩워 지정학적 리스크 평가 (미중 갈등, 수출 규제 등)
+4. 반도체 패권 경쟁 지정학적 리스크 평가 (미중 갈등, 수출 규제 등)
 5. 종합 정보 분석 리포트 생성
 
 분석 원칙:
@@ -97,9 +97,10 @@ class AnalystAgentMVP:
 }
 
 중요:
+- **반드시 한글로 응답할 것** (reasoning, key_catalysts, red_flags 등 모든 텍스트 필드는 한국어로 작성)
 - 정보가 불충분하면 confidence를 낮추고 "pass" 권장
 - Red flags가 있으면 반드시 명시
-- 매크로/칩워 리스크는 확률적으로 평가
+- 반도체 패권 경쟁 리스크는 확률적으로 평가
 """
 
     def analyze(
@@ -139,7 +140,7 @@ class AnalystAgentMVP:
                     'insider_trading': [{'type': 'buy'|'sell', 'amount': float}],
                     'institutional_ownership_pct': float
                 }
-            chipwar_events: 칩워 관련 이벤트 (optional)
+            chipwar_events: 반도체 패권 경쟁 관련 이벤트 (optional)
                 [
                     {
                         'event': str,
@@ -162,7 +163,7 @@ class AnalystAgentMVP:
                 - news_impact: 뉴스 영향 분석
                 - macro_impact: 매크로 영향 분석
                 - institutional_flow: 기관 자금 흐름
-                - chipwar_risk: 칩워 리스크
+                - chipwar_risk: 반도체 패권 경쟁 리스크
                 - overall_information_score: 종합 정보 점수
                 - key_catalysts: 주요 촉매제
                 - red_flags: 경고 신호
@@ -306,7 +307,7 @@ class AnalystAgentMVP:
 
         # ChipWar events
         if chipwar_events and len(chipwar_events) > 0:
-            prompt_parts.append("\n=== 칩워 지정학 이벤트 ===")
+            prompt_parts.append("\n=== 반도체 패권 경쟁 지정학 이벤트 ===")
             for i, event in enumerate(chipwar_events[:5]):  # Top 5
                 prompt_parts.append(f"\n[이벤트 {i+1}]")
                 prompt_parts.append(f"내용: {event.get('event', 'N/A')}")
@@ -435,7 +436,7 @@ class AnalystAgentMVP:
             'name': 'AnalystAgentMVP',
             'role': self.role,
             'weight': self.weight,
-            'focus': '종합 정보 분석 (News + Macro + Institutional + ChipWar)',
+            'focus': '종합 정보 분석 (News + Macro + Institutional + 반도체 패권 경쟁)',
             'absorbed_agents': [
                 'News Agent',
                 'Macro Agent',
@@ -446,7 +447,7 @@ class AnalystAgentMVP:
                 '뉴스 이벤트 분석 및 영향 평가',
                 '매크로 경제 지표 해석',
                 '기관 투자자 동향 분석',
-                '칩워 지정학적 리스크 평가',
+                '반도체 패권 경쟁 지정학적 리스크 평가',
                 '종합 정보 분석 리포트 생성'
             ]
         }

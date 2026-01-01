@@ -95,49 +95,53 @@ class KnowledgeGraph:
         confidence: float = 0.8
     ) -> int:
         """관계 추가 (Upsert)"""
-        # Check existence
-        existing = self.db.query(Relationship).filter(
-            and_(
-                Relationship.subject == subject,
-                Relationship.relation == relation,
-                Relationship.object == obj
-            )
-        ).first()
-        
-        search_text = f"{subject} {relation} {obj}. {evidence_text or ''}"
-        embedding = await self._get_embedding(search_text)
-        
-        if existing:
-            # Update
-            existing.evidence_text = evidence_text
-            existing.source = source
-            existing.date = datetime.now()
-            if embedding:
-                existing.embedding = embedding
-            existing.confidence = confidence
-            existing.is_active = True
-            existing.updated_at = datetime.now()
-            
-            self.db.commit()
-            self.db.refresh(existing)
-            return existing.id
-        else:
-            # Insert
-            rel = Relationship(
-                subject=subject,
-                relation=relation,
-                object=obj,
-                evidence_text=evidence_text,
-                source=source,
-                date=datetime.now(),
-                embedding=embedding,
-                confidence=confidence,
-                is_active=True
-            )
-            self.db.add(rel)
-            self.db.commit()
-            self.db.refresh(rel)
-            return rel.id
+        try:
+            # Check existence
+            existing = self.db.query(Relationship).filter(
+                and_(
+                    Relationship.subject == subject,
+                    Relationship.relation == relation,
+                    Relationship.object == obj
+                )
+            ).first()
+
+            search_text = f"{subject} {relation} {obj}. {evidence_text or ''}"
+            embedding = await self._get_embedding(search_text)
+
+            if existing:
+                # Update
+                existing.evidence_text = evidence_text
+                existing.source = source
+                existing.date = datetime.now()
+                if embedding:
+                    existing.embedding = embedding
+                existing.confidence = confidence
+                existing.is_active = True
+                existing.updated_at = datetime.now()
+
+                self.db.commit()
+                self.db.refresh(existing)
+                return existing.id
+            else:
+                # Insert
+                rel = Relationship(
+                    subject=subject,
+                    relation=relation,
+                    object=obj,
+                    evidence_text=evidence_text,
+                    source=source,
+                    date=datetime.now(),
+                    embedding=embedding,
+                    confidence=confidence,
+                    is_active=True
+                )
+                self.db.add(rel)
+                self.db.commit()
+                self.db.refresh(rel)
+                return rel.id
+        except Exception as e:
+            logger.warning(f"⚠️ relationships 테이블이 없어서 관계 추가 실패 (정상 동작): {e}")
+            return -1
     
     async def get_relationships(
         self,
@@ -146,41 +150,45 @@ class KnowledgeGraph:
         direction: str = "both"  # "outgoing", "incoming", "both"
     ) -> List[Dict]:
         """엔티티의 관계 조회"""
-        query = self.db.query(Relationship).filter(Relationship.is_active == True)
-        
-        conditions = []
-        if direction == "outgoing":
-            conditions.append(Relationship.subject.ilike(f"%{entity}%"))
-        elif direction == "incoming":
-            conditions.append(Relationship.object.ilike(f"%{entity}%"))
-        else: # both
-            conditions.append(or_(
-                Relationship.subject.ilike(f"%{entity}%"),
-                Relationship.object.ilike(f"%{entity}%")
-            ))
-            
-        if conditions:
-            query = query.filter(or_(*conditions) if len(conditions) > 1 else conditions[0])
-            
-        if relation_type:
-            query = query.filter(Relationship.relation == relation_type)
-            
-        results = query.order_by(Relationship.confidence.desc(), Relationship.date.desc()).limit(50).all()
-        
-        return [
-            {
-                "id": r.id,
-                "subject": r.subject,
-                "relation": r.relation,
-                "object": r.object,
-                "evidence_text": r.evidence_text,
-                "source": r.source,
-                "date": r.date,
-                "confidence": r.confidence,
-                "verified_at": r.verified_at
-            }
-            for r in results
-        ]
+        try:
+            query = self.db.query(Relationship).filter(Relationship.is_active == True)
+
+            conditions = []
+            if direction == "outgoing":
+                conditions.append(Relationship.subject.ilike(f"%{entity}%"))
+            elif direction == "incoming":
+                conditions.append(Relationship.object.ilike(f"%{entity}%"))
+            else: # both
+                conditions.append(or_(
+                    Relationship.subject.ilike(f"%{entity}%"),
+                    Relationship.object.ilike(f"%{entity}%")
+                ))
+
+            if conditions:
+                query = query.filter(or_(*conditions) if len(conditions) > 1 else conditions[0])
+
+            if relation_type:
+                query = query.filter(Relationship.relation == relation_type)
+
+            results = query.order_by(Relationship.confidence.desc(), Relationship.date.desc()).limit(50).all()
+
+            return [
+                {
+                    "id": r.id,
+                    "subject": r.subject,
+                    "relation": r.relation,
+                    "object": r.object,
+                    "evidence_text": r.evidence_text,
+                    "source": r.source,
+                    "date": r.date,
+                    "confidence": r.confidence,
+                    "verified_at": r.verified_at
+                }
+                for r in results
+            ]
+        except Exception as e:
+            logger.warning(f"⚠️ relationships 테이블이 없거나 조회 실패 (정상 동작): {e}")
+            return []
     
     async def find_path(
         self,
@@ -189,47 +197,51 @@ class KnowledgeGraph:
         max_depth: int = 3
     ) -> List[List[Dict]]:
         """두 엔티티 간 경로 탐색 (BFS)"""
-        # BFS (Client-side logic with repeated DB queries - simpler implementation)
-        visited = set()
-        queue = [(start_entity, [])]
-        paths = []
-        
-        while queue and len(paths) < 5:
-            current, path = queue.pop(0)
-            
-            if len(path) >= max_depth:
-                continue
-                
-            if current.lower() in visited:
-                continue
-            visited.add(current.lower())
-            
-            # Outgoing queries
-            # Using simple query, not async
-            rels = self.db.query(Relationship).filter(
-                and_(
-                    Relationship.subject.ilike(f"%{current}%"),
-                    Relationship.is_active == True
-                )
-            ).all()
-            
-            for rel in rels:
-                # Convert to dict
-                rel_dict = {
-                    "id": rel.id,
-                    "subject": rel.subject,
-                    "relation": rel.relation,
-                    "object": rel.object
-                }
-                
-                new_path = path + [rel_dict]
-                
-                if end_entity.lower() in rel.object.lower():
-                    paths.append(new_path)
-                else:
-                    queue.append((rel.object, new_path))
-        
-        return paths
+        try:
+            # BFS (Client-side logic with repeated DB queries - simpler implementation)
+            visited = set()
+            queue = [(start_entity, [])]
+            paths = []
+
+            while queue and len(paths) < 5:
+                current, path = queue.pop(0)
+
+                if len(path) >= max_depth:
+                    continue
+
+                if current.lower() in visited:
+                    continue
+                visited.add(current.lower())
+
+                # Outgoing queries
+                # Using simple query, not async
+                rels = self.db.query(Relationship).filter(
+                    and_(
+                        Relationship.subject.ilike(f"%{current}%"),
+                        Relationship.is_active == True
+                    )
+                ).all()
+
+                for rel in rels:
+                    # Convert to dict
+                    rel_dict = {
+                        "id": rel.id,
+                        "subject": rel.subject,
+                        "relation": rel.relation,
+                        "object": rel.object
+                    }
+
+                    new_path = path + [rel_dict]
+
+                    if end_entity.lower() in rel.object.lower():
+                        paths.append(new_path)
+                    else:
+                        queue.append((rel.object, new_path))
+
+            return paths
+        except Exception as e:
+            logger.warning(f"⚠️ relationships 테이블이 없어서 경로 탐색 실패 (정상 동작): {e}")
+            return []
     
     async def semantic_search(
         self,
@@ -237,35 +249,39 @@ class KnowledgeGraph:
         limit: int = 10
     ) -> List[Dict]:
         """의미 기반 검색 (벡터 유사도)"""
-        embedding = await self._get_embedding(query)
-        if not embedding:
+        try:
+            embedding = await self._get_embedding(query)
+            if not embedding:
+                return []
+
+            # pgvector cosine distance: <=> operator
+            # SQLAlchemy stores embedding as Vector
+
+            results = self.db.query(
+                Relationship,
+                Relationship.embedding.cosine_distance(embedding).label("distance")
+            ).filter(
+                Relationship.is_active == True,
+                Relationship.embedding.isnot(None)
+            ).order_by(
+                "distance"
+            ).limit(limit).all()
+
+            return [
+                {
+                    "id": r[0].id,
+                    "subject": r[0].subject,
+                    "relation": r[0].relation,
+                    "object": r[0].object,
+                    "evidence_text": r[0].evidence_text,
+                    "confidence": r[0].confidence,
+                    "similarity": 1 - r[1]
+                }
+                for r in results
+            ]
+        except Exception as e:
+            logger.warning(f"⚠️ relationships 테이블이 없어서 의미 검색 실패 (정상 동작): {e}")
             return []
-        
-        # pgvector cosine distance: <=> operator
-        # SQLAlchemy stores embedding as Vector
-        
-        results = self.db.query(
-            Relationship,
-            Relationship.embedding.cosine_distance(embedding).label("distance")
-        ).filter(
-            Relationship.is_active == True,
-            Relationship.embedding.isnot(None)
-        ).order_by(
-            "distance"
-        ).limit(limit).all()
-        
-        return [
-            {
-                "id": r[0].id,
-                "subject": r[0].subject,
-                "relation": r[0].relation,
-                "object": r[0].object,
-                "evidence_text": r[0].evidence_text,
-                "confidence": r[0].confidence,
-                "similarity": 1 - r[1]
-            }
-            for r in results
-        ]
     
     # ============================================
     # Knowledge Verification

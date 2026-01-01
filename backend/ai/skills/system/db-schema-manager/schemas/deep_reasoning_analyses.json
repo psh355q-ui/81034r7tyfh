@@ -1,0 +1,181 @@
+{
+  "table_name": "deep_reasoning_analyses",
+  "description": "Deep Reasoning 분석 이력 저장 (3-Step CoT 추론 결과)",
+  "primary_key": "id",
+  "columns": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "nullable": false,
+      "auto_increment": true,
+      "description": "고유 ID"
+    },
+    {
+      "name": "news_text",
+      "type": "TEXT",
+      "nullable": false,
+      "description": "분석 대상 뉴스 텍스트",
+      "example": "Google announced TPU v6 with 2x efficiency improvement"
+    },
+    {
+      "name": "theme",
+      "type": "VARCHAR(500)",
+      "nullable": false,
+      "description": "투자 테마",
+      "example": "AI Infrastructure Shift"
+    },
+    {
+      "name": "primary_beneficiary_ticker",
+      "type": "VARCHAR(20)",
+      "nullable": true,
+      "description": "주 수혜주 티커"
+    },
+    {
+      "name": "primary_beneficiary_action",
+      "type": "VARCHAR(10)",
+      "nullable": true,
+      "description": "주 수혜주 액션",
+      "enum": ["BUY", "SELL", "HOLD", "TRIM"]
+    },
+    {
+      "name": "primary_beneficiary_confidence",
+      "type": "FLOAT",
+      "nullable": true,
+      "description": "주 수혜주 신뢰도 (0~1)"
+    },
+    {
+      "name": "primary_beneficiary_reasoning",
+      "type": "TEXT",
+      "nullable": true,
+      "description": "주 수혜주 근거"
+    },
+    {
+      "name": "hidden_beneficiary_ticker",
+      "type": "VARCHAR(20)",
+      "nullable": true,
+      "description": "숨은 수혜주 티커"
+    },
+    {
+      "name": "hidden_beneficiary_action",
+      "type": "VARCHAR(10)",
+      "nullable": true,
+      "description": "숨은 수혜주 액션"
+    },
+    {
+      "name": "hidden_beneficiary_confidence",
+      "type": "FLOAT",
+      "nullable": true,
+      "description": "숨은 수혜주 신뢰도 (0~1)"
+    },
+    {
+      "name": "hidden_beneficiary_reasoning",
+      "type": "TEXT",
+      "nullable": true,
+      "description": "숨은 수혜주 근거"
+    },
+    {
+      "name": "loser_ticker",
+      "type": "VARCHAR(20)",
+      "nullable": true,
+      "description": "피해주 티커"
+    },
+    {
+      "name": "loser_action",
+      "type": "VARCHAR(10)",
+      "nullable": true,
+      "description": "피해주 액션"
+    },
+    {
+      "name": "loser_confidence",
+      "type": "FLOAT",
+      "nullable": true,
+      "description": "피해주 신뢰도 (0~1)"
+    },
+    {
+      "name": "loser_reasoning",
+      "type": "TEXT",
+      "nullable": true,
+      "description": "피해주 근거"
+    },
+    {
+      "name": "bull_case",
+      "type": "TEXT",
+      "nullable": false,
+      "description": "낙관 시나리오"
+    },
+    {
+      "name": "bear_case",
+      "type": "TEXT",
+      "nullable": false,
+      "description": "비관 시나리오"
+    },
+    {
+      "name": "reasoning_trace",
+      "type": "JSONB",
+      "nullable": false,
+      "description": "추론 과정 단계 배열",
+      "example": "[\"Step 1: ...\", \"Step 2: ...\"]"
+    },
+    {
+      "name": "model_used",
+      "type": "VARCHAR(50)",
+      "nullable": false,
+      "description": "사용된 AI 모델",
+      "example": "gemini-2.5-flash"
+    },
+    {
+      "name": "processing_time_ms",
+      "type": "INTEGER",
+      "nullable": false,
+      "description": "처리 시간 (밀리초)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMP",
+      "nullable": false,
+      "default": "CURRENT_TIMESTAMP",
+      "description": "분석 생성 시각"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "idx_deep_reasoning_created_at",
+      "columns": ["created_at"],
+      "unique": false,
+      "description": "생성일 조회 (최근 이력)"
+    },
+    {
+      "name": "idx_deep_reasoning_primary_ticker",
+      "columns": ["primary_beneficiary_ticker"],
+      "unique": false,
+      "description": "주 수혜주별 조회"
+    },
+    {
+      "name": "idx_deep_reasoning_hidden_ticker",
+      "columns": ["hidden_beneficiary_ticker"],
+      "unique": false,
+      "description": "숨은 수혜주별 조회"
+    },
+    {
+      "name": "idx_deep_reasoning_model",
+      "columns": ["model_used"],
+      "unique": false,
+      "description": "모델별 조회"
+    }
+  ],
+  "metadata": {
+    "category": "analysis",
+    "repository": "DeepReasoningRepository",
+    "module": "Deep Reasoning",
+    "created": "2026-01-01",
+    "last_updated": "2026-01-01",
+    "update_frequency": "Real-time (on-demand)",
+    "data_source": "Gemini AI Deep Reasoning Analysis",
+    "related_files": [
+      "backend/api/reasoning_api.py",
+      "backend/ai/reasoning/deep_reasoning.py",
+      "frontend/src/pages/DeepReasoning.tsx"
+    ],
+    "notes": "3-Step Chain-of-Thought 추론 결과 저장. Primary/Hidden/Loser Beneficiaries 추적."
+  }
+}

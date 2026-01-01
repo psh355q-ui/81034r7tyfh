@@ -687,6 +687,43 @@ class Relationship(Base):
     )
 
 
+class DeepReasoningAnalysis(Base):
+    """Deep Reasoning 분석 이력 (3-Step CoT 추론 결과)"""
+    __tablename__ = "deep_reasoning_analyses"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    news_text = Column(Text, nullable=False)
+    theme = Column(String(500), nullable=False)
+
+    # Primary Beneficiary
+    primary_beneficiary_ticker = Column(String(20), nullable=True, index=True)
+    primary_beneficiary_action = Column(String(10), nullable=True)
+    primary_beneficiary_confidence = Column(Float, nullable=True)
+    primary_beneficiary_reasoning = Column(Text, nullable=True)
+
+    # Hidden Beneficiary
+    hidden_beneficiary_ticker = Column(String(20), nullable=True, index=True)
+    hidden_beneficiary_action = Column(String(10), nullable=True)
+    hidden_beneficiary_confidence = Column(Float, nullable=True)
+    hidden_beneficiary_reasoning = Column(Text, nullable=True)
+
+    # Loser
+    loser_ticker = Column(String(20), nullable=True)
+    loser_action = Column(String(10), nullable=True)
+    loser_confidence = Column(Float, nullable=True)
+    loser_reasoning = Column(Text, nullable=True)
+
+    # Analysis Results
+    bull_case = Column(Text, nullable=False)
+    bear_case = Column(Text, nullable=False)
+    reasoning_trace = Column(JSONB, nullable=False)
+
+    # Metadata
+    model_used = Column(String(50), nullable=False, index=True)
+    processing_time_ms = Column(Integer, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.now, index=True)
+
+
 # ====================================
 # Accountability System Models
 # Phase 1 (Week 1-2) - Added 2025-12-29

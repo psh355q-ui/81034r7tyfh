@@ -107,8 +107,8 @@ Shadow Trading이 활성화되는 조건들:
 ## Next Steps
 
 ### Immediate (Week 1)
-1. ✅ **DONE:** Shadow Trading 시작
-2. ⏳ **TODO:** 첫 번째 Shadow Trade 실행
+1. ✅ **DONE:** Shadow Trading 시작 (2025-12-31 13:38)
+2. ✅ **DONE:** 첫 번째 Shadow Trade 실행 (NKE: 259 shares @ $63.03)
 3. ⏳ **TODO:** Daily monitoring 설정
 4. ⏳ **TODO:** Performance dashboard 생성
 
@@ -278,14 +278,21 @@ PM Agent의 Hard Rules는 **코드로 강제 실행**됩니다:
 - Max position size: 30%
 - Max portfolio risk: 5%
 - Min average confidence: 50% (Silence Policy)
-- Max agent disagreement: 60%
+- Max agent disagreement: 75% (완화됨: 60% → 75%, 2025-12-31)
 - Stop loss required: YES
+
+**Note:** Agent disagreement 한도를 60%에서 75%로 완화하여 Phase 1 데이터 수집을 원활히 하도록 조정했습니다.
 
 ---
 
-**Shadow Trading Phase 1 Started:** 2025-12-31 04:35:54 UTC
-**Current Status:** 🟢 ACTIVE (Day 0)
+**Shadow Trading Phase 1 Started:** 2025-12-31 13:38:13 KST (Clean Restart)
+**Current Status:** 🟢 ACTIVE (Day 0) - First Trade Executed (NKE)
 **Next Review:** 2026-01-07 (Week 1)
 **Final Review:** 2026-03-31 (Day 90)
 
 🎯 **Goal:** Meet all Success Criteria → Proceed to $100 Real Money Test
+
+---
+
+## Progress Reports
+- [Day 0 Progress Report](Shadow_Trading_Phase1_Day0_Progress.md) - 2025-12-31 세부 진행 내용

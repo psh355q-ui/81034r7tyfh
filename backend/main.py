@@ -728,16 +728,17 @@ async def get_portfolio():
             logger.warning("KIS broker not available, returning mock data")
             return _get_mock_portfolio()
         
-        # Get account number from environment
-        account_no = os.getenv("KIS_ACCOUNT_NUMBER")
-        
+        # Get account number and mode from environment
+        is_virtual = os.getenv("KIS_IS_VIRTUAL", "true").lower() == "true"
+        account_no = os.getenv("KIS_PAPER_ACCOUNT" if is_virtual else "KIS_ACCOUNT_NUMBER")
+
         if not account_no:
-            logger.warning("KIS_ACCOUNT_NUMBER not set, returning mock data")
+            logger.warning(f"{'KIS_PAPER_ACCOUNT' if is_virtual else 'KIS_ACCOUNT_NUMBER'} not set, returning mock data")
             return _get_mock_portfolio()
-        
-        # Initialize KIS Broker
+
+        # Initialize KIS Broker (respect .env configuration)
         try:
-            broker = KISBroker(account_no=account_no, is_virtual=False)
+            broker = KISBroker(account_no=account_no, is_virtual=is_virtual)
             balance = broker.get_account_balance()
             
             if not balance:

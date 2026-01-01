@@ -28,9 +28,13 @@ Hard Rules (Code-Enforced):
 """
 
 import os
+import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import google.generativeai as genai
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class PMAgentMVP:
@@ -51,17 +55,20 @@ class PMAgentMVP:
 
         # ===================================================================
         # HARD RULES (Code-Enforced, NOT AI-interpreted)
+        # Updated: 2025-12-31 - Relaxed max_agent_disagreement for Phase 1
         # ===================================================================
         self.HARD_RULES = {
             'max_position_size': 0.30,  # 30% 포지션 절대 상한
             'max_portfolio_risk': 0.05,  # 5% 포트폴리오 전체 리스크 상한
             'min_avg_confidence': 0.50,  # 50% 평균 confidence 하한 (Silence Policy)
-            'max_agent_disagreement': 0.60,  # 60% 의견 불일치 상한
+            'max_agent_disagreement': 0.75,  # 75% 의견 불일치 상한 (Phase 1 완화: 60% → 75%)
             'stop_loss_required': True,  # Stop Loss 필수
             'reject_extreme_risk': True,  # Risk Level "extreme" 시 거부
             'max_correlated_positions': 3,  # 높은 상관관계 포지션 최대 3개
             'max_sector_concentration': 0.40  # 40% 섹터 집중도 상한
         }
+        # 🔍 DEBUG: PM Agent 인스턴스 생성 시점 확인
+        logger.info(f"🔍 INIT DEBUG: PMAgentMVP created, max_agent_disagreement={self.HARD_RULES['max_agent_disagreement']}, instance_id={id(self)}, HARD_RULES_id={id(self.HARD_RULES)}")
 
         # Silence Policy threshold
         self.SILENCE_THRESHOLD = 0.50  # Confidence < 50% → 판단 거부
@@ -107,6 +114,7 @@ class PMAgentMVP:
 - final_decision = "silence"는 판단 거부 (정보 불충분)
 - Agent 의견이 상충하면 보수적으로 결정
 - 포트폴리오 전체 건강도 우선 고려
+- **반드시 한글로 응답할 것** (reasoning, warnings, approval_conditions 등 모든 텍스트 필드는 한국어로 작성)
 """
 
     def make_final_decision(
@@ -190,7 +198,7 @@ class PMAgentMVP:
                 'agent': 'pm_mvp',
                 'final_decision': 'reject',
                 'confidence': 0.0,
-                'reasoning': f"Hard Rules violation: {', '.join(hard_rules_result['violations'])}",
+                'reasoning': f"Hard Rules 위반: {', '.join(hard_rules_result['violations'])}",
                 'recommended_action': 'hold',
                 'position_size_adjustment': 0.0,
                 'risk_assessment': {
@@ -333,17 +341,17 @@ class PMAgentMVP:
         position_size_pct = risk_opinion.get('position_size_pct', 0.0)
         if position_size_pct > self.HARD_RULES['max_position_size']:
             violations.append(
-                f"Position size {position_size_pct*100:.1f}% exceeds max {self.HARD_RULES['max_position_size']*100}%"
+                f"포지션 크기 {position_size_pct*100:.1f}%가 최대 허용치 {self.HARD_RULES['max_position_size']*100}%를 초과합니다"
             )
 
         # Rule 2: Total Portfolio Risk > 5%
         total_risk = portfolio_state.get('total_risk', 0.0)
         if total_risk > self.HARD_RULES['max_portfolio_risk']:
             violations.append(
-                f"Portfolio risk {total_risk*100:.1f}% exceeds max {self.HARD_RULES['max_portfolio_risk']*100}%"
+                f"포트폴리오 리스크 {total_risk*100:.1f}%가 최대 허용치 {self.HARD_RULES['max_portfolio_risk']*100:.1f}%를 초과합니다"
             )
 
-        # Rule 3: Agent Disagreement > 60%
+        # Rule 3: Agent Disagreement > 75% (Phase 1 완화)
         actions = [
             trader_opinion.get('action', 'pass'),
             risk_opinion.get('recommendation', 'reject'),
@@ -353,9 +361,11 @@ class PMAgentMVP:
         non_pass_actions = [a for a in actions if a != 'pass']
         if len(non_pass_actions) > 0:
             disagreement = 1.0 - (non_pass_actions.count(non_pass_actions[0]) / len(non_pass_actions))
+            # 🔍 DEBUG: 실제 validation 시점의 HARD_RULES 값 확인
+            logger.warning(f"🔍 VALIDATION DEBUG: disagreement={disagreement:.2f}, max_allowed={self.HARD_RULES['max_agent_disagreement']}, HARD_RULES_id={id(self.HARD_RULES)}, actions={actions}, non_pass={non_pass_actions}")
             if disagreement > self.HARD_RULES['max_agent_disagreement']:
                 violations.append(
-                    f"Agent disagreement {disagreement*100:.0f}% exceeds max {self.HARD_RULES['max_agent_disagreement']*100}%"
+                    f"Agent 의견 불일치 {disagreement*100:.0f}%가 최대 허용치 {self.HARD_RULES['max_agent_disagreement']*100:.0f}%를 초과합니다"
                 )
 
         # Rule 4: Average Confidence < 50% (handled by Silence Policy, but double-check)
@@ -367,7 +377,7 @@ class PMAgentMVP:
         avg_conf = sum(confidences) / len(confidences)
         if avg_conf < self.HARD_RULES['min_avg_confidence']:
             violations.append(
-                f"Average confidence {avg_conf*100:.0f}% below min {self.HARD_RULES['min_avg_confidence']*100}%"
+                f"평균 신뢰도 {avg_conf*100:.0f}%가 최소 요구치 {self.HARD_RULES['min_avg_confidence']*100:.0f}% 미만입니다"
             )
 
         # Rule 5: Stop Loss Required
@@ -375,7 +385,7 @@ class PMAgentMVP:
             stop_loss = risk_opinion.get('stop_loss_pct', 0.0)
             if stop_loss <= 0.0 or stop_loss > 0.10:  # Must be 0.1% ~ 10%
                 violations.append(
-                    f"Stop loss {stop_loss*100:.2f}% invalid (must be 0.1% ~ 10%)"
+                    f"손절매 {stop_loss*100:.2f}%가 유효하지 않습니다 (0.1% ~ 10% 범위여야 함)"
                 )
 
         # Rule 6: Risk Level "extreme" → Reject
@@ -383,7 +393,7 @@ class PMAgentMVP:
             risk_level = risk_opinion.get('risk_level', 'medium')
             if risk_level == 'extreme':
                 violations.append(
-                    "Risk level is 'extreme' - automatic rejection"
+                    "리스크 수준이 'extreme'으로 자동 거부됩니다"
                 )
 
         # Rule 7: Correlated Positions > 3
@@ -392,7 +402,7 @@ class PMAgentMVP:
             high_corr_count = len([p for p in correlated_positions if p.get('correlation', 0) > 0.7])
             if high_corr_count >= self.HARD_RULES['max_correlated_positions']:
                 violations.append(
-                    f"Too many correlated positions ({high_corr_count}) - max {self.HARD_RULES['max_correlated_positions']}"
+                    f"상관관계가 높은 포지션이 너무 많습니다 ({high_corr_count}개) - 최대 {self.HARD_RULES['max_correlated_positions']}개"
                 )
 
         # Rule 8: Sector Concentration > 40%
@@ -409,7 +419,7 @@ class PMAgentMVP:
             max_sector_pct = max(sector_values.values()) / total_value if total_value > 0 else 0
             if max_sector_pct > self.HARD_RULES['max_sector_concentration']:
                 violations.append(
-                    f"Sector concentration {max_sector_pct*100:.1f}% exceeds max {self.HARD_RULES['max_sector_concentration']*100}%"
+                    f"섹터 집중도 {max_sector_pct*100:.1f}%가 최대 허용치 {self.HARD_RULES['max_sector_concentration']*100:.1f}%를 초과합니다"
                 )
 
         return {

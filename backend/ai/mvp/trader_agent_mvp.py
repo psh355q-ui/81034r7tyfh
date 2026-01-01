@@ -75,6 +75,7 @@ class TraderAgentMVP:
 - 리스크/포지션 사이즈는 제안하지 말 것 (Risk Agent 담당)
 - 기회 포착에만 집중
 - Confidence < 0.5이면 "pass" 권장
+- **반드시 한글로 응답할 것** (reasoning 필드는 한국어로 작성)
 """
 
     def analyze(

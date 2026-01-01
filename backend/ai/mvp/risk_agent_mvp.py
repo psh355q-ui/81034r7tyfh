@@ -84,6 +84,7 @@ class RiskAgentMVP:
 }
 
 중요:
+- **반드시 한글로 응답할 것** (reasoning 필드는 한국어로 작성)
 - risk_level이 "extreme"이면 recommendation은 "reject"
 - Stop Loss는 반드시 설정 (최소 1%, 최대 10%)
 - 감정 지표가 극단적이면 경고
@@ -231,9 +232,9 @@ class RiskAgentMVP:
         # Trader opinion
         if trader_opinion:
             prompt_parts.append("\nTrader Agent 의견:")
-            prompt_parts.append(f"- Action: {trader_opinion.get('action', 'N/A')}")
-            prompt_parts.append(f"- Confidence: {trader_opinion.get('confidence', 0):.2f}")
-            prompt_parts.append(f"- Opportunity Score: {trader_opinion.get('opportunity_score', 0):.1f}")
+            prompt_parts.append(f"- 액션: {trader_opinion.get('action', 'N/A')}")
+            prompt_parts.append(f"- 신뢰도: {trader_opinion.get('confidence', 0):.2f}")
+            prompt_parts.append(f"- 기회 점수: {trader_opinion.get('opportunity_score', 0):.1f}")
 
         # Market data
         if market_data:

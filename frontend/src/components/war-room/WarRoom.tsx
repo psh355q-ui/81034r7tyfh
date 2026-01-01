@@ -172,12 +172,31 @@ const WarRoom: React.FC<WarRoomProps> = ({
 
     // 액션 배지 색상
     const getActionColor = (action: string) => {
-        switch (action) {
-            case 'BUY': return '#4CAF50';
-            case 'SELL': return '#F44336';
-            case 'HOLD': return '#FF9800';
+        const actionUpper = action?.toUpperCase() || '';
+        switch (actionUpper) {
+            case 'BUY': return '#4CAF50';          // 녹색 - 긍정
+            case 'SELL': return '#F44336';         // 빨강 - 매도
+            case 'HOLD': return '#9E9E9E';         // 회색 - 보류
+            case 'PASS': return '#9E9E9E';         // 회색 - 패스
+            case 'REDUCE_SIZE': return '#E65100';  // 진한 주황 - 축소 (부정적)
+            case 'REJECT': return '#D32F2F';       // 진한 빨강 - 거부
+            case 'APPROVE': return '#4CAF50';      // 녹색 - 승인
             default: return '#757575';
         }
+    };
+
+    const getActionLabel = (action: string) => {
+        const actionUpper = action?.toUpperCase() || '';
+        const labels: { [key: string]: string } = {
+            'BUY': '매수',
+            'SELL': '매도',
+            'HOLD': '보류',
+            'PASS': '패스',
+            'REDUCE_SIZE': '축소',
+            'REJECT': '거부',
+            'APPROVE': '승인'
+        };
+        return labels[actionUpper] || action;
     };
 
     return (
@@ -249,7 +268,7 @@ const WarRoom: React.FC<WarRoomProps> = ({
                                                 className="action-badge"
                                                 style={{ backgroundColor: getActionColor(msg.action) }}
                                             >
-                                                {msg.action}
+                                                {getActionLabel(msg.action)}
                                             </span>
 
                                             {/* 신뢰도 */}

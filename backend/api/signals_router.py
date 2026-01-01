@@ -416,8 +416,8 @@ async def get_signals(
         
         # Query database
         signals = db.query(DBTradingSignal)\
-            .filter(DBTradingSignal.generated_at >= cutoff_time)\
-            .order_by(DBTradingSignal.generated_at.desc())\
+            .filter(DBTradingSignal.created_at >= cutoff_time)\
+            .order_by(DBTradingSignal.created_at.desc())\
             .limit(limit)\
             .all()
         
@@ -433,7 +433,7 @@ async def get_signals(
                 execution_type="LIMIT",
                 reason=s.reasoning,
                 urgency="MEDIUM",
-                created_at=s.generated_at.isoformat(),
+                created_at=s.created_at.isoformat(),
                 news_title=None,
                 affected_sectors=[],
                 auto_execute=False,
@@ -479,7 +479,7 @@ async def get_active_signals(
                 execution_type="LIMIT",
                 reason=s.reasoning,
                 urgency="MEDIUM",
-                created_at=s.generated_at.isoformat(),
+                created_at=s.created_at.isoformat(),
                 news_title=None,
                 affected_sectors=[],
                 auto_execute=False,
@@ -528,7 +528,7 @@ async def get_signal_history(
                 execution_type="LIMIT",
                 reason=s.reasoning,
                 urgency="MEDIUM",
-                created_at=s.generated_at.isoformat(),
+                created_at=s.created_at.isoformat(),
                 news_title=None,
                 affected_sectors=[],
                 auto_execute=False,
@@ -553,9 +553,8 @@ async def get_signal_by_id(
     db = get_sync_session()
     
     try:
-        # Join with Analysis -> News
+        # Get signal by ID (relationship not needed - analysis_id exists but relationship not defined)
         signal = db.query(DBTradingSignal)\
-            .options(joinedload(DBTradingSignal.analysis).joinedload(AnalysisResult.article))\
             .filter(DBTradingSignal.id == signal_id)\
             .first()
         
@@ -896,20 +895,19 @@ async def get_signal_statistics(
     
     # Calculate DB stats
     db = get_sync_session()
-    
+
     try:
         # Count all signals
         total_signals = db.query(DBTradingSignal).count()
-        
-        # Count executed signals (those with exit_price)
-        executed = db.query(DBTradingSignal)\
-            .filter(DBTradingSignal.exit_price.isnot(None))\
-            .count()
-        
+
+        # Count executed signals (those with performance records)
+        # TODO: signal_performance 테이블이 생성되면 활성화
+        executed = 0  # 테이블 없으므로 0으로 처리 (향후 구현 예정)
+
         # Count from last 24 hours (active)
         cutoff = datetime.now() - timedelta(hours=24)
         recent_signals = db.query(DBTradingSignal)\
-            .filter(DBTradingSignal.generated_at >= cutoff)\
+            .filter(DBTradingSignal.created_at >= cutoff)\
             .count()
         
         return {

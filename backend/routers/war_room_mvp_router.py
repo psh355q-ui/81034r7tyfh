@@ -15,7 +15,7 @@ API Endpoints:
 """
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import sys
@@ -25,7 +25,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ai.mvp.war_room_mvp import WarRoomMVP
-from execution.shadow_trading_mvp import ShadowTradingMVP
+from execution.shadow_trading_mvp import ShadowTradingMVP, ShadowTradingStatus
+import yfinance as yf
 
 # Initialize router
 router = APIRouter(prefix="/api/war-room-mvp", tags=["War Room MVP"])
@@ -33,8 +34,15 @@ router = APIRouter(prefix="/api/war-room-mvp", tags=["War Room MVP"])
 # Initialize War Room MVP (singleton)
 war_room = WarRoomMVP()
 
-# Initialize Shadow Trading (singleton)
-shadow_trading = ShadowTradingMVP(initial_capital=100000.0)
+# Initialize Shadow Trading (singleton) - DB에서 활성 세션 복원 시도
+shadow_trading = ShadowTradingMVP.load_active_session_from_db()
+
+# 활성 세션이 없으면 새로 생성
+if shadow_trading is None:
+    print("ℹ️  No active Shadow Trading session found in DB. Creating new instance...")
+    shadow_trading = ShadowTradingMVP(initial_capital=100000.0)
+else:
+    print(f"✅ Shadow Trading session restored from DB: {shadow_trading.session_id}")
 
 
 # ============================================================================
@@ -44,10 +52,10 @@ shadow_trading = ShadowTradingMVP(initial_capital=100000.0)
 class DeliberationRequest(BaseModel):
     """심의 요청"""
     symbol: str
-    action_context: str  # "new_position", "stop_loss_check", "rebalancing"
-    market_data: Dict[str, Any]
-    portfolio_state: Dict[str, Any]
-    additional_data: Optional[Dict[str, Any]] = None
+    action_context: str = Field(default="new_position", description="new_position | stop_loss_check | rebalancing")
+    market_data: Optional[Dict[str, Any]] = Field(default=None, description="Optional - 자동으로 yfinance에서 가져옴")
+    portfolio_state: Optional[Dict[str, Any]] = Field(default=None, description="Optional - Shadow Trading에서 가져옴")
+    additional_data: Optional[Dict[str, Any]] = Field(default=None, description="추가 데이터")
 
 
 class ShadowTradeRequest(BaseModel):
@@ -57,6 +65,84 @@ class ShadowTradeRequest(BaseModel):
     quantity: int
     price: float
     stop_loss_pct: Optional[float] = 0.02
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+def fetch_market_data(symbol: str) -> Dict[str, Any]:
+    """
+    Fetch real-time market data for a symbol using yfinance
+
+    Returns:
+        market_data dict with price_data and market_conditions
+    """
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        hist = ticker.history(period="5d")
+
+        if hist.empty:
+            # Fallback to minimal data
+            return {
+                "price_data": {
+                    "current_price": 0,
+                    "open": 0,
+                    "high": 0,
+                    "low": 0,
+                    "volume": 0,
+                    "week_52_high": 0,
+                    "week_52_low": 0
+                },
+                "market_conditions": {
+                    "is_market_open": False,
+                    "volatility": 0
+                }
+            }
+
+        latest = hist.iloc[-1]
+        current_price = float(latest['Close'])
+
+        # Calculate volatility from 5-day history
+        volatility = float(hist['Close'].pct_change().std() * 100) if len(hist) > 1 else 0
+
+        return {
+            "price_data": {
+                "current_price": current_price,
+                "open": float(latest['Open']),
+                "high": float(latest['High']),
+                "low": float(latest['Low']),
+                "volume": int(latest['Volume']),
+                "week_52_high": float(info.get('fiftyTwoWeekHigh', current_price * 1.2)),
+                "week_52_low": float(info.get('fiftyTwoWeekLow', current_price * 0.8))
+            },
+            "market_conditions": {
+                "is_market_open": True,
+                "volatility": round(volatility, 2),
+                "market_cap": info.get('marketCap', 0),
+                "sector": info.get('sector', 'Unknown'),
+                "industry": info.get('industry', 'Unknown')
+            }
+        }
+    except Exception as e:
+        print(f"⚠️  Failed to fetch market data for {symbol}: {e}")
+        # Return minimal fallback data
+        return {
+            "price_data": {
+                "current_price": 0,
+                "open": 0,
+                "high": 0,
+                "low": 0,
+                "volume": 0,
+                "week_52_high": 0,
+                "week_52_low": 0
+            },
+            "market_conditions": {
+                "is_market_open": False,
+                "volatility": 0
+            }
+        }
 
 
 # ============================================================================
@@ -74,6 +160,12 @@ async def deliberate(request: DeliberationRequest) -> Dict[str, Any]:
     - Analyst Agent MVP (30%)
     - PM Agent MVP (Final Decision)
 
+    Parameters:
+        - symbol: 종목 심볼 (필수)
+        - action_context: 액션 컨텍스트 (기본값: "new_position")
+        - market_data: 시장 데이터 (옵셔널 - 자동으로 yfinance에서 가져옴)
+        - portfolio_state: 포트폴리오 상태 (옵셔널 - Shadow Trading에서 가져옴)
+
     Returns:
         - final_decision: approve/reject/reduce_size/silence
         - recommended_action: buy/sell/hold
@@ -82,11 +174,54 @@ async def deliberate(request: DeliberationRequest) -> Dict[str, Any]:
         - validation_result: Hard Rules 검증 결과
     """
     try:
+        # 1. Fetch market data if not provided
+        market_data = request.market_data
+        if not market_data:
+            print(f"📊 Fetching real-time market data for {request.symbol}...")
+            market_data = fetch_market_data(request.symbol)
+
+        # 2. Get portfolio state from Shadow Trading if not provided
+        portfolio_state = request.portfolio_state
+        if not portfolio_state:
+            if shadow_trading and shadow_trading.status == ShadowTradingStatus.ACTIVE:
+                # Calculate position value from open positions
+                position_value = sum(
+                    trade.quantity * trade.entry_price
+                    for trade in shadow_trading.open_positions.values()
+                )
+                total_value = shadow_trading.available_cash + position_value
+
+                portfolio_state = {
+                    "total_value": total_value,
+                    "available_cash": shadow_trading.available_cash,
+                    "total_risk": position_value / total_value if total_value > 0 else 0.0,
+                    "position_count": len(shadow_trading.open_positions),
+                    "current_positions": [
+                        {
+                            "symbol": trade.symbol,
+                            "quantity": trade.quantity,
+                            "current_price": trade.entry_price,
+                            "unrealized_pnl_pct": 0.0  # Will be calculated during update
+                        }
+                        for trade in shadow_trading.open_positions.values()
+                    ]
+                }
+            else:
+                # Default portfolio state for non-shadow trading
+                portfolio_state = {
+                    "total_value": 100000.0,
+                    "available_cash": 100000.0,
+                    "total_risk": 0.0,
+                    "position_count": 0,
+                    "current_positions": []
+                }
+
+        # 3. Run deliberation
         result = war_room.deliberate(
             symbol=request.symbol,
             action_context=request.action_context,
-            market_data=request.market_data,
-            portfolio_state=request.portfolio_state,
+            market_data=market_data,
+            portfolio_state=portfolio_state,
             additional_data=request.additional_data
         )
         return result
@@ -106,7 +241,19 @@ async def get_info() -> Dict[str, Any]:
         - improvement_vs_legacy: Legacy 대비 개선 사항
     """
     try:
-        return war_room.get_war_room_info()
+        info = war_room.get_war_room_info()
+        # Add HARD_RULES for debugging
+        if hasattr(war_room, 'pm_agent') and hasattr(war_room.pm_agent, 'HARD_RULES'):
+            info['hard_rules'] = war_room.pm_agent.HARD_RULES
+            info['hard_rules_loaded'] = True
+        else:
+            info['hard_rules'] = None
+            info['hard_rules_loaded'] = False
+            info['debug'] = {
+                'has_pm_agent': hasattr(war_room, 'pm_agent'),
+                'pm_agent_type': type(war_room.pm_agent).__name__ if hasattr(war_room, 'pm_agent') else None
+            }
+        return info
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get info: {str(e)}")
