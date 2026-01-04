@@ -1,0 +1,1231 @@
+**END OF DOCUMENT**
+
+---
+---
+
+# 일일 PDF 보고서 자동 생성 시스템 구현 계획
+
+**작성일**: 2026-01-03
+**우선순위**: P1 (High - Immediate Value)
+**상태**: 📋 Plan Ready - User Approved
+
+---
+
+## 1. 목표 및 범위
+
+### 목표
+- **일일 PDF 보고서** 자동 생성 시스템 구축
+- Shadow Trading 성과, War Room 토론, Deep Reasoning, 배당주 정보를 포함한 종합 보고서
+- Telegram 전송 + 로컬 저장
+- 수동 실행 (API 엔드포인트)
+
+### 범위
+- ✅ 일일 리포트만 구현 (주간/월간은 추후)
+- ✅ 5가지 핵심 섹션: Shadow Trading, War Room MVP, Deep Reasoning, 배당주, 성과 차트
+- ✅ Telegram + 로컬 저장
+- ⏸️ 자동 스케줄링은 추후 (APScheduler)
+
+---
+
+## 2. 아키텍처 설계
+
+### 2.1 전체 파이프라인
+
+```
+┌─────────────────────────────────────────────────────────┐
+│          Daily Report Generation Pipeline               │
+├─────────────────────────────────────────────────────────┤
+
+1. API 요청
+   POST /api/reports/daily
+   Body: { "report_date": "2026-01-03" (optional) }
+
+2. Data Collection (5개 Collector)
+   ├─ ShadowTradingCollector → Offensive + Defensive 성과
+   ├─ WarRoomCollector → Agent 토론 이력
+   ├─ DeepReasoningCollector → 최신 인사이트
+   ├─ DividendCollector → 배당주 정보 (NEW)
+   └─ PerformanceCollector → 일일 성과 메트릭
+
+3. Report Assembly
+   ├─ DailyReportAssembler
+   └─ 5개 섹션으로 구성된 ReportData 생성
+
+4. PDF Rendering (ReportLab)
+   ├─ DailyPDFRenderer
+   ├─ Matplotlib 차트 임베딩
+   └─ A4 페이지 레이아웃
+
+5. Distribution
+   ├─ Telegram (PDF + 요약 메시지)
+   └─ Local Save (/reports/YYYY-MM-DD_daily.pdf)
+
+6. Response
+   return { "pdf_path": "...", "telegram_sent": true }
+```
+
+### 2.2 클래스 구조
+
+```python
+# backend/reporting/daily_report_generator.py
+
+class DailyReportGenerator:
+    """일일 보고서 생성 메인 클래스"""
+
+    def __init__(self):
+        self.collectors = {
+            'shadow_trading': ShadowTradingCollector(),
+            'war_room': WarRoomCollector(),
+            'deep_reasoning': DeepReasoningCollector(),
+            'dividend': DividendCollector(),
+            'performance': PerformanceCollector()
+        }
+        self.assembler = DailyReportAssembler()
+        self.renderer = DailyPDFRenderer()
+        self.distributor = ReportDistributor()
+
+    def generate(self, report_date: date) -> ReportResult:
+        """
+        1. 데이터 수집
+        2. 리포트 조립
+        3. PDF 렌더링
+        4. 배포
+        """
+        pass
+```
+
+---
+
+## 3. 데이터 수집 (Collectors)
+
+### 3.1 ShadowTradingCollector
+
+**파일**: `backend/reporting/collectors/shadow_trading_collector.py` (신규)
+
+**역할**: Shadow Trading 성과 데이터 수집
+
+**구현**:
+```python
+from backend.ai.war_room.shadow_trading_tracker import UnifiedShadowTracker
+from backend.database.repository import ShadowTradeRepository
+
+class ShadowTradingCollector:
+    def collect(self, report_date: date) -> ShadowTradingData:
+        """
+        1. UnifiedShadowTracker에서 Offensive 성과 조회
+        2. generate_shield_report()로 Defensive 성과 조회
+        3. 일일 거래 내역 (해당 날짜 CLOSED 거래)
+        """
+        tracker = UnifiedShadowTracker()
+
+        # Offensive (공격적 트레이딩)
+        offensive = tracker.get_offensive_performance(
+            start_date=report_date,
+            end_date=report_date
+        )
+
+        # Defensive (방어적 추적)
+        shield_report = tracker.generate_shield_report(period_days=1)
+
+        # 일일 거래 내역
+        repo = ShadowTradeRepository()
+        daily_trades = repo.get_trades_by_date(report_date)
+
+        return ShadowTradingData(
+            offensive=offensive,
+            defensive=shield_report,
+            daily_trades=daily_trades
+        )
+```
+
+**데이터 구조**:
+```python
+@dataclass
+class ShadowTradingData:
+    offensive: dict  # Win Rate, Sharpe, P&L
+    defensive: dict  # Avoided Losses, Defensive Wins
+    daily_trades: List[ShadowTrade]  # 오늘 거래 내역
+```
+
+---
+
+### 3.2 WarRoomCollector
+
+**파일**: `backend/reporting/collectors/war_room_collector.py` (신규)
+
+**역할**: War Room MVP 토론 이력 수집
+
+**구현**:
+```python
+class WarRoomCollector:
+    def collect(self, report_date: date) -> WarRoomData:
+        """
+        1. War Room 결정 이력 조회 (해당 날짜)
+        2. Agent별 의견 집계
+        3. PM 최종 결정 통계
+        """
+        # 옵션 1: API 호출
+        response = requests.get(
+            f"http://localhost:8001/api/war-room-mvp/history",
+            params={'date': report_date.isoformat()}
+        )
+        decisions = response.json()
+
+        # 옵션 2: 직접 DB 조회 (더 효율적)
+        # repo = WarRoomDecisionRepository()
+        # decisions = repo.get_decisions_by_date(report_date)
+
+        return WarRoomData(
+            total_deliberations=len(decisions),
+            approved=len([d for d in decisions if d['final_decision'] == 'approve']),
+            rejected=len([d for d in decisions if d['final_decision'] == 'reject']),
+            highlights=decisions[:3]  # Top 3
+        )
+```
+
+**데이터 구조**:
+```python
+@dataclass
+class WarRoomData:
+    total_deliberations: int
+    approved: int
+    rejected: int
+    reduced_size: int
+    highlights: List[dict]  # Top 3 deliberations
+```
+
+---
+
+### 3.3 DeepReasoningCollector
+
+**파일**: `backend/reporting/collectors/deep_reasoning_collector.py` (신규)
+
+**역할**: Deep Reasoning 최신 인사이트 수집
+
+**구현**:
+```python
+from backend.ai.skills.deep_reasoning.deep_reasoning_store import DeepReasoningStore
+
+class DeepReasoningCollector:
+    def collect(self, report_date: date) -> DeepReasoningData:
+        """
+        1. DeepReasoningStore에서 최신 분석 조회
+        2. Theme, Beneficiaries 추출
+        3. Top 3 인사이트 선정
+        """
+        store = DeepReasoningStore()
+
+        # 해당 날짜 분석 조회
+        analyses = store.get_analyses_by_date(report_date, limit=10)
+
+        if not analyses:
+            return DeepReasoningData(insights=[])
+
+        # Top 3 선정 (중요도 기준)
+        top_insights = sorted(
+            analyses,
+            key=lambda x: x.get('importance_score', 0),
+            reverse=True
+        )[:3]
+
+        return DeepReasoningData(
+            total_analyses=len(analyses),
+            insights=[
+                {
+                    'theme': a['theme'],
+                    'beneficiaries': a['beneficiaries'],
+                    'summary': a['reasoning_trace'][:200]  # 요약
+                }
+                for a in top_insights
+            ]
+        )
+```
+
+**데이터 구조**:
+```python
+@dataclass
+class DeepReasoningData:
+    total_analyses: int
+    insights: List[dict]  # [{"theme": "...", "beneficiaries": [...], "summary": "..."}]
+```
+
+---
+
+### 3.4 DividendCollector (NEW)
+
+**파일**: `backend/reporting/collectors/dividend_collector.py` (신규)
+
+**역할**: 배당주 정보 수집
+
+**구현**:
+```python
+import yfinance as yf
+from datetime import datetime, timedelta
+
+class DividendCollector:
+    def collect(self, report_date: date) -> DividendData:
+        """
+        1. 현재 포트폴리오에서 보유 종목 조회
+        2. yfinance API로 배당 정보 조회
+        3. 배당 주기 판단 (월/분기/반기/연)
+        4. 예정 배당금 및 배당일 계산
+        """
+        # 포트폴리오 조회
+        portfolio = self._get_current_portfolio()
+
+        dividend_stocks = []
+        for position in portfolio:
+            ticker = position['ticker']
+            shares = position['shares']
+
+            # yfinance로 배당 정보 조회
+            stock = yf.Ticker(ticker)
+            dividends = stock.dividends
+
+            if dividends.empty:
+                continue  # 배당 없음
+
+            # 배당 주기 판단
+            dividend_frequency = self._determine_frequency(dividends)
+
+            # 최근 배당 정보
+            latest_dividend = dividends.iloc[-1]
+            dividend_per_share = latest_dividend
+
+            # 총 배당 예정금액
+            total_dividend = dividend_per_share * shares
+
+            # 다음 배당 예정일 (추정)
+            next_dividend_date = self._estimate_next_dividend_date(
+                dividends, dividend_frequency
+            )
+
+            dividend_stocks.append({
+                'ticker': ticker,
+                'shares': shares,
+                'frequency': dividend_frequency,  # "Monthly", "Quarterly", etc.
+                'dividend_per_share': float(dividend_per_share),
+                'total_dividend': float(total_dividend),
+                'next_dividend_date': next_dividend_date.isoformat()
+            })
+
+        return DividendData(dividend_stocks=dividend_stocks)
+
+    def _get_current_portfolio(self) -> List[dict]:
+        """Shadow Trading 포트폴리오 조회"""
+        # ShadowTradingEngine에서 현재 포지션 조회
+        from backend.execution.shadow_trading_mvp import ShadowTradingEngine
+        engine = ShadowTradingEngine()
+        portfolio = engine.get_portfolio_state()
+
+        return [
+            {'ticker': pos['ticker'], 'shares': pos['shares']}
+            for pos in portfolio.get('positions', [])
+            if pos['status'] == 'OPEN'
+        ]
+
+    def _determine_frequency(self, dividends: pd.Series) -> str:
+        """배당 주기 판단"""
+        # 최근 1년 배당 횟수 계산
+        one_year_ago = datetime.now() - timedelta(days=365)
+        recent_dividends = dividends[dividends.index > one_year_ago]
+
+        count = len(recent_dividends)
+
+        if count >= 12:
+            return "Monthly"
+        elif count >= 4:
+            return "Quarterly"
+        elif count >= 2:
+            return "Semi-Annual"
+        else:
+            return "Annual"
+
+    def _estimate_next_dividend_date(
+        self, dividends: pd.Series, frequency: str
+    ) -> datetime:
+        """다음 배당 예정일 추정"""
+        last_dividend_date = dividends.index[-1]
+
+        if frequency == "Monthly":
+            delta = timedelta(days=30)
+        elif frequency == "Quarterly":
+            delta = timedelta(days=90)
+        elif frequency == "Semi-Annual":
+            delta = timedelta(days=180)
+        else:  # Annual
+            delta = timedelta(days=365)
+
+        return last_dividend_date + delta
+```
+
+**데이터 구조**:
+```python
+@dataclass
+class DividendData:
+    dividend_stocks: List[dict]
+    # [
+    #   {
+    #     "ticker": "AAPL",
+    #     "shares": 100,
+    #     "frequency": "Quarterly",
+    #     "dividend_per_share": 0.24,
+    #     "total_dividend": 24.00,
+    #     "next_dividend_date": "2026-02-15"
+    #   }
+    # ]
+```
+
+---
+
+### 3.5 PerformanceCollector
+
+**파일**: `backend/reporting/collectors/performance_collector.py` (신규)
+
+**역할**: 일일 성과 메트릭 수집
+
+**구현**:
+```python
+from backend.core.models.analytics_models import DailyAnalytics
+
+class PerformanceCollector:
+    def collect(self, report_date: date) -> PerformanceData:
+        """
+        1. DailyAnalytics 테이블에서 해당 날짜 조회
+        2. 성과 메트릭 추출
+        """
+        session = get_db_session()
+
+        daily_analytics = session.query(DailyAnalytics).filter(
+            DailyAnalytics.date == report_date
+        ).first()
+
+        if not daily_analytics:
+            # 데이터 없으면 기본값
+            return PerformanceData(
+                portfolio_value=100000.00,
+                daily_pnl=0.00,
+                win_rate=0.0,
+                sharpe_ratio=0.0
+            )
+
+        return PerformanceData(
+            portfolio_value=daily_analytics.portfolio_value_eod,
+            daily_pnl=daily_analytics.daily_pnl,
+            win_rate=daily_analytics.win_rate,
+            sharpe_ratio=daily_analytics.sharpe_ratio,
+            max_drawdown=daily_analytics.max_drawdown_pct,
+            volatility=daily_analytics.volatility_30d
+        )
+```
+
+**데이터 구조**:
+```python
+@dataclass
+class PerformanceData:
+    portfolio_value: Decimal
+    daily_pnl: Decimal
+    win_rate: Decimal
+    sharpe_ratio: Decimal
+    max_drawdown: Optional[Decimal] = None
+    volatility: Optional[Decimal] = None
+```
+
+---
+
+## 4. Report Assembly
+
+### 4.1 DailyReportAssembler
+
+**파일**: `backend/reporting/assemblers/daily_report_assembler.py` (신규)
+
+**역할**: 수집된 데이터를 리포트 구조로 조립
+
+**구현**:
+```python
+@dataclass
+class DailyReportData:
+    """일일 리포트 최종 데이터 구조"""
+    metadata: dict
+    executive_summary: dict
+    shadow_trading: ShadowTradingData
+    war_room: WarRoomData
+    deep_reasoning: DeepReasoningData
+    dividends: DividendData
+    performance: PerformanceData
+
+class DailyReportAssembler:
+    def assemble(
+        self,
+        report_date: date,
+        collected_data: dict
+    ) -> DailyReportData:
+        """
+        1. Metadata 생성
+        2. Executive Summary 생성 (KPI 추출)
+        3. 각 섹션 데이터 정리
+        """
+        # Metadata
+        metadata = {
+            'report_id': f"DAILY_{report_date.strftime('%Y%m%d')}",
+            'report_date': report_date.isoformat(),
+            'generated_at': datetime.utcnow().isoformat(),
+            'title': f"Daily Trading Report - {report_date.strftime('%Y-%m-%d')}"
+        }
+
+        # Executive Summary (핵심 KPI)
+        exec_summary = {
+            'portfolio_value': collected_data['performance'].portfolio_value,
+            'daily_pnl': collected_data['performance'].daily_pnl,
+            'win_rate': collected_data['shadow_trading'].offensive.get('win_rate', 0),
+            'sharpe_ratio': collected_data['performance'].sharpe_ratio,
+            'highlights': self._generate_highlights(collected_data),
+            'alerts': self._generate_alerts(collected_data)
+        }
+
+        return DailyReportData(
+            metadata=metadata,
+            executive_summary=exec_summary,
+            shadow_trading=collected_data['shadow_trading'],
+            war_room=collected_data['war_room'],
+            deep_reasoning=collected_data['deep_reasoning'],
+            dividends=collected_data['dividends'],
+            performance=collected_data['performance']
+        )
+
+    def _generate_highlights(self, data: dict) -> List[str]:
+        """하이라이트 자동 생성"""
+        highlights = []
+
+        # Shadow Trading 성과
+        offensive = data['shadow_trading'].offensive
+        if offensive.get('win_rate', 0) > 0.6:
+            highlights.append(f"🎯 High Win Rate: {offensive['win_rate']:.1%}")
+
+        # War Room 승인율
+        war_room = data['war_room']
+        if war_room.total_deliberations > 0:
+            approve_rate = war_room.approved / war_room.total_deliberations
+            if approve_rate > 0.7:
+                highlights.append(f"✅ War Room Approval: {approve_rate:.1%}")
+
+        # 배당 수령
+        dividends = data['dividends'].dividend_stocks
+        if dividends:
+            total_dividend = sum(d['total_dividend'] for d in dividends)
+            highlights.append(f"💰 Dividend Income: ${total_dividend:.2f}")
+
+        return highlights
+
+    def _generate_alerts(self, data: dict) -> List[str]:
+        """위험 알림 자동 생성"""
+        alerts = []
+
+        # Max Drawdown 체크
+        perf = data['performance']
+        if perf.max_drawdown and perf.max_drawdown < -0.10:
+            alerts.append(f"⚠️ Max Drawdown: {perf.max_drawdown:.2%}")
+
+        # 일일 손실 체크
+        if perf.daily_pnl < -5000:
+            alerts.append(f"🚨 Daily Loss: ${perf.daily_pnl:.2f}")
+
+        return alerts
+```
+
+---
+
+## 5. PDF Rendering
+
+### 5.1 DailyPDFRenderer
+
+**파일**: `backend/reporting/renderers/daily_pdf_renderer.py` (신규)
+
+**역할**: ReportLab으로 PDF 생성
+
+**구현**:
+```python
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+)
+from reportlab.lib import colors
+
+class DailyPDFRenderer:
+    def __init__(self):
+        self.pagesize = A4
+        self.styles = getSampleStyleSheet()
+        self._define_custom_styles()
+
+    def _define_custom_styles(self):
+        """커스텀 스타일 정의"""
+        self.title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=self.styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#667eea'),
+            spaceAfter=30,
+            alignment=1  # Center
+        )
+
+        self.section_style = ParagraphStyle(
+            'SectionHeader',
+            parent=self.styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#4a5568'),
+            spaceAfter=12,
+            spaceBefore=20
+        )
+
+    def render(self, report_data: DailyReportData, output_path: str):
+        """
+        PDF 생성
+
+        섹션 구성:
+        1. Title & Metadata
+        2. Executive Summary (KPI 테이블)
+        3. Shadow Trading Performance (Offensive + Defensive)
+        4. War Room MVP Deliberations
+        5. Deep Reasoning Insights
+        6. Dividend Information (배당주)
+        7. Performance Charts (Matplotlib)
+        """
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=self.pagesize,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+
+        story = []
+
+        # 1. Title
+        story.append(Paragraph(report_data.metadata['title'], self.title_style))
+        story.append(Paragraph(
+            f"Generated: {report_data.metadata['generated_at']}",
+            self.styles['Normal']
+        ))
+        story.append(Spacer(1, 0.5*inch))
+
+        # 2. Executive Summary
+        story.extend(self._render_executive_summary(report_data.executive_summary))
+
+        # 3. Shadow Trading
+        story.extend(self._render_shadow_trading(report_data.shadow_trading))
+
+        # 4. War Room
+        story.extend(self._render_war_room(report_data.war_room))
+
+        # 5. Deep Reasoning
+        story.extend(self._render_deep_reasoning(report_data.deep_reasoning))
+
+        # 6. Dividends (NEW)
+        story.extend(self._render_dividends(report_data.dividends))
+
+        # 7. Charts
+        story.extend(self._render_charts(report_data))
+
+        # Build PDF
+        doc.build(story)
+
+    def _render_executive_summary(self, summary: dict) -> List:
+        """Executive Summary 섹션"""
+        elements = []
+
+        elements.append(Paragraph("📊 Executive Summary", self.section_style))
+
+        # KPI Table
+        data = [
+            ['Metric', 'Value'],
+            ['Portfolio Value', f"${summary['portfolio_value']:,.2f}"],
+            ['Daily P&L', f"${summary['daily_pnl']:,.2f}"],
+            ['Win Rate', f"{summary['win_rate']:.2%}"],
+            ['Sharpe Ratio', f"{summary['sharpe_ratio']:.2f}"]
+        ]
+
+        table = Table(data, colWidths=[3*inch, 3*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        elements.append(table)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Highlights
+        if summary['highlights']:
+            elements.append(Paragraph("<b>Highlights:</b>", self.styles['Normal']))
+            for highlight in summary['highlights']:
+                elements.append(Paragraph(f"• {highlight}", self.styles['Normal']))
+
+        # Alerts
+        if summary['alerts']:
+            elements.append(Spacer(1, 0.2*inch))
+            elements.append(Paragraph("<b>Alerts:</b>", self.styles['Normal']))
+            for alert in summary['alerts']:
+                elements.append(Paragraph(f"• {alert}", self.styles['Normal']))
+
+        return elements
+
+    def _render_dividends(self, dividends: DividendData) -> List:
+        """배당주 정보 섹션 (NEW)"""
+        elements = []
+
+        elements.append(Paragraph("💰 Dividend Information", self.section_style))
+
+        if not dividends.dividend_stocks:
+            elements.append(Paragraph("No dividend stocks in portfolio.", self.styles['Normal']))
+            return elements
+
+        # 배당주 테이블
+        data = [
+            ['Ticker', 'Shares', 'Frequency', 'Per Share', 'Total', 'Next Date']
+        ]
+
+        for stock in dividends.dividend_stocks:
+            data.append([
+                stock['ticker'],
+                str(stock['shares']),
+                stock['frequency'],
+                f"${stock['dividend_per_share']:.2f}",
+                f"${stock['total_dividend']:.2f}",
+                stock['next_dividend_date']
+            ])
+
+        table = Table(data, colWidths=[0.8*inch, 0.8*inch, 1.2*inch, 1*inch, 1*inch, 1.2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#38a169')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        elements.append(table)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # 총 배당 예정금액
+        total_dividend = sum(s['total_dividend'] for s in dividends.dividend_stocks)
+        elements.append(Paragraph(
+            f"<b>Total Expected Dividend: ${total_dividend:.2f}</b>",
+            self.styles['Normal']
+        ))
+
+        return elements
+
+    def _render_charts(self, report_data: DailyReportData) -> List:
+        """Matplotlib 차트 섹션"""
+        elements = []
+
+        elements.append(Paragraph("📈 Performance Charts", self.section_style))
+
+        # Chart 1: P&L Trend (최근 7일)
+        chart_path = self._generate_pnl_chart(report_data)
+        if chart_path:
+            elements.append(Image(chart_path, width=6*inch, height=4*inch))
+
+        return elements
+
+    def _generate_pnl_chart(self, report_data: DailyReportData) -> Optional[str]:
+        """P&L 추이 차트 생성 (Matplotlib)"""
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+        from datetime import datetime, timedelta
+
+        # 최근 7일 데이터 조회
+        end_date = datetime.strptime(report_data.metadata['report_date'], '%Y-%m-%d').date()
+        start_date = end_date - timedelta(days=7)
+
+        # DailyAnalytics에서 데이터 조회
+        session = get_db_session()
+        analytics = session.query(DailyAnalytics).filter(
+            DailyAnalytics.date >= start_date,
+            DailyAnalytics.date <= end_date
+        ).order_by(DailyAnalytics.date).all()
+
+        if not analytics:
+            return None
+
+        # 데이터 추출
+        dates = [a.date for a in analytics]
+        pnls = [float(a.daily_pnl) for a in analytics]
+
+        # 차트 생성
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(dates, pnls, marker='o', linestyle='-', linewidth=2, color='#667eea')
+        ax.axhline(y=0, color='red', linestyle='--', linewidth=1)
+
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Daily P&L ($)')
+        ax.set_title('Daily P&L Trend (Last 7 Days)')
+        ax.grid(True, alpha=0.3)
+
+        # 날짜 포맷
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+
+        # 저장
+        chart_path = f"/tmp/pnl_chart_{end_date.isoformat()}.png"
+        fig.savefig(chart_path, format='png', bbox_inches='tight', dpi=150)
+        plt.close()
+
+        return chart_path
+```
+
+---
+
+## 6. Distribution (배포)
+
+### 6.1 ReportDistributor
+
+**파일**: `backend/reporting/distributors/report_distributor.py` (신규)
+
+**역할**: PDF 배포 (Telegram + 로컬 저장)
+
+**구현**:
+```python
+from backend.notifications.telegram_notifier import TelegramPDFSender
+
+class ReportDistributor:
+    def __init__(self):
+        self.telegram_sender = TelegramPDFSender()
+        self.local_dir = Path("/reports")
+        self.local_dir.mkdir(exist_ok=True)
+
+    def distribute(
+        self,
+        pdf_path: str,
+        report_data: DailyReportData
+    ) -> DistributionResult:
+        """
+        1. Telegram 전송 (PDF + 요약 메시지)
+        2. 로컬 저장
+        """
+        results = {}
+
+        # 1. Telegram
+        telegram_sent = self._send_via_telegram(pdf_path, report_data)
+        results['telegram'] = telegram_sent
+
+        # 2. 로컬 저장
+        local_path = self._save_locally(pdf_path, report_data)
+        results['local_path'] = local_path
+
+        return DistributionResult(**results)
+
+    def _send_via_telegram(self, pdf_path: str, report_data: DailyReportData) -> bool:
+        """Telegram 전송"""
+        # 요약 메시지 생성
+        summary = self._generate_telegram_summary(report_data)
+
+        try:
+            self.telegram_sender.send_pdf(
+                pdf_path=pdf_path,
+                caption=summary
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Telegram send failed: {e}")
+            return False
+
+    def _generate_telegram_summary(self, report_data: DailyReportData) -> str:
+        """Telegram 요약 메시지"""
+        summary = report_data.executive_summary
+
+        message = f"""
+📊 **Daily Trading Report**
+📅 {report_data.metadata['report_date']}
+
+💼 Portfolio: ${summary['portfolio_value']:,.2f}
+📈 Daily P&L: ${summary['daily_pnl']:,.2f}
+🎯 Win Rate: {summary['win_rate']:.1%}
+📊 Sharpe: {summary['sharpe_ratio']:.2f}
+
+{chr(10).join(summary['highlights'])}
+        """
+
+        return message.strip()
+
+    def _save_locally(self, pdf_path: str, report_data: DailyReportData) -> str:
+        """로컬 저장"""
+        report_date = report_data.metadata['report_date']
+        local_filename = f"{report_date}_daily.pdf"
+        local_path = self.local_dir / local_filename
+
+        # 파일 복사
+        import shutil
+        shutil.copy(pdf_path, local_path)
+
+        logger.info(f"Report saved locally: {local_path}")
+        return str(local_path)
+
+@dataclass
+class DistributionResult:
+    telegram: bool
+    local_path: str
+```
+
+---
+
+## 7. API 엔드포인트
+
+### 7.1 Reports Router
+
+**파일**: `backend/routers/reports_router.py` (신규)
+
+**구현**:
+```python
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from datetime import date, datetime
+from backend.reporting.daily_report_generator import DailyReportGenerator
+
+router = APIRouter(prefix="/api/reports", tags=["Reports"])
+
+class GenerateReportRequest(BaseModel):
+    report_date: Optional[str] = None  # "2026-01-03" or None (today)
+
+class GenerateReportResponse(BaseModel):
+    report_id: str
+    pdf_path: str
+    telegram_sent: bool
+    generated_at: str
+
+@router.post("/daily", response_model=GenerateReportResponse)
+async def generate_daily_report(request: GenerateReportRequest):
+    """
+    일일 리포트 생성
+
+    - report_date: 리포트 날짜 (생략 시 오늘)
+    - 수동 실행 전용 (자동 스케줄링 없음)
+    """
+    # 날짜 파싱
+    if request.report_date:
+        report_date = datetime.strptime(request.report_date, '%Y-%m-%d').date()
+    else:
+        report_date = date.today()
+
+    # 리포트 생성
+    generator = DailyReportGenerator()
+
+    try:
+        result = generator.generate(report_date)
+
+        return GenerateReportResponse(
+            report_id=result.report_id,
+            pdf_path=result.pdf_path,
+            telegram_sent=result.telegram_sent,
+            generated_at=datetime.utcnow().isoformat()
+        )
+    except Exception as e:
+        logger.error(f"Report generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/daily/{report_date}")
+async def get_daily_report(report_date: str):
+    """
+    기존 리포트 조회
+
+    - report_date: "2026-01-03" 형식
+    - 로컬 저장된 PDF 파일 반환
+    """
+    from fastapi.responses import FileResponse
+
+    local_path = Path(f"/reports/{report_date}_daily.pdf")
+
+    if not local_path.exists():
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return FileResponse(
+        local_path,
+        media_type='application/pdf',
+        filename=f"{report_date}_daily.pdf"
+    )
+```
+
+**Main.py 등록**:
+```python
+# backend/main.py
+from backend.routers.reports_router import router as reports_router
+
+app.include_router(reports_router)
+logger.info("Reports router registered")
+```
+
+---
+
+## 8. 구현 순서 (Phase별)
+
+### Phase 1: 기본 PDF 생성 (Shadow Trading만) - 4-6시간
+
+**목표**: 최소 기능으로 PDF 생성 검증
+
+**작업**:
+1. `ShadowTradingCollector` 구현
+2. `PerformanceCollector` 구현
+3. `DailyReportAssembler` (Executive Summary + Shadow Trading 섹션만)
+4. `DailyPDFRenderer` (기본 테이블만)
+5. API 엔드포인트 (`POST /api/reports/daily`)
+
+**검증**:
+- API 호출 시 PDF 생성 확인
+- Shadow Trading 데이터 정상 표시 확인
+
+---
+
+### Phase 2: 차트 추가 (Matplotlib) - 3-4시간
+
+**목표**: 성과 차트 임베딩
+
+**작업**:
+1. Matplotlib 설치 (`pip install matplotlib`)
+2. `_generate_pnl_chart()` 구현
+3. `_render_charts()` 섹션 추가
+
+**검증**:
+- P&L 추이 차트가 PDF에 정상 표시되는지 확인
+
+---
+
+### Phase 3: 배당주 정보 추가 - 4-5시간
+
+**목표**: 배당주 섹션 완성
+
+**작업**:
+1. yfinance 설치 (`pip install yfinance`)
+2. `DividendCollector` 구현
+3. `_render_dividends()` 섹션 추가
+4. 배당 주기 판단 로직 구현
+
+**검증**:
+- 포트폴리오에 배당주가 있으면 정상 표시
+- 배당 주기 (Monthly/Quarterly/etc.) 정확히 판단
+
+---
+
+### Phase 4: Telegram 통합 - 2-3시간
+
+**목표**: PDF 자동 전송
+
+**작업**:
+1. `ReportDistributor` 구현
+2. Telegram 요약 메시지 포맷 개선
+3. 에러 처리 (Telegram API 실패 시)
+
+**검증**:
+- Telegram으로 PDF + 요약 메시지 정상 전송
+- 로컬 저장 확인
+
+---
+
+### Phase 5: War Room + Deep Reasoning 추가 - 4-5시간
+
+**목표**: 전체 섹션 완성
+
+**작업**:
+1. `WarRoomCollector` 구현
+2. `DeepReasoningCollector` 구현
+3. `_render_war_room()`, `_render_deep_reasoning()` 섹션 추가
+
+**검증**:
+- 5개 섹션 모두 정상 표시
+- 데이터 없을 때도 에러 없이 처리
+
+---
+
+## 9. 핵심 파일 리스트
+
+### 신규 생성 (14개)
+
+**Collectors (5)**:
+1. `backend/reporting/collectors/__init__.py`
+2. `backend/reporting/collectors/shadow_trading_collector.py`
+3. `backend/reporting/collectors/war_room_collector.py`
+4. `backend/reporting/collectors/deep_reasoning_collector.py`
+5. `backend/reporting/collectors/dividend_collector.py`
+6. `backend/reporting/collectors/performance_collector.py`
+
+**Assemblers (1)**:
+7. `backend/reporting/assemblers/daily_report_assembler.py`
+
+**Renderers (1)**:
+8. `backend/reporting/renderers/daily_pdf_renderer.py`
+
+**Distributors (1)**:
+9. `backend/reporting/distributors/report_distributor.py`
+
+**Main Generator (1)**:
+10. `backend/reporting/daily_report_generator.py`
+
+**API (1)**:
+11. `backend/routers/reports_router.py`
+
+**Tests (3)**:
+12. `backend/tests/test_daily_report_generator.py`
+13. `backend/tests/test_dividend_collector.py`
+14. `backend/tests/test_pdf_rendering.py`
+
+### 수정 파일 (2)
+
+15. `backend/main.py` - Reports router 등록
+16. `requirements.txt` - yfinance, matplotlib 추가
+
+### 기존 파일 참조 (활용)
+
+17. `backend/ai/war_room/shadow_trading_tracker.py` - UnifiedShadowTracker
+18. `backend/core/models/analytics_models.py` - DailyAnalytics
+19. `backend/notifications/telegram_notifier.py` - TelegramPDFSender
+20. `backend/ai/skills/deep_reasoning/deep_reasoning_store.py` - DeepReasoningStore
+
+---
+
+## 10. 테스트 전략
+
+### 10.1 단위 테스트
+
+**파일**: `backend/tests/test_daily_report_generator.py`
+
+```python
+import pytest
+from datetime import date
+from backend.reporting.collectors.shadow_trading_collector import ShadowTradingCollector
+
+def test_shadow_trading_collector():
+    """Shadow Trading 데이터 수집 테스트"""
+    collector = ShadowTradingCollector()
+    data = collector.collect(date.today())
+
+    assert data is not None
+    assert 'offensive' in data.__dict__
+    assert 'defensive' in data.__dict__
+
+def test_dividend_collector():
+    """배당 정보 수집 테스트"""
+    from backend.reporting.collectors.dividend_collector import DividendCollector
+
+    collector = DividendCollector()
+    data = collector.collect(date.today())
+
+    assert isinstance(data.dividend_stocks, list)
+```
+
+### 10.2 통합 테스트
+
+**파일**: `backend/tests/test_pdf_rendering.py`
+
+```python
+def test_full_report_generation():
+    """전체 리포트 생성 통합 테스트"""
+    from backend.reporting.daily_report_generator import DailyReportGenerator
+
+    generator = DailyReportGenerator()
+    result = generator.generate(date.today())
+
+    # PDF 파일 생성 확인
+    assert Path(result.pdf_path).exists()
+
+    # 크기 확인 (> 10KB)
+    assert Path(result.pdf_path).stat().st_size > 10000
+```
+
+---
+
+## 11. 확장성 고려사항
+
+### 11.1 주간/월간 리포트 추가 시
+
+**구조 재사용**:
+- Collector 동일하게 재사용
+- Assembler만 기간별로 변경 (`WeeklyReportAssembler`, `MonthlyReportAssembler`)
+- Renderer도 재사용 (섹션 구성만 다르게)
+
+**예시**:
+```python
+# backend/reporting/weekly_report_generator.py
+
+class WeeklyReportGenerator:
+    def __init__(self):
+        # 동일한 Collector 재사용
+        self.collectors = {
+            'shadow_trading': ShadowTradingCollector(),
+            'war_room': WarRoomCollector(),
+            # ...
+        }
+        self.assembler = WeeklyReportAssembler()  # 주간 전용
+        self.renderer = DailyPDFRenderer()        # 재사용
+```
+
+### 11.2 자동 스케줄링 추가 시
+
+**APScheduler 사용**:
+```python
+# backend/schedulers/report_scheduler.py
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from backend.reporting.daily_report_generator import DailyReportGenerator
+
+scheduler = AsyncIOScheduler()
+
+@scheduler.scheduled_job('cron', hour=9, minute=0)  # 매일 09:00
+def generate_daily_report_job():
+    generator = DailyReportGenerator()
+    generator.generate(date.today())
+
+scheduler.start()
+```
+
+---
+
+## 12. 성공 기준
+
+- [ ] API 호출 시 PDF 정상 생성 (< 10초)
+- [ ] 5개 섹션 모두 정상 표시
+- [ ] 배당주 정보 정확히 계산
+- [ ] Telegram 전송 성공률 > 95%
+- [ ] 로컬 저장 정상 동작
+- [ ] 차트 이미지 PDF에 임베딩
+- [ ] 데이터 없을 때도 에러 없이 처리
+- [ ] 테스트 커버리지 > 80%
+
+---
+
+## 13. 다음 단계 (Optional)
+
+### 즉시 구현 (사용자 승인 후)
+
+1. ✅ Phase 1: 기본 PDF 생성 (4-6시간)
+2. ✅ Phase 2: 차트 추가 (3-4시간)
+3. ✅ Phase 3: 배당주 정보 추가 (4-5시간)
+
+**예상 소요**: 3-4일 (Phase 1-3 완료)
+
+### 차기 진행
+
+4. ⏸️ Phase 4: Telegram 통합 (2-3시간)
+5. ⏸️ Phase 5: War Room + Deep Reasoning (4-5시간)
+6. ⏸️ 주간 리포트 추가
+7. ⏸️ APScheduler 자동 스케줄링
+
+---
+
+**작성일**: 2026-01-03
+**작성자**: AI Trading System Development Team
+**문서 버전**: 1.0
+**상태**: 📋 Plan Complete - Ready for Implementation
+**예상 소요 시간**: 17-23시간 (Phase 1-5 완료 기준)
+
+**다음 단계**: 사용자 승인 후 Phase 1부터 단계적 구현
+
+---
+
+**END OF DAILY REPORT PLAN**

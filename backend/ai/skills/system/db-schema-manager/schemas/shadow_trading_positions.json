@@ -1,0 +1,155 @@
+{
+    "table_name": "shadow_trading_positions",
+    "description": "Shadow Trading 포지션/거래 내역 (실제 돈 없이 가상 트레이딩)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "description": "Primary Key"
+        },
+        {
+            "name": "session_id",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "description": "세션 ID (foreign key to shadow_trading_sessions)",
+            "example": "shadow_2025-12-31T13:37:42.235264"
+        },
+        {
+            "name": "trade_id",
+            "type": "VARCHAR(150)",
+            "nullable": false,
+            "unique": true,
+            "description": "거래 고유 ID",
+            "example": "NKE_2025-12-31T13:49:00.123456"
+        },
+        {
+            "name": "symbol",
+            "type": "VARCHAR(10)",
+            "nullable": false,
+            "description": "종목 심볼",
+            "example": "NKE"
+        },
+        {
+            "name": "action",
+            "type": "VARCHAR(10)",
+            "nullable": false,
+            "description": "거래 행위 (buy/sell)",
+            "example": "buy"
+        },
+        {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "description": "수량",
+            "example": "259"
+        },
+        {
+            "name": "entry_price",
+            "type": "NUMERIC(15,4)",
+            "nullable": false,
+            "description": "진입 가격",
+            "example": "63.0300"
+        },
+        {
+            "name": "entry_date",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "description": "진입 일시"
+        },
+        {
+            "name": "exit_price",
+            "type": "NUMERIC(15,4)",
+            "nullable": true,
+            "description": "청산 가격",
+            "example": "65.5000"
+        },
+        {
+            "name": "exit_date",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "청산 일시"
+        },
+        {
+            "name": "pnl",
+            "type": "NUMERIC(15,2)",
+            "nullable": true,
+            "description": "손익 ($)",
+            "example": "639.23"
+        },
+        {
+            "name": "pnl_pct",
+            "type": "NUMERIC(10,4)",
+            "nullable": true,
+            "description": "손익률 (0.0-1.0)",
+            "example": "0.0392"
+        },
+        {
+            "name": "stop_loss_price",
+            "type": "NUMERIC(15,4)",
+            "nullable": false,
+            "description": "Stop Loss 가격",
+            "example": "61.7694"
+        },
+        {
+            "name": "reason",
+            "type": "VARCHAR(200)",
+            "nullable": true,
+            "description": "거래 이유",
+            "example": "Shadow buy - reduce_size decision"
+        },
+        {
+            "name": "agent_decision",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "Agent 결정 상세 (JSON string)"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_shadow_positions_session_id",
+            "columns": [
+                "session_id"
+            ]
+        },
+        {
+            "name": "idx_shadow_positions_trade_id",
+            "columns": [
+                "trade_id"
+            ],
+            "unique": true
+        },
+        {
+            "name": "idx_shadow_positions_symbol",
+            "columns": [
+                "symbol"
+            ]
+        },
+        {
+            "name": "idx_shadow_positions_entry_date",
+            "columns": [
+                "entry_date"
+            ]
+        },
+        {
+            "name": "idx_shadow_positions_exit_date",
+            "columns": [
+                "exit_date"
+            ]
+        }
+    ],
+    "metadata": {
+        "phase": "Shadow Trading MVP",
+        "created": "2026-01-03",
+        "purpose": "Track individual Shadow Trading positions/trades for performance analysis",
+        "update_frequency": "Real-time"
+    }
+}

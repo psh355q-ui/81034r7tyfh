@@ -1,0 +1,105 @@
+{
+    "table_name": "agent_weights_history",
+    "category": "learning",
+    "description": "Agent 가중치 조정 이력 (Failure Learning)",
+    "repository": "FailureLearningRepository",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "primary_key": true,
+            "description": "Primary key"
+        },
+        {
+            "name": "changed_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "NOW()",
+            "description": "가중치 변경 시각"
+        },
+        {
+            "name": "changed_by",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "description": "변경 주체 (system/manual/scheduler)"
+        },
+        {
+            "name": "reason",
+            "type": "TEXT",
+            "nullable": false,
+            "description": "변경 사유"
+        },
+        {
+            "name": "trader_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "Trader Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "risk_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "Risk Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "analyst_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "Analyst Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "macro_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "Macro Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "institutional_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "Institutional Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "news_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "News Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "chip_war_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "ChipWar Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "dividend_risk_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "Dividend Risk Agent 가중치 (0.0000-1.0000)"
+        },
+        {
+            "name": "pm_agent",
+            "type": "NUMERIC(5,4)",
+            "nullable": false,
+            "description": "PM Agent 가중치 (0.0000-1.0000)"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_agent_weights_changed_at",
+            "columns": [
+                "changed_at"
+            ],
+            "type": "btree",
+            "order": "DESC"
+        }
+    ],
+    "constraints": [
+        {
+            "type": "check",
+            "name": "chk_weights_sum",
+            "expression": "trader_agent + risk_agent + analyst_agent + macro_agent + institutional_agent + news_agent + chip_war_agent + dividend_risk_agent + pm_agent = 1.0"
+        }
+    ]
+}

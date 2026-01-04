@@ -1,0 +1,54 @@
+{
+  "title": "Market Update",
+  "total_duration": 23.8,
+  "shots": [
+    {
+      "shot_id": 1,
+      "start_time": 0.0,
+      "end_time": 4.5,
+      "duration": 4.5,
+      "character": "HOST",
+      "character_name": "주인공",
+      "dialogue": "가즈아! 오늘 장이 터졌네!",
+      "action_prompt": "Camera pans across a futuristic, neon-lit cityscape. We see the HOST, a young and energetic trader, sitting in front of a holographic trading terminal, eyes glued to the screens. Lighting is sleek and dynamic, with pops of color. Character: 주인공. Style: 3D Pixar Animation.",
+      "camera_angle": "Wide Shot",
+      "visual_notes": "Provide 4.5s video."
+    },
+    {
+      "shot_id": 2,
+      "start_time": 4.5,
+      "end_time": 10.5,
+      "duration": 6.0,
+      "character": "NVDA",
+      "character_name": "젠황고양이",
+      "dialogue": "당연하지! 내 실력이 증명되는 순간이다.",
+      "action_prompt": "The camera quickly zooms in on the trading terminal, where we see NVDA's stock price skyrocketing. NVDA, an arrogant AI king, appears on the screen, donning a gold crown and smirking confidently. Character: 젠황고양이. Style: 3D Pixar Animation.",
+      "camera_angle": "Close-up",
+      "visual_notes": "Provide 6.0s video."
+    },
+    {
+      "shot_id": 3,
+      "start_time": 10.5,
+      "end_time": 17.3,
+      "duration": 6.8,
+      "character": "TSLA",
+      "character_name": "일론마고양이",
+      "dialogue": "우아하하! 이것이 바로 우리가 가는 길, 가즈아!",
+      "action_prompt": "The scene shifts to TSLA, a crazy-eyed astronaut, rocketing through the air in a Tesla-branded space suit. He's whooping and cheering as his stock price climbs rapidly on the terminal. Character: 일론마고양이. Style: 3D Pixar Animation.",
+      "camera_angle": "Low Angle",
+      "visual_notes": "Provide 6.8s video."
+    },
+    {
+      "shot_id": 4,
+      "start_time": 17.3,
+      "end_time": 23.8,
+      "duration": 6.5,
+      "character": "ALL",
+      "character_name": "ALL",
+      "dialogue": "오늘은 우리 모두의 날이다! 가즈아, 가즈아!",
+      "action_prompt": "The camera pulls back, revealing the HOST, NVDA, and TSLA all celebrating the AI sector rally together. The cityscape is alive with neon lights and holographic displays, creating a vibrant, futuristic atmosphere. Character: ALL. Style: 3D Pixar Animation.",
+      "camera_angle": "Wide Shot",
+      "visual_notes": "Provide 6.5s video."
+    }
+  ]
+}

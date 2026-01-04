@@ -283,6 +283,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Failed to start Accountability Scheduler: {e}")
 
+    # 🆕 Initialize Monitoring Components (Circuit Breaker & Kill Switch)
+    try:
+        from backend.monitoring.smart_alerts import SmartAlertManager
+        smart_alert_manager = SmartAlertManager()
+        logger.info("SmartAlertManager initialized for monitoring")
+        
+        from backend.monitoring.circuit_breaker import CircuitBreakerManager, KillSwitch
+        circuit_breaker_manager = CircuitBreakerManager(alert_manager=smart_alert_manager)
+        kill_switch = KillSwitch(alert_manager=smart_alert_manager)
+        
+        # Inject dependencies into monitoring_router
+        from backend.api.monitoring_router import set_monitoring_instances
+        set_monitoring_instances(
+            health_mon=health_monitor,
+            alert_mgr=smart_alert_manager,
+            cb_mgr=circuit_breaker_manager,
+            ks=kill_switch,
+        )
+        logger.info("Monitoring instances injected (Kill Switch ready)")
+    except Exception as e:
+        logger.warning(f"Failed to initialize monitoring components: {e}")
+
     yield
 
     # Shutdown sequence
@@ -423,10 +445,16 @@ if SIGNALS_AVAILABLE:    # Phase 4: Trading Signals
     app.include_router(dividend_router)
     logger.info("Dividend router registered")
 
+    
     # 🆕 Accountability API (Phase 29: News Interpretation Accuracy Tracking)
     from backend.api.accountability_router import router as accountability_router
     app.include_router(accountability_router)
     logger.info("Accountability router registered")
+    
+    # 🆕 Kill Switch API (Live Trading Safety - 2026-01-02)
+    from backend.routers.kill_switch_router import router as kill_switch_router
+    app.include_router(kill_switch_router)
+    logger.info("Kill Switch router registered")
 
 try:
     # 🆕 Multi-Asset API (Phase 30: Multi-Asset Support)
@@ -512,6 +540,14 @@ if AUTO_TRADE_AVAILABLE:
 from backend.api.emergency_router import router as emergency_router
 app.include_router(emergency_router, prefix="/api")
 logger.info("Emergency router registered")
+
+# Monitoring & Kill Switch
+try:
+    from backend.api.monitoring_router import router as monitoring_router
+    app.include_router(monitoring_router)
+    logger.info("Monitoring router registered")
+except Exception as e:
+    logger.warning(f"Monitoring router not available: {e}")
 
 # Data Backfill (Historical Data Seeding)
 try:

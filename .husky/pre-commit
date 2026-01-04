@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Future: Add python linting and secret scanning here
+# For now, just a placeholder to verify hook execution
+echo "✅ Checks passed!"

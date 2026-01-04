@@ -43,6 +43,11 @@ tiktoken==0.5.2  # Token counting for embeddings
 # Machine Learning (Phase 14.5 - News Context Filter)
 scikit-learn==1.3.2  # K-means clustering for risk patterns
 scipy==1.11.4  # Scientific computing (used by ensemble optimizer)
+sentence-transformers>=2.2.2  # ✨ NEW - Local Embeddings
+
+# Media Generation (Phase 10 - YouTube Automation)
+moviepy==1.0.3  # Video editing
+gTTS==2.5.0     # Google Text-to-Speech (Free)
 
 # PDF & Reporting (Phase 15 - Advanced Analytics & Reporting)
 reportlab==4.0.7  # PDF generation
@@ -61,6 +66,7 @@ pytest-cov==4.1.0
 # Logging & Monitoring
 structlog==24.1.0
 prometheus-client==0.19.0  # Prometheus metrics collection
+psutil>=5.9.0  # ✨ NEW - System performance monitoring
 
 # Utilities
 python-dateutil==2.8.2
@@ -70,4 +76,3 @@ google-generativeai>=0.3.0  # Phase 5: Gemini for risk screening
 # Phase 1: Cost Optimization (Ideas Integration)
 llmlingua>=0.2.0  # LLMLingua-2 prompt compression
 redisvl>=0.1.0  # RedisVL semantic caching
-sentence-transformers>=2.2.2  # News embedding generation (Phase 20)

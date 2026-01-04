@@ -22,8 +22,7 @@ from backend.ai.reasoning.deep_reasoning import DeepReasoningStrategy, DeepReaso
 from backend.ai.ai_client_factory import AIClientFactory, MockAIClient
 from backend.data.knowledge_graph.knowledge_graph import KnowledgeGraph
 from backend.config_phase14 import settings, AIRole, get_model_config
-from backend.database.db_session import get_sync_session
-from backend.database.repository import DeepReasoningRepository
+from backend.database.repository import get_sync_session, DeepReasoningRepository
 
 
 router = APIRouter(prefix="/api/reasoning", tags=["Deep Reasoning"])

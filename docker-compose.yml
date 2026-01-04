@@ -25,7 +25,7 @@ services:
     networks:
       - ai-trading-net
 
-  # PostgreSQL - Main Database (TimescaleDB + pgvector)
+  # PostgreSQL - Main Database
   postgres-prod:
     image: postgres:16
     container_name: ai-trading-postgres-prod
@@ -33,11 +33,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres-prod-data:/var/lib/postgresql/data
+      - ./backend/database/migrations:/docker-entrypoint-initdb.d
     environment:
       - POSTGRES_DB=ai_trading
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-Qkqhdi1}
-      - POSTGRES_HOST_AUTH_METHOD=trust
+      # In production, this should be set via .env file, NOT defaulted here securely
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-trading123}
       - TZ=Asia/Seoul
     deploy:
       resources:
@@ -53,6 +54,47 @@ services:
     networks:
       - ai-trading-net
 
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-trading-backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend:/app
+      - backend-logs:/app/logs
+      - .secrets.enc:/app/.secrets.enc:ro
+      - .secrets.key:/app/.secrets.key:ro
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-trading123}@postgres-prod:5432/ai_trading
+      - REDIS_URL=redis://redis:6379/0
+      # Secrets are loaded internally via SecretsManager, but env vars can override
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ai-trading-net
+
+  # Frontend (Vite/React) - Uncomment for production build serving
+  # For dev, we usually run locally. For prod docker, we need a Dockerfile in frontend.
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: ai-trading-frontend
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - ai-trading-net
+
   # Prometheus - Metrics collection
   prometheus:
     image: prom/prometheus:latest
@@ -65,8 +107,6 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
     deploy:
       resources:
         limits:
@@ -101,66 +141,15 @@ services:
     networks:
       - ai-trading-net
 
-  # MLflow - Model tracking (optional, for Phase 5)
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.9.2
-    container_name: ai-trading-mlflow
-    ports:
-      - "5000:5000"
-    volumes:
-      - mlflow-data:/mlflow
-    command: >
-      mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-    networks:
-      - ai-trading-net
-  # Backend (FastAPI) - Uncomment when ready
-  # backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: ai-trading-backend
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./backend:/app
-  #     - backend-cache:/app/.cache
-  #   environment:
-  #     - REDIS_URL=redis://redis:6379/0
-  #     - TIMESCALE_HOST=timescaledb
-  #     - TIMESCALE_PORT=5432
-  #     - TIMESCALE_DATABASE=ai_trading
-  #     - TIMESCALE_USER=postgres
-  #     - TIMESCALE_PASSWORD=postgres
-  #   depends_on:
-  #     - redis
-  #     - timescaledb
-  #   restart: unless-stopped
-  #   networks:
-  #     - ai-trading-net
-
 volumes:
   redis-data:
-    driver: local
   postgres-prod-data:
-    driver: local
   prometheus-data:
-    driver: local
   grafana-data:
-    driver: local
   mlflow-data:
-    driver: local
-  backend-cache:
-    driver: local
+  backend-logs:
+
 
 networks:
   ai-trading-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16

@@ -15,7 +15,7 @@ Date: 2025-12-21
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
@@ -76,7 +76,7 @@ class PriceBackfillRequest(BaseModel):
     tickers: List[str] = Field(..., description="Stock tickers")
     start_date: str = Field(..., description="Start date (YYYY-MM-DD)")
     end_date: str = Field(..., description="End date (YYYY-MM-DD)")
-    interval: str = Field("1d", description="Data interval (1d, 1h, 1m)")
+    interval: Literal["1d", "1h", "1m"] = Field("1d", description="Data interval (1d, 1h, 1m)")
 
 
 class BackfillJobResponse(BaseModel):
@@ -196,11 +196,16 @@ async def start_price_backfill(
     3. Store in database
 
     Returns job_id for tracking progress.
+
+    Yahoo Finance Limitations:
+    - 1m interval: last 7 days only
+    - 1h interval: last 730 days (2 years)
+    - 1d interval: unlimited historical data
     """
     try:
         # Parse dates
-        start_date = datetime.fromisoformat(request.start_date)
-        end_date = datetime.fromisoformat(request.end_date)
+        start_date = datetime.fromisoformat(request.start_date).replace(tzinfo=None)
+        end_date = datetime.fromisoformat(request.end_date).replace(tzinfo=None)
 
         # Validate
         if start_date > end_date:
@@ -208,6 +213,24 @@ async def start_price_backfill(
 
         if not request.tickers:
             raise HTTPException(400, "At least one ticker required")
+
+        if request.interval == "1m":
+            cutoff = (datetime.now() - timedelta(days=7)).replace(tzinfo=None)
+            if start_date < cutoff:
+                raise HTTPException(
+                    400,
+                    "1-minute interval data is only available for the last 7 days. "
+                    "Please adjust start_date."
+                )
+
+        if request.interval == "1h":
+            cutoff = (datetime.now() - timedelta(days=730)).replace(tzinfo=None)
+            if start_date < cutoff:
+                raise HTTPException(
+                    400,
+                    "1-hour interval data is only available for the last 730 days (2 years). "
+                    "Please adjust start_date."
+                )
 
         # Create job
         job_id = str(uuid4())

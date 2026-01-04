@@ -12,7 +12,7 @@ from typing import Optional, List
 import logging
 
 from backend.ai.war_room.debate_visualizer import DebateVisualizer
-from backend.ai.war_room.shadow_trading_tracker import ShadowTradingTracker
+from backend.ai.war_room.shadow_trading_tracker import UnifiedShadowTracker
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/war-room", tags=["War Room Analytics"])
 
 # Global instances (production에서는 dependency injection 사용)
 debate_visualizer = DebateVisualizer()
-shadow_tracker = ShadowTradingTracker()
+shadow_tracker = UnifiedShadowTracker()
 
 
 @router.get("/debate/{session_id}")

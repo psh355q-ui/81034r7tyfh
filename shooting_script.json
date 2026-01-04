@@ -1,0 +1,51 @@
+{
+  "title": "Meow Market: 2026 New Year Rally",
+  "scenes": [
+    {
+      "scene_number": 1,
+      "character": "HOST",
+      "character_name": "주인공",
+      "image_path": "movie/인물/주인공.png",
+      "dialogue": "헤이 고양이들, 오늘의 시장 분석 준비되셨나요? 2026년 새해 첫날, 우리가 기다리던 랠리가 벌써 시작되네요! 휴머노이드 떡상 가즈아!",
+      "veo_prompt": "Pixar style 3D animation, cinematic lighting, 4k, cute anthropomorphic cat character, lively expression, futuristic background related to the corporation. Character: HOST cat. Action: Host cat standing on a desk, holding a microphone and gesturing excitedly.",
+      "duration_sec": 7
+    },
+    {
+      "scene_number": 2,
+      "character": "NVDA",
+      "character_name": "젠황고양이",
+      "image_path": "movie/인물/기업/젠황고양이.png",
+      "dialogue": "휴, 내 새로운 'Rubin' 칩이 출시된다는 소문 때문에 주가가 올랐어. 역시 AI 황제 NVDA지! 이 고양이들은 내 실력을 믿어야 해.",
+      "veo_prompt": "Pixar style 3D animation, cinematic lighting, 4k, cute anthropomorphic cat character, lively expression, futuristic background related to the corporation. Character: NVDA cat. Action: NVDA cat sitting on a chair, legs crossed, smirking confidently.",
+      "duration_sec": 7
+    },
+    {
+      "scene_number": 2,
+      "character": "TSLA",
+      "character_name": "일론마고양이",
+      "image_path": "movie/인물/기업/일론마고양이.png",
+      "dialogue": "어허, 내 Q4 실적이 기대를 넘었다니! 이거 보세요, 내 로켓선 화성까지 날아갈 준비가 다 됐어. 이제 우리 주식으로 우주 여행을 가자고!",
+      "veo_prompt": "Pixar style 3D animation, cinematic lighting, 4k, cute anthropomorphic cat character, lively expression, futuristic background related to the corporation. Character: TSLA cat. Action: TSLA cat jumping up and down excitedly, holding a model rocket ship.",
+      "duration_sec": 7
+    },
+    {
+      "scene_number": 2,
+      "character": "AAPL",
+      "character_name": "사과고양이",
+      "image_path": "movie/인물/기업/사과고양이.png",
+      "dialogue": "글쎄, 나는 Vision Pro 2에 대한 소식 때문에 오른 것 같네. 여러분도 알다시피 나는 언제나 프리미엄만 추구해왔어. 이 고양이들, 비싸도 나를 믿어주세요.",
+      "veo_prompt": "Pixar style 3D animation, cinematic lighting, 4k, cute anthropomorphic cat character, lively expression, futuristic background related to the corporation. Character: AAPL cat. Action: AAPL cat sitting calmly, sipping from a mug with the Apple logo.",
+      "duration_sec": 7
+    },
+    {
+      "scene_number": 3,
+      "character": "HOST",
+      "character_name": "주인공",
+      "image_path": "movie/인물/주인공.png",
+      "dialogue": "오, 멋진데요! 이렇게 기업들이 다양한 호재로 주가를 끌어올렸네요. 앞으로 Fed의 금리 인하까지 예상되니 시장 분위기도 좋아 보입니다. 다음 주에도 이런 랠리가 계속되길 바라겠습니다!",
+      "veo_prompt": "Pixar style 3D animation, cinematic lighting, 4k, cute anthropomorphic cat character, lively expression, futuristic background related to the corporation. Character: HOST cat. Action: Host cat smiling and giving a thumbs up, surrounded by the other cats.",
+      "duration_sec": 7
+    }
+  ],
+  "total_duration": 35
+}

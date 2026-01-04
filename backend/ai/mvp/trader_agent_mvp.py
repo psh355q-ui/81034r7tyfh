@@ -26,6 +26,8 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import google.generativeai as genai
 
+from backend.ai.schemas.war_room_schemas import TraderOpinion
+
 
 class TraderAgentMVP:
     """MVP Trader Agent - 공격적 트레이딩 기회 포착"""
@@ -88,45 +90,9 @@ class TraderAgentMVP:
     ) -> Dict[str, Any]:
         """
         트레이딩 기회 분석
-
-        Args:
-            symbol: 종목 심볼 (예: AAPL, NVDA)
-            price_data: 가격 데이터
-                {
-                    'current_price': float,
-                    'open': float,
-                    'high': float,
-                    'low': float,
-                    'volume': int,
-                    'price_history': [list of prices]
-                }
-            technical_data: 기술적 지표 (optional)
-                {
-                    'rsi': float,
-                    'macd': {'value': float, 'signal': float},
-                    'moving_averages': {'ma50': float, 'ma200': float},
-                    'bollinger_bands': {'upper': float, 'lower': float}
-                }
-            chipwar_events: 칩워 관련 이벤트 (optional)
-                [
-                    {'event': str, 'impact': str, 'date': str}
-                ]
-            market_context: 시장 맥락 (optional)
-                {
-                    'market_trend': str,
-                    'sector_performance': float,
-                    'news_sentiment': float
-                }
-
+        
         Returns:
-            Dict containing:
-                - action: buy/sell/hold/pass
-                - confidence: 0.0 ~ 1.0
-                - reasoning: 구체적 근거
-                - entry_price/exit_price: 목표가
-                - timeframe: 예상 보유기간
-                - opportunity_score: 0.0 ~ 10.0
-                - momentum_strength: weak/moderate/strong
+            Dict (compatible with TraderOpinion model)
         """
         # Construct analysis prompt
         prompt = self._build_prompt(
@@ -144,11 +110,14 @@ class TraderAgentMVP:
                 prompt
             ])
 
-            # Parse response
-            result = self._parse_response(response.text)
+            # Parse and Validate with Pydantic
+            # _parse_response now returns TraderOpinion object
+            opinion = self._parse_response(response.text)
 
-            # Add metadata
-            result['agent'] = 'trader_mvp'
+            # Convert to dict for compatibility
+            result = opinion.model_dump()
+
+            # Add metadata (that are not in schema or overwrite defaults)
             result['weight'] = self.weight
             result['timestamp'] = datetime.utcnow().isoformat()
             result['symbol'] = symbol
@@ -223,51 +192,37 @@ class TraderAgentMVP:
 
         return "\n".join(prompt_parts)
 
-    def _parse_response(self, response_text: str) -> Dict[str, Any]:
-        """Parse Gemini response"""
+    def _parse_response(self, response_text: str) -> TraderOpinion:
+        """Parse Gemini response using Pydantic"""
         import json
         import re
 
         # Extract JSON from response
         try:
             # Try direct JSON parsing first
-            result = json.loads(response_text)
+            result_dict = json.loads(response_text)
         except json.JSONDecodeError:
             # Extract JSON from markdown code block
             json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
             if json_match:
-                result = json.loads(json_match.group(1))
+                result_dict = json.loads(json_match.group(1))
             else:
                 # Last resort: find JSON-like structure
                 json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
-                    result = json.loads(json_match.group(0))
+                    result_dict = json.loads(json_match.group(0))
                 else:
                     raise ValueError("No valid JSON found in response")
 
-        # Validate required fields
-        required_fields = ['action', 'confidence', 'reasoning', 'opportunity_score', 'momentum_strength']
-        for field in required_fields:
-            if field not in result:
-                raise ValueError(f"Missing required field: {field}")
-
-        # Validate action
-        valid_actions = ['buy', 'sell', 'hold', 'pass']
-        if result['action'] not in valid_actions:
-            result['action'] = 'pass'
-
-        # Validate confidence
-        result['confidence'] = max(0.0, min(1.0, float(result['confidence'])))
-
-        # Validate opportunity_score
-        result['opportunity_score'] = max(0.0, min(10.0, float(result['opportunity_score'])))
-
-        # Validate momentum_strength
-        valid_momentum = ['weak', 'moderate', 'strong']
-        if result['momentum_strength'] not in valid_momentum:
-            result['momentum_strength'] = 'weak'
-
-        return result
+        # Normalize fields for Pydantic if needed
+        # e.g. momentum_strength validation is handled by Pydantic Literal
+        # But we might need to handle case insensitivity or mapping
+        if 'momentum_strength' in result_dict:
+             result_dict['momentum_strength'] = result_dict['momentum_strength'].lower()
+        
+        # Instantiate and Validate with Pydantic
+        # This will raise ValidationError if data is invalid
+        return TraderOpinion(**result_dict)
 
     def get_agent_info(self) -> Dict[str, Any]:
         """Get agent information"""

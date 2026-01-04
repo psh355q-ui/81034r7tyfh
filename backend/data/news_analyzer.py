@@ -398,8 +398,8 @@ def get_analyzed_articles(
     
     if actionable_only:
         query = query.filter(NewsAnalysis.trading_actionable == True)
-    
-    return query.order_by(NewsArticle.published_at.desc()).limit(limit).all()
+
+    return query.order_by(NewsArticle.published_date.desc()).limit(limit).all()
 
 
 def get_ticker_news(db: Session, ticker: str, limit: int = 20) -> List[Dict[str, Any]]:
@@ -419,7 +419,7 @@ def get_ticker_news(db: Session, ticker: str, limit: int = 20) -> List[Dict[str,
             "article_id": article.id,
             "title": article.title,
             "source": article.source,
-            "published_at": article.published_at.isoformat() if article.published_at else None,
+            "published_at": article.published_date.isoformat() if article.published_date else None,
             "relevance": rel.relevance_score,
             "sentiment": rel.sentiment_for_ticker
         })
@@ -435,7 +435,7 @@ def get_high_impact_news(db: Session, limit: int = 20) -> List[Dict[str, Any]]:
         db.query(NewsArticle)
         .join(NewsAnalysis)
         .filter(NewsAnalysis.impact_magnitude >= 0.7)
-        .order_by(NewsArticle.published_at.desc())
+        .order_by(NewsArticle.published_date.desc())
         .limit(limit)
         .all()
     )

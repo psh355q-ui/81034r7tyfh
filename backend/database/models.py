@@ -101,6 +101,9 @@ class NewsArticle(Base):
         Index('idx_news_crawled_at', 'crawled_at'),
         Index('idx_news_tickers', 'tickers', postgresql_using='gin'),
         Index('idx_news_tags', 'tags', postgresql_using='gin'),
+        # Phase 1 Optimization: 복합 인덱스
+        Index('idx_news_ticker_date', 'tickers', 'published_date'),  # 티커별 뉴스 조회
+        Index('idx_news_processed', 'published_date', postgresql_where='processed_at IS NOT NULL'),  # 처리된 뉴스만
         # Vector index would be created via migration, rarely defined in model for basic sync usage
         # Index('idx_news_embedding', 'embedding', postgresql_using='ivfflat', postgresql_ops={'embedding': 'vector_cosine_ops'}, postgresql_with={'lists': 100}),
     )
@@ -170,6 +173,9 @@ class TradingSignal(Base):
         Index('idx_signal_type', 'signal_type'),
         Index('idx_signal_created_at', 'created_at'),
         Index('idx_signal_source', 'source'),
+        # Phase 1 Optimization: 복합 인덱스
+        Index('idx_signal_ticker_date', 'ticker', 'created_at'),  # 티커별 최신 신호
+        Index('idx_signal_pending_alert', 'ticker', postgresql_where='alert_sent = FALSE'),  # 대기 중 알림
     )
 
     def __repr__(self):
@@ -355,6 +361,8 @@ class StockPrice(Base):
         Index('idx_stock_price_ticker', 'ticker'),
         Index('idx_stock_price_time', 'time'),
         Index('idx_stock_price_ticker_time', 'ticker', 'time'),
+        # Phase 1 Optimization: 최신 가격 조회용 DESC 인덱스
+        Index('idx_stock_ticker_time_desc', 'ticker', 'time', postgresql_ops={'time': 'DESC'}),
     )
 
     def __repr__(self):
@@ -950,3 +958,29 @@ class FailureAnalysis(Base):
 
     def __repr__(self):
         return f"<FailureAnalysis(id={self.id}, ticker='{self.ticker}', type='{self.failure_type}', severity='{self.severity}')>"
+
+
+class AgentWeightsHistory(Base):
+    """Agent 가중치 조정 이력 (Failure Learning)"""
+    __tablename__ = 'agent_weights_history'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    changed_at = Column(DateTime, nullable=False, server_default='NOW()')
+    changed_by = Column(String(100), nullable=False)
+    reason = Column(Text, nullable=False)
+    trader_agent = Column(Numeric(5, 4), nullable=False)
+    risk_agent = Column(Numeric(5, 4), nullable=False)
+    analyst_agent = Column(Numeric(5, 4), nullable=False)
+    macro_agent = Column(Numeric(5, 4), nullable=False)
+    institutional_agent = Column(Numeric(5, 4), nullable=False)
+    news_agent = Column(Numeric(5, 4), nullable=False)
+    chip_war_agent = Column(Numeric(5, 4), nullable=False)
+    dividend_risk_agent = Column(Numeric(5, 4), nullable=False)
+    pm_agent = Column(Numeric(5, 4), nullable=False)
+    
+    __table_args__ = (
+        Index('idx_agent_weights_changed_at', 'changed_at', postgresql_using='btree'),
+    )
+    
+    def __repr__(self):
+        return f"<AgentWeightsHistory(id={self.id}, changed_at={self.changed_at}, changed_by='{self.changed_by}')>"

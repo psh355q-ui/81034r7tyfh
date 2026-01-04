@@ -181,6 +181,36 @@ export const DataBackfill: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // Client-side validation for Yahoo Finance limitations
+        const startDate = new Date(priceStartDate);
+        const endDate = new Date(priceEndDate);
+        const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (interval === '1m' && daysDiff > 7) {
+            alert(
+                '❌ Yahoo Finance 제한사항\n\n' +
+                '1분(1m) 간격 데이터는 최근 7일까지만 제공됩니다.\n\n' +
+                '해결 방법:\n' +
+                '1. 조회 기간을 7일 이내로 줄이거나\n' +
+                '2. 간격을 1시간(1h) 또는 1일(1d)로 변경하세요.'
+            );
+            setLoading(false);
+            return;
+        }
+
+        if (interval === '1h' && daysDiff > 730) {
+            alert(
+                '❌ Yahoo Finance 제한사항\n\n' +
+                '1시간(1h) 간격 데이터는 최근 730일(2년)까지만 제공됩니다.\n\n' +
+                '해결 방법:\n' +
+                '1. 조회 기간을 730일 이내로 줄이거나\n' +
+                '2. 간격을 1일(1d)로 변경하세요.\n\n' +
+                `현재 기간: ${daysDiff}일`
+            );
+            setLoading(false);
+            return;
+        }
+
         try {
             const res = await fetch('/api/backfill/prices', {
                 method: 'POST',
@@ -195,16 +225,21 @@ export const DataBackfill: React.FC = () => {
 
             if (res.ok) {
                 const data = await res.json();
-                alert(`주가 백필 작업이 시작되었습니다!\nJob ID: ${data.job_id}`);
+                alert(`✅ 주가 백필 작업이 시작되었습니다!\n\nJob ID: ${data.job_id}\n간격: ${interval}\n기간: ${daysDiff}일`);
                 await loadJobs();
                 setActiveTab('jobs');
             } else {
                 const errorData = await res.json();
-                setError(errorData.detail || '주가 백필 시작 실패');
+                const errorMsg = errorData.detail || '주가 백필 시작 실패';
+                // Show as alert popup
+                alert(`❌ 주가 백필 실패\n\n${errorMsg}`);
+                setError(errorMsg);
             }
         } catch (err) {
             console.error('Start price backfill error:', err);
-            setError('주가 백필 시작 중 오류 발생');
+            const errorMsg = '주가 백필 시작 중 오류 발생';
+            alert(`❌ 오류\n\n${errorMsg}`);
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -582,10 +617,25 @@ export const DataBackfill: React.FC = () => {
                                 onChange={(e) => setInterval(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             >
-                                <option value="1d">1일 (Daily)</option>
-                                <option value="1h">1시간 (Hourly)</option>
-                                <option value="1m">1분 (Minute)</option>
+                                <option value="1d">1일 (Daily) - 제한 없음</option>
+                                <option value="1h">1시간 (Hourly) - 최근 2년</option>
+                                <option value="1m">1분 (Minute) - 최근 7일</option>
                             </select>
+                        </div>
+
+                        {/* Yahoo Finance Limitations Warning */}
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-start gap-2">
+                                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <div className="font-semibold text-yellow-800 mb-2">⚠️ Yahoo Finance 제한사항</div>
+                                    <div className="text-sm text-yellow-700 space-y-1">
+                                        <div>• <strong>1분(1m)</strong>: 최근 7일까지만 조회 가능</div>
+                                        <div>• <strong>1시간(1h)</strong>: 최근 730일(2년)까지만 조회 가능</div>
+                                        <div>• <strong>1일(1d)</strong>: 과거 모든 데이터 조회 가능 ✅</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Info Box */}

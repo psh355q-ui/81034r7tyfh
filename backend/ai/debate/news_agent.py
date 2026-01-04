@@ -43,6 +43,47 @@ class NewsAgent:
         self.claude_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         self.enable_interpretation = os.getenv("ENABLE_NEWS_INTERPRETATION", "true").lower() == "true"
     
+    async def interpret_articles(self, ticker: str, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        제공된 기사 리스트 해석 (War Room 연동용)
+        
+        Args:
+            ticker: 종목 코드
+            articles: 기사 리스트 (dict)
+            
+        Returns:
+            List[Dict]: 해석 결과 리스트
+        """
+        if not self.enable_interpretation or not articles:
+            return []
+
+        interpretations = []
+        try:
+            # Sync session for reading macro context
+            db = get_sync_session()
+            macro_context = self._get_macro_context(db)
+            db.close()
+            
+            for article in articles:
+                # Use summary if available, else content
+                content = article.get('summary') or article.get('content') or ''
+                
+                # Call internal interpretation logic
+                result = await self._interpret_news(
+                    ticker=ticker,
+                    headline=article['title'],
+                    content=content,
+                    macro_context=macro_context
+                )
+                
+                if result:
+                    interpretations.append(result)
+                    
+        except Exception as e:
+            logger.error(f"❌ NewsAgent.interpret_articles failed: {e}")
+            
+        return interpretations
+
     async def analyze(self, ticker: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         뉴스 분석 후 투표 결정

@@ -6,8 +6,7 @@
 
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import dayjs from 'dayjs';
 import { AIReviewSummary } from '../../services/aiReviewApi';
 
 interface AIReviewListProps {
@@ -35,11 +34,10 @@ export const AIReviewList: React.FC<AIReviewListProps> = ({
         <div
           key={review.analysis_id}
           onClick={() => onSelect(review.analysis_id)}
-          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-            selectedId === review.analysis_id
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedId === review.analysis_id
               ? 'border-blue-500 bg-blue-50'
               : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-          }`}
+            }`}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-2">
@@ -54,10 +52,7 @@ export const AIReviewList: React.FC<AIReviewListProps> = ({
               )}
             </div>
             <span className="text-xs text-gray-500">
-              {formatDistanceToNow(new Date(review.timestamp), {
-                addSuffix: true,
-                locale: ko,
-              })}
+              {dayjs(review.timestamp).fromNow()}
             </span>
           </div>
 
@@ -88,13 +83,12 @@ export const AIReviewList: React.FC<AIReviewListProps> = ({
                 <span className="text-xs text-gray-600">확신도:</span>
                 <div className="flex-1 bg-gray-200 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      review.conviction >= 0.7
+                    className={`h-2 rounded-full transition-all ${review.conviction >= 0.7
                         ? 'bg-green-500'
                         : review.conviction >= 0.5
-                        ? 'bg-yellow-500'
-                        : 'bg-red-500'
-                    }`}
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
                     style={{ width: `${review.conviction * 100}%` }}
                   />
                 </div>

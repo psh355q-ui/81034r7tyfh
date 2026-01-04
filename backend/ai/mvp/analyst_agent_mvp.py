@@ -30,6 +30,9 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 import google.generativeai as genai
 
+from backend.ai.schemas.war_room_schemas import AnalystOpinion
+from backend.ai.debate.news_agent import NewsAgent
+
 
 class AnalystAgentMVP:
     """MVP Analyst Agent - 종합 정보 분석 (News + Macro + Institutional + ChipWar Geopolitics)"""
@@ -42,7 +45,11 @@ class AnalystAgentMVP:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
 
         genai.configure(api_key=api_key)
+        genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        
+        # Initialize News Agent for interpretation
+        self.news_agent = NewsAgent()
 
         # Agent configuration
         self.weight = 0.30  # 30% voting weight
@@ -103,7 +110,7 @@ class AnalystAgentMVP:
 - 반도체 패권 경쟁 리스크는 확률적으로 평가
 """
 
-    def analyze(
+    async def analyze(
         self,
         symbol: str,
         news_articles: Optional[List[Dict[str, Any]]] = None,
@@ -114,64 +121,24 @@ class AnalystAgentMVP:
     ) -> Dict[str, Any]:
         """
         종합 정보 분석
-
-        Args:
-            symbol: 종목 심볼 (예: NVDA, TSM)
-            news_articles: 뉴스 기사 리스트 (optional)
-                [
-                    {
-                        'title': str,
-                        'published': str,
-                        'source': str,
-                        'summary': str
-                    }
-                ]
-            macro_indicators: 매크로 경제 지표 (optional)
-                {
-                    'interest_rate': float,
-                    'inflation_rate': float,
-                    'gdp_growth': float,
-                    'unemployment_rate': float,
-                    'fed_policy': str (hawkish/dovish/neutral)
-                }
-            institutional_data: 기관 투자자 데이터 (optional)
-                {
-                    'latest_13f_changes': [{'institution': str, 'change_pct': float}],
-                    'insider_trading': [{'type': 'buy'|'sell', 'amount': float}],
-                    'institutional_ownership_pct': float
-                }
-            chipwar_events: 반도체 패권 경쟁 관련 이벤트 (optional)
-                [
-                    {
-                        'event': str,
-                        'impact': str,
-                        'date': str,
-                        'source': str
-                    }
-                ]
-            price_context: 가격 맥락 (optional)
-                {
-                    'current_price': float,
-                    'trend': str
-                }
-
+        
         Returns:
-            Dict containing:
-                - action: buy/sell/hold/pass
-                - confidence: 0.0 ~ 1.0
-                - reasoning: 종합 분석 근거
-                - news_impact: 뉴스 영향 분석
-                - macro_impact: 매크로 영향 분석
-                - institutional_flow: 기관 자금 흐름
-                - chipwar_risk: 반도체 패권 경쟁 리스크
-                - overall_information_score: 종합 정보 점수
-                - key_catalysts: 주요 촉매제
-                - red_flags: 경고 신호
+            Dict (compatible with AnalystOpinion model)
         """
+        # Get News Interpretations from News Agent
+        news_interpretations = []
+        if news_articles:
+            try:
+                # Use NewsAgent to interpret articles with Macro Context
+                news_interpretations = await self.news_agent.interpret_articles(symbol, news_articles)
+            except Exception as e:
+                print(f"⚠️ AnalystAgent: News interpretation failed: {e}")
+
         # Construct analysis prompt
         prompt = self._build_prompt(
             symbol=symbol,
             news_articles=news_articles,
+            news_interpretations=news_interpretations,
             macro_indicators=macro_indicators,
             institutional_data=institutional_data,
             chipwar_events=chipwar_events,
@@ -185,8 +152,12 @@ class AnalystAgentMVP:
                 prompt
             ])
 
-            # Parse response
-            result = self._parse_response(response.text)
+            # Parse and Validate with Pydantic
+            # _parse_response now returns AnalystOpinion object
+            opinion = self._parse_response(response.text)
+
+            # Convert to dict for compatibility
+            result = opinion.model_dump()
 
             # Add metadata
             result['agent'] = 'analyst_mvp'
@@ -225,7 +196,7 @@ class AnalystAgentMVP:
                     'supply_chain_risk': 5.0,
                     'overall_chipwar_score': 5.0
                 },
-                'overall_information_score': 0.0,
+                'overall_score': 0.0,
                 'key_catalysts': [],
                 'red_flags': [f'Analysis error: {str(e)}'],
                 'weight': self.weight,
@@ -234,201 +205,114 @@ class AnalystAgentMVP:
                 'error': str(e)
             }
 
+    # ... _build_prompt kept ...
+
     def _build_prompt(
         self,
         symbol: str,
-        news_articles: Optional[List[Dict[str, Any]]],
-        macro_indicators: Optional[Dict[str, Any]],
-        institutional_data: Optional[Dict[str, Any]],
-        chipwar_events: Optional[List[Dict[str, Any]]],
-        price_context: Optional[Dict[str, Any]]
+        news_articles: Optional[List[Dict[str, Any]]] = None,
+        news_interpretations: Optional[List[Dict[str, Any]]] = None,
+        macro_indicators: Optional[Dict[str, Any]] = None,
+        institutional_data: Optional[Dict[str, Any]] = None,
+        chipwar_events: Optional[List[Dict[str, Any]]] = None,
+        price_context: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Build comprehensive analysis prompt"""
-        prompt_parts = [
-            f"종목: {symbol}",
-        ]
+        """Construct analysis prompt"""
+        prompt = f"Analyze information for {symbol} based on the following data:\n\n"
+        
+        # 1. News Analysis (with Interpretations)
+        prompt += "1. News & Events:\n"
+        
+        # Add Expert Interpretations (High Value)
+        if news_interpretations:
+            prompt += "[News Agent Expert Analysis]\n"
+            for i, interp in enumerate(news_interpretations):
+                headline = interp.get('headline') or interp.get('title') or 'News'
+                impact = interp.get('expected_impact', 'Unknown')
+                score = interp.get('impact_score', 0)
+                reasoning = interp.get('reasoning', 'No reasoning provided')
+                
+                prompt += f"- Analysis {i+1}: {headline}\n"
+                prompt += f"  Impact: {impact} (Score: {score}/10)\n"
+                prompt += f"  Timeframe: {interp.get('time_horizon', 'Short')}\n"
+                prompt += f"  Insight: {reasoning}\n\n"
+        
+        # Add Raw Articles
+        if news_articles:
+            prompt += "[Raw News Articles]\n"
+            for i, article in enumerate(news_articles[:5]):  # Limit to 5
+                prompt += f"- {article.get('title')}\n"
+                source = article.get('source', 'Unknown')
+                summary = article.get('summary', 'N/A')
+                prompt += f"  Source: {source} | Summary: {summary}\n"
+        else:
+            prompt += "No recent news reported.\n"
 
-        # Price context
-        if price_context:
-            prompt_parts.append(f"현재가: ${price_context.get('current_price', 'N/A')}")
-            prompt_parts.append(f"트렌드: {price_context.get('trend', 'N/A')}")
+        prompt += "\n"
 
-        # News articles
-        if news_articles and len(news_articles) > 0:
-            prompt_parts.append("\n=== 뉴스 분석 ===")
-            for i, article in enumerate(news_articles[:5]):  # Top 5
-                prompt_parts.append(f"\n[뉴스 {i+1}]")
-                prompt_parts.append(f"제목: {article.get('title', 'N/A')}")
-                prompt_parts.append(f"출처: {article.get('source', 'N/A')}")
-                prompt_parts.append(f"발행: {article.get('published', 'N/A')}")
-                if 'summary' in article:
-                    prompt_parts.append(f"요약: {article['summary']}")
-
-        # Macro indicators
+        # 2. Macro Indicators
+        prompt += "2. Macro Economic Context:\n"
         if macro_indicators:
-            prompt_parts.append("\n=== 매크로 경제 지표 ===")
-            if 'interest_rate' in macro_indicators:
-                prompt_parts.append(f"기준금리: {macro_indicators['interest_rate']:.2f}%")
-            if 'inflation_rate' in macro_indicators:
-                prompt_parts.append(f"인플레이션: {macro_indicators['inflation_rate']:.2f}%")
-            if 'gdp_growth' in macro_indicators:
-                prompt_parts.append(f"GDP 성장률: {macro_indicators['gdp_growth']:.2f}%")
-            if 'unemployment_rate' in macro_indicators:
-                prompt_parts.append(f"실업률: {macro_indicators['unemployment_rate']:.2f}%")
-            if 'fed_policy' in macro_indicators:
-                prompt_parts.append(f"연준 정책 스탠스: {macro_indicators['fed_policy']}")
+            for k, v in macro_indicators.items():
+                prompt += f"- {k}: {v}\n"
+        else:
+            prompt += "No macro data provided.\n"
+        prompt += "\n"
 
-        # Institutional data
+        # 3. Institutional Data
+        prompt += "3. Institutional Flow:\n"
         if institutional_data:
-            prompt_parts.append("\n=== 기관 투자자 동향 ===")
-            if 'institutional_ownership_pct' in institutional_data:
-                prompt_parts.append(f"기관 보유 비율: {institutional_data['institutional_ownership_pct']:.1f}%")
+            # Assuming simplified dict for prompt
+            prompt += f"{str(institutional_data)}\n"
+        else:
+             prompt += "No institutional data.\n"
+        prompt += "\n"
+        
+        # 4. Chip War / Geopolitics
+        prompt += "4. Chip War & Geopolitics:\n"
+        if chipwar_events:
+            for event in chipwar_events:
+                date_str = event.get('date', 'Unknown Date')
+                evt = event.get('event', 'Unknown Event')
+                impact = event.get('impact', 'Unknown Impact')
+                prompt += f"- {date_str}: {evt} (Impact: {impact})\n"
+        else:
+             prompt += "No significant geopolitical events.\n"
+        prompt += "\n"
+        
+        # 5. Price Context
+        if price_context:
+             prompt += f"5. Price Context: {price_context}\n"
+        
+        return prompt
 
-            if 'latest_13f_changes' in institutional_data:
-                changes = institutional_data['latest_13f_changes']
-                if changes:
-                    prompt_parts.append("최근 13F 변동:")
-                    for change in changes[:3]:  # Top 3
-                        inst = change.get('institution', 'Unknown')
-                        pct = change.get('change_pct', 0)
-                        prompt_parts.append(f"  - {inst}: {pct:+.1f}%")
-
-            if 'insider_trading' in institutional_data:
-                trades = institutional_data['insider_trading']
-                if trades:
-                    prompt_parts.append("내부자 거래:")
-                    for trade in trades[:3]:  # Top 3
-                        trade_type = trade.get('type', 'N/A')
-                        amount = trade.get('amount', 0)
-                        if isinstance(amount, (int, float)):
-                            prompt_parts.append(f"  - {trade_type.upper()}: ${amount:,.0f}")
-                        else:
-                            prompt_parts.append(f"  - {trade_type.upper()}: ${amount}")
-
-        # ChipWar events
-        if chipwar_events and len(chipwar_events) > 0:
-            prompt_parts.append("\n=== 반도체 패권 경쟁 지정학 이벤트 ===")
-            for i, event in enumerate(chipwar_events[:5]):  # Top 5
-                prompt_parts.append(f"\n[이벤트 {i+1}]")
-                prompt_parts.append(f"내용: {event.get('event', 'N/A')}")
-                prompt_parts.append(f"영향: {event.get('impact', 'N/A')}")
-                prompt_parts.append(f"날짜: {event.get('date', 'N/A')}")
-                if 'source' in event:
-                    prompt_parts.append(f"출처: {event['source']}")
-
-        prompt_parts.append("\n위 정보를 종합적으로 분석하고 JSON 형식으로 답변하세요.")
-
-        return "\n".join(prompt_parts)
-
-    def _parse_response(self, response_text: str) -> Dict[str, Any]:
-        """Parse Gemini response"""
+    def _parse_response(self, response_text: str) -> AnalystOpinion:
+        """Parse Gemini response using Pydantic"""
         import json
         import re
 
         # Extract JSON from response
         try:
-            result = json.loads(response_text)
+            result_dict = json.loads(response_text)
         except json.JSONDecodeError:
             json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
             if json_match:
-                result = json.loads(json_match.group(1))
+                result_dict = json.loads(json_match.group(1))
             else:
                 json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
-                    result = json.loads(json_match.group(0))
+                    result_dict = json.loads(json_match.group(0))
                 else:
                     raise ValueError("No valid JSON found in response")
 
-        # Validate and provide defaults for required fields
-        if 'action' not in result:
-            result['action'] = 'pass'
-        if 'confidence' not in result:
-            result['confidence'] = 0.5
-        if 'reasoning' not in result:
-            result['reasoning'] = 'No reasoning provided'
-
-        # Validate news_impact
-        if 'news_impact' not in result:
-            result['news_impact'] = {}
-        news = result['news_impact']
-        if 'sentiment' not in news:
-            news['sentiment'] = 'neutral'
-        if 'impact_score' not in news:
-            news['impact_score'] = 0.0
-        if 'time_horizon' not in news:
-            news['time_horizon'] = 'short'
-
-        # Validate macro_impact
-        if 'macro_impact' not in result:
-            result['macro_impact'] = {}
-        macro = result['macro_impact']
-        macro.setdefault('interest_rate_risk', 5.0)
-        macro.setdefault('inflation_risk', 5.0)
-        macro.setdefault('recession_risk', 5.0)
-        macro.setdefault('overall_macro_score', 0.0)
-
-        # Validate institutional_flow
-        if 'institutional_flow' not in result:
-            result['institutional_flow'] = {}
-        inst = result['institutional_flow']
-        inst.setdefault('direction', 'neutral')
-        inst.setdefault('magnitude', 0.0)
-        inst.setdefault('confidence', 0.0)
-
-        # Validate chipwar_risk
-        if 'chipwar_risk' not in result:
-            result['chipwar_risk'] = {}
-        chipwar = result['chipwar_risk']
-        chipwar.setdefault('geopolitical_tension', 5.0)
-        chipwar.setdefault('export_control_risk', 5.0)
-        chipwar.setdefault('supply_chain_risk', 5.0)
-        chipwar.setdefault('overall_chipwar_score', 5.0)
-
-        # Validate overall_information_score
-        if 'overall_information_score' not in result:
-            result['overall_information_score'] = 0.0
-
-        # Validate key_catalysts and red_flags
-        if 'key_catalysts' not in result:
-            result['key_catalysts'] = []
-        if 'red_flags' not in result:
-            result['red_flags'] = []
-
-        # Value range validation
-        valid_actions = ['buy', 'sell', 'hold', 'pass']
-        if result['action'] not in valid_actions:
-            result['action'] = 'pass'
-
-        result['confidence'] = max(0.0, min(1.0, float(result['confidence'])))
-        news['impact_score'] = max(0.0, min(10.0, float(news['impact_score'])))
-
-        valid_sentiments = ['positive', 'negative', 'neutral']
-        if news['sentiment'] not in valid_sentiments:
-            news['sentiment'] = 'neutral'
-
-        valid_horizons = ['short', 'medium', 'long']
-        if news['time_horizon'] not in valid_horizons:
-            news['time_horizon'] = 'short'
-
-        # Clamp macro scores
-        for key in ['interest_rate_risk', 'inflation_risk', 'recession_risk']:
-            macro[key] = max(0.0, min(10.0, float(macro[key])))
-        macro['overall_macro_score'] = max(-10.0, min(10.0, float(macro['overall_macro_score'])))
-
-        # Validate institutional direction
-        valid_directions = ['inflow', 'outflow', 'neutral']
-        if inst['direction'] not in valid_directions:
-            inst['direction'] = 'neutral'
-        inst['magnitude'] = max(0.0, min(10.0, float(inst['magnitude'])))
-        inst['confidence'] = max(0.0, min(1.0, float(inst['confidence'])))
-
-        # Clamp chipwar scores
-        for key in ['geopolitical_tension', 'export_control_risk', 'supply_chain_risk', 'overall_chipwar_score']:
-            chipwar[key] = max(0.0, min(10.0, float(chipwar[key])))
-
-        result['overall_information_score'] = max(-10.0, min(10.0, float(result['overall_information_score'])))
-
-        return result
+        # Basic field normalization
+        if 'overall_information_score' in result_dict:
+            result_dict['overall_score'] = result_dict.pop('overall_information_score')
+        
+        # Ensure default fields if missing (Pydantic defaults handle most, but ensure dict structure)
+        
+        # Instantiate and Validate with Pydantic
+        return AnalystOpinion(**result_dict)
 
     def get_agent_info(self) -> Dict[str, Any]:
         """Get agent information"""

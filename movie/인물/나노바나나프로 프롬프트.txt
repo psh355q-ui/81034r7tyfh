@@ -1,0 +1,212 @@
+나노바나나프로(NanoBananaPro)에서 일관된 고품질 이미지를 뽑아내기 위해 **[공통 스타일 프롬프트]**를 먼저 정의하고, 각 **[섹터별 전문가 고양이]**들의 개별 프롬프트를 조합해서 사용할 수 있도록 구성해 드릴게요.
+
+'복슬복슬하고 귀여운 3D 픽사 애니메이션' 톤을 유지하면서 각 대장주들의 특징(CEO 스타일, 로고 색상, 대표 제품 등)을 은유적으로 녹여냈습니다.
+
+
+🛠️ 공통 스타일 프롬프트 (Base Prompt)
+
+"3D animated character render, Pixar movie style, cute anthropomorphic cat, fluffy fur texture, expressive large eyes, charming and soft lighting, highly detailed, clean composition, cinematic depth of field." (해석: 3D 애니메이션 캐릭터 렌더링, 픽사 영화 스타일, 귀여운 의인화된 고양이, 복슬복슬한 털 질감, 표정이 풍부한 큰 눈, 매력적이고 부드러운 조명, 높은 디테일, 깔끔한 구도, 영화 같은 피사계 심도.)
+
+출력결과물 : 앞 , 뒤, 좌, 우, 전신 앞 뒤 사진으로 나오게 해줘 (케릭터 3D 모델화 참고용도)
+
+"Full body turnaround character sheet, front view, side view, back view, T-pose, neutral background." (전신 턴어라운드 캐릭터 시트, 앞면, 측면, 뒷면, T자 포즈, 중립적인 배경)
+
+
+
+🖥️ 기술 섹터 (Technology Sector)
+1. 혁신의 아이콘 (애플/스티브 잡스 스타일)
+특징: 미니멀리즘, 검은색 터틀넥, 무테안경, 사과.
+
+프롬프트:
+
+"...Sleek silver and white fur. Wearing a black turtleneck sweater and rimless round glasses. Holding a sleek, glowing holographic glass tablet with a fruit logo. Intelligent and visionary expression. Background is a clean, minimalist white studio with soft spotlight."
+
+2. AI 칩의 제왕 (엔비디아/젠슨 황 스타일)
+특징: 검은 가죽 재킷, 네온 그린(초록) 포인트, 그래픽카드/칩.
+
+프롬프트:
+
+"...Black fur with subtle neon green highlights at the tips. Wearing a cool black leather jacket. Holding a glowing green futuristic microchip or GPU. Confident smirk, energetic eyes reflecting green binary codes. Background filled with glowing server racks and green digital data streams."
+
+3. 윈도우 & 클라우드 (마이크로소프트 스타일)
+특징: 네모난 창문 무늬, 파란색/하늘색 톤, 비즈니스 캐주얼.
+
+프롬프트:
+
+"...Soft grey fur. Wearing a smart business casual blue shirt and a lanyard with an ID card. Holding a fluffy white cloud symbol representing data. Friendly and professional smile. Background shows a blue sky with floating digital windows and pixelated clouds."
+
+🚗 소비재 & 자동차 (Consumer & Auto)
+4. 우주로 가는 전기차 (테슬라/일론 머스크 스타일)
+특징: 미래지향적, 빨간색(테슬라 로고), 우주복 또는 사이버틱한 고글.
+
+프롬프트:
+
+"...White fur with red markings. Wearing a futuristic white space suit collar and sleek cybertruck-style angular sunglasses on forehead. Creating electric sparks with paws. Adventurous and slightly crazy expression. Background features a red car floating in space and a rocket launching."
+
+5. 모든 것을 파는 상자 (아마존 스타일)
+특징: 택배 박스 색(갈색), 스마일 화살표, 배달 조끼.
+
+프롬프트:
+
+"...Tabby cat with cardboard-box brown stripes. Wearing a blue delivery vest with a curved arrow smile logo. Sitting inside a fortress of cardboard boxes, holding a scanner device. Busy but happy expression. Background is a high-tech logistics warehouse with drones flying."
+
+💰 금융 섹터 (Financial Sector)
+6. 투자의 현인 (버크셔 해서웨이/워런 버핏 스타일)
+특징: 나이 든 현명한 고양이, 핀스트라이프 정장, 코카콜라, 신문.
+
+프롬프트:
+
+"...Wise old cat with grey and white fur, wearing vintage glasses. Dressed in an expensive but old-fashioned pinstripe suit. Drinking a can of cherry cola and reading a pink financial newspaper. Calm, patient, and grandfatherly smile. Background is a classic mahogany office filled with gold bars and compound interest charts."
+
+7. 월스트리트 황소 (JP모건/골드만삭스 스타일)
+특징: 파란색 넥타이, 월가 황소상, 화려함, 차트.
+
+프롬프트:
+
+"...Navy blue fur with golden paws. Wearing a sharp tailored suit with a blue silk tie. Leaning on a golden statue of a bull. Holding a heavy bag of coins with a dollar sign. Ambitious and sharp expression. Background is the busy Wall Street stock exchange floor with ticker tapes."
+
+🏥 헬스케어 (Healthcare)
+8. 비만치료제 & 바이오 (일라이릴리/노보노디스크 스타일)
+특징: 하얀 의사 가운, 주사기(펜 타입), 건강함, 날씬함.
+
+프롬프트:
+
+"...Pristine white Persian cat. Wearing a doctor's white lab coat and a stethoscope. Holding a blue pen-style medical injector. Looking very healthy, slim, and proud. Background is a clean, high-tech biology laboratory with DNA helix holograms floating."
+
+🛢️ 에너지 (Energy)
+9. 오일 머니 (엑손모빌/셰브론 스타일)
+특징: 작업 헬멧, 기름때가 살짝 묻은(혹은 검은 황금), 부유함.
+
+프롬프트:
+
+"...Large Maine Coon cat with dark brown and black fur resembling oil. Wearing a yellow hard hat and a rugged denim work shirt. Standing on top of an oil barrel, holding a golden gas pump nozzle. Powerful and sturdy expression. Background shows an oil rig at sunset with warm orange lighting."
+
+Tip: 위 프롬프트들을 사용하실 때, [공통 스타일] + [개별 프롬프트] 순서로 붙여서 입력하시면 됩니다. 필요에 따라 배경(Background) 부분은 빼거나 단순하게 수정하셔도 좋습니다.
+
+
+
+
+나노바나나프로(NanoBananaPro)에서 사용할 수 있는 **[섹터별 전문가 고양이 캐릭터 프롬프트 2탄]**입니다.
+
+이번에는 통신, 필수소비재, 산업재(방산/우주), 유틸리티(친환경) 등 남은 주요 섹터들을 다룹니다. 앞서 알려드린 **[공통 스타일 프롬프트]**를 먼저 입력하고, 아래의 개별 프롬프트를 이어서 붙여주세요.
+
+📡 통신 서비스 (Communication Services)
+10. 콘텐츠 제왕 (디즈니/넷플릭스 스타일)
+특징: 3D 안경, 팝콘, 영화 감독 느낌, 엔터테인먼트.
+
+프롬프트:
+
+"...Playful cat with colorful patches of fur. Wearing 3D movie glasses pushed up on forehead and a director's scarf. Holding a bucket of popcorn and a clapperboard. Excited and expressive face. Background shows floating movie reels, 'Play' buttons, and magical castle silhouettes." (...알록달록한 털 무늬의 장난기 많은 고양이. 이마에 3D 영화 안경을 걸치고 감독 스카프를 착용. 팝콘 통과 슬레이트(clapperboard)를 들고 있음. 흥분되고 표정이 풍부한 얼굴. 배경에는 떠다니는 영화 필름, '재생' 버튼, 마법의 성 실루엣.)
+
+11. 소셜미디어 인플루언서 (메타/구글 유튜브 스타일)
+특징: 헤드셋, 스마트폰, '좋아요' 하트, 트렌디함.
+
+프롬프트:
+
+"...Trendy young cat with dyed pink or blue fur tips. Wearing a gaming headset and holding a smartphone displaying a social media feed. Winking and making a 'peace' sign with paw. Background filled with floating 'Like' hearts, chat bubbles, and viral video icons." (...털 끝을 분홍색이나 파란색으로 염색한 트렌디한 젊은 고양이. 게이밍 헤드셋을 착용하고 소셜 미디어 피드가 뜨는 스마트폰을 들고 있음. 윙크하며 앞발로 '브이' 사인을 보냄. 배경은 떠다니는 '좋아요' 하트, 말풍선, 바이럴 비디오 아이콘으로 가득 함.)
+
+🛒 필수소비재 (Consumer Staples)
+12. 국민 가게 점장님 (코스트코/월마트 스타일)
+특징: 붉은색 조끼(유니폼), 창고형 매장, 뚱냥이(풍요로움), 탄산음료.
+
+프롬프트:
+
+"...Chubby and fluffy orange tabby cat. Wearing a red retail employee vest with a name tag. Holding a classic glass soda bottle and a long shopping receipt. Warm, welcoming, and reliable smile. Background shows a warehouse store aisle stacked high with boxes." (...통통하고 복슬복슬한 치즈 태비 고양이. 이름표가 달린 빨간색 소매점 직원 조끼 착용. 클래식한 유리 탄산음료 병과 긴 영수증을 들고 있음. 따뜻하고 환영하는 신뢰감 있는 미소. 배경은 상자가 높게 쌓인 창고형 매장 복도.)
+
+13. 생활의 달인 (P&G/유니레버 스타일)
+특징: 앞치마, 비누방울, 깨끗함, 살림꾼 이미지.
+
+프롬프트:
+
+"...Very clean white cat with a blue apron. Holding a laundry detergent bottle and a bubble wand. Surrounded by floating soap bubbles and sparkles. Content and peaceful expression. Background is a bright and airy laundry room with soft towels." (...파란 앞치마를 두른 매우 깨끗한 흰 고양이. 세탁 세제 병과 비누방울 막대를 들고 있음. 떠다니는 비누방울과 반짝임에 둘러싸임. 만족스럽고 평화로운 표정. 배경은 부드러운 수건이 있는 밝고 통풍이 잘 되는 세탁실.)
+
+✈️ 산업재 & 방산 (Industrials & Defense)
+14. 탑건 파일럿 (록히드마틴/보잉 스타일)
+특징: 항공 점퍼, 보잉 선글라스, 비행기 모형, 늠름함.
+
+프롬프트:
+
+"...Sleek grey shorthair cat resembling metallic texture. Wearing a green aviator flight suit and top-gun style sunglasses. Holding a model fighter jet. Saluting with a serious, heroic expression. Background shows an aircraft hangar runway with blue sky." (...금속 질감을 닮은 매끄러운 회색 단모 고양이. 녹색 비행 슈트와 탑건 스타일 선글라스 착용. 전투기 모형을 들고 있음. 진지하고 영웅적인 표정으로 거수경례. 배경은 파란 하늘이 보이는 격납고 활주로.)
+
+15. 건설의 신 (캐터필러/디어 스타일)
+특징: 노란 안전모, 주황색 조끼, 설계도, 튼튼함.
+
+프롬프트:
+
+"...Large, strong rugged cat. Wearing a yellow construction hard hat and an orange safety vest. Holding a rolled-up blueprint and a wrench. Confident, sturdy expression. Background shows heavy machinery like excavators and cranes." (...덩치가 크고 튼튼하며 거친 고양이. 노란색 공사 안전모와 주황색 안전 조끼 착용. 말아 쥔 청사진(설계도)과 렌치를 들고 있음. 자신감 있고 굳건한 표정. 배경은 굴착기와 크레인 같은 중장비들.)
+
+
+
+⚡ 유틸리티 & 부동산 (Utilities & Real Estate)
+16. 친환경 지킴이 (넥스트에라 에너지 스타일)
+특징: 초록색 포인트, 태양광 패널/풍력 발전기, 자연 친화적.
+
+프롬프트:
+
+"...White cat with leaf-green patterns on fur. Wearing a solar engineer's uniform. Gently holding a glowing miniature wind turbine or lightbulb. Gentle, hopeful eyes. Background is a beautiful green field with solar panels under a bright sun." (...털에 나뭇잎 녹색 무늬가 있는 흰 고양이. 태양광 엔지니어 유니폼 착용. 빛나는 미니어처 풍력 발전기(또는 전구)를 조심스럽게 들고 있음. 온화하고 희망찬 눈빛. 배경은 밝은 태양 아래 태양광 패널이 있는 아름다운 초원.)
+
+17. 건물주 (리츠/부동산 스타일)
+특징: 정장, 황금 열쇠, 집 모형, 여유로움.
+
+프롬프트:
+
+"...Elegant Siamese cat wearing a fancy blazer. Holding a set of golden keys and a small red toy house. Looking proud and wealthy. Background shows a city skyline with construction cranes and high-rise apartments." (...고급 블레이저를 입은 우아한 샴고양이. 황금 열쇠 꾸러미와 작은 빨간 장난감 집을 들고 있음. 자랑스럽고 부유해 보임. 배경은 타워크레인과 고층 아파트가 있는 도시 스카이라인.)
+
+Tip: 캐릭터의 일관성을 높이려면 프롬프트 앞부분의 **[공통 스타일]**을 절대 바꾸지 마세요. 만약 특정 캐릭터가 너무 튄다면 Pixar movie style이라는 키워드를 Uniform Pixar style 등으로 강조해 주는 것도 방법입니다.
+
+
+
+나노바나나프로(NanoBananaPro)에서 바로 사용할 수 있도록, 아직 다루지 않은 **S&P 500의 남은 주요 섹터(소재, 임의소비재-식음료/스포츠, 금융-결제)**의 대표 기업들을 테마로 한 추가 프롬프트입니다.
+
+기존과 동일하게 **[공통 스타일 프롬프트]**를 먼저 입력하고, 아래 개별 프롬프트를 붙여서 사용하세요.
+
+🛠️ 공통 스타일 프롬프트 (Base Prompt)
+(모든 생성 시 맨 앞에 필수 입력)
+
+"3D animated character render, Pixar movie style, cute anthropomorphic cat, fluffy fur texture, expressive large eyes, charming and soft lighting, highly detailed, clean composition, cinematic depth of field."
+
+🧱 소재 섹터 (Materials)
+화학, 가스, 광산 등 산업의 기초가 되는 소재 기업들입니다.
+
+18. 연금술사 (린데/에어프로덕츠 스타일 - 산업용 가스 & 화학)
+특징: 실험용 고글, 하얀 가운, 형형색색의 플라스크, 신비로움.
+
+프롬프트:
+
+"...Smart cat with messy white fur like a mad scientist. Wearing safety goggles and a white lab coat stained with colorful chemicals. Holding a bubbling flask with glowing blue liquid and a periodic table. Excited and curious expression. Background is a chemistry lab with floating colorful smoke and gas pipes." (...매드 사이언티스트처럼 헝클어진 흰 털을 가진 똑똑한 고양이. 안전 고글과 알록달록한 화학약품이 묻은 흰색 실험 가운 착용. 빛나는 파란 액체가 담긴 거품 나는 플라스크와 주기율표를 들고 있음. 흥분되고 호기심 어린 표정. 배경은 떠다니는 색색의 연기와 가스 파이프가 있는 화학 실험실.)
+
+☕ 임의소비재 - 식음료 & 스포츠 (Consumer Discretionary)
+사람들의 즐거움과 라이프스타일을 책임지는 브랜드들입니다.
+
+19. 글로벌 바리스타 (스타벅스 스타일)
+특징: 초록색 앞치마, 커피잔, 따뜻한 분위기, 카페 로고.
+
+프롬프트:
+
+"...Brown coffee-colored cat. Wearing a signature green apron with a mermaid logo badge. Holding a whipped cream-topped frappuccino and a portafilter. Warm, welcoming smile. Background is a cozy coffee shop interior with roasted beans and steam." (...커피색 갈색 고양이. 인어 로고 배지가 달린 시그니처 녹색 앞치마 착용. 휘핑크림이 올라가 있는 프라푸치노와 포터필터(에스프레소 추출구)를 들고 있음. 따뜻하고 환영하는 미소. 배경은 볶은 원두와 증기가 있는 아늑한 커피숍 내부.)
+
+20. 스포츠 제왕 (나이키 스타일)
+특징: 스포티한 운동복(후드/헤어밴드), 농구공 또는 운동화, 역동성.
+
+프롬프트:
+
+"...Athletic cheetah-patterned cat. Wearing a stylish black sports hoodie with a swoosh logo and a sweatband. Holding a basketball and a pair of trendy sneakers. Confident, energetic pose ready to run. Background is a dynamic sports stadium or running track with bright lights." (...운동 신경이 좋아 보이는 치타 무늬 고양이. 스우시 로고가 있는 스타일리시한 검은색 스포츠 후드티와 헤어밴드 착용. 농구공과 트렌디한 운동화 한 켤레를 들고 있음. 달릴 준비가 된 자신감 넘치고 에너제틱한 포즈. 배경은 밝은 조명이 있는 역동적인 스포츠 경기장 또는 육상 트랙.)
+
+21. 패스트푸드 타이쿤 (맥도날드 스타일)
+특징: 빨간색과 노란색 테마, 햄버거/감자튀김, 즐거움.
+
+프롬프트:
+
+"...Yellow tabby cat with a red bowtie. Wearing a red and yellow striped uniform shirt. Holding a tray with a delicious hamburger and golden french fries. Happy, greedy expression licking lips. Background is a bright fast-food restaurant with golden arches visible through the window." (...빨간 나비넥타이를 한 노란 태비 고양이. 빨간색과 노란색 줄무늬 유니폼 셔츠 착용. 맛있는 햄버거와 황금빛 감자튀김이 담긴 쟁반을 들고 있음. 입맛을 다시는 행복하고 식탐 있는 표정. 배경은 창문 너머로 황금 아치(M자 로고)가 보이는 밝은 패스트푸드점.)
+
+💳 금융 - 핀테크 & 결제 (Financials - Payments)
+전통 은행보다 빠르고 디지털화된 결제 시스템 기업입니다.
+
+22. 결제의 마법사 (비자/마스터카드 스타일)
+특징: 신용카드, 홀로그램, 디지털 숫자, 파란색/주황색 조명.
+
+프롬프트:
+
+"...Sleek futuristic cat with shiny fur. Wearing a digital visor. Swiping a glowing platinum credit card that creates magical digital sparkles. Holding a stylized gold coin with a 'V' or circles logo. Cool and efficient expression. Background shows a global digital network map with connecting lines of light." (...윤기 나는 털을 가진 매끄러운 미래지향적 고양이. 디지털 바이저(고글) 착용. 마법 같은 디지털 불꽃을 일으키며 빛나는 플래티넘 신용카드를 긁는 모습. 'V'자나 원형 로고가 있는 양식화된 금화를 들고 있음. 쿨하고 유능해 보이는 표정. 배경은 빛의 선으로 연결된 글로벌 디지털 네트워크 지도.)
+
+Tip: * 3D 모델링 참고용(앞/뒤/좌/우) 이미지를 원하신다면, 프롬프트 맨 뒤에 "Full body turnaround character sheet, front view, side view, back view, T-pose, neutral background." (전신 턴어라운드 캐릭터 시트, 앞면, 측면, 뒷면, T자 포즈, 중립적인 배경) 문구를 추가하시면 모델링에 적합한 레퍼런스 이미지를 얻을 확률이 높아집니다.

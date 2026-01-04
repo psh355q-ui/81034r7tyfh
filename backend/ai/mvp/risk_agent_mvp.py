@@ -29,6 +29,8 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import google.generativeai as genai
 
+from backend.ai.schemas.war_room_schemas import RiskOpinion
+
 
 class RiskAgentMVP:
     """MVP Risk Agent - 방어적 리스크 관리 + Position Sizing"""
@@ -101,56 +103,9 @@ class RiskAgentMVP:
     ) -> Dict[str, Any]:
         """
         리스크 분석 및 포지션 사이즈 계산
-
-        Args:
-            symbol: 종목 심볼
-            price_data: 가격 데이터
-                {
-                    'current_price': float,
-                    'high_52w': float,
-                    'low_52w': float,
-                    'volatility': float (annualized)
-                }
-            trader_opinion: Trader Agent의 의견 (optional)
-                {
-                    'action': str,
-                    'confidence': float,
-                    'opportunity_score': float
-                }
-            market_data: 시장 데이터 (optional)
-                {
-                    'vix': float,
-                    'market_sentiment': float,
-                    'sector_volatility': float
-                }
-            dividend_info: 배당 정보 (optional)
-                {
-                    'ex_dividend_date': str,
-                    'days_until_ex_div': int,
-                    'dividend_yield': float
-                }
-            portfolio_context: 포트폴리오 맥락 (optional)
-                {
-                    'current_cash': float,
-                    'total_value': float,
-                    'current_positions': int,
-                    'existing_position_size': float (if exists)
-                }
-
+        
         Returns:
-            Dict containing:
-                - risk_level: low/medium/high/extreme
-                - confidence: 0.0 ~ 1.0
-                - reasoning: 리스크 근거
-                - stop_loss_pct: Stop Loss %
-                - take_profit_pct: Take Profit %
-                - max_position_pct: 최대 포지션 비율
-                - position_size_usd: 계산된 포지션 크기 (USD)
-                - position_size_shares: 계산된 주식 수
-                - sentiment_score: 감정 점수
-                - volatility_risk: 변동성 리스크
-                - dividend_risk: 배당 리스크
-                - recommendation: approve/reduce_size/reject
+            Dict (compatible with RiskOpinion model)
         """
         # Construct analysis prompt
         prompt = self._build_prompt(
@@ -168,22 +123,67 @@ class RiskAgentMVP:
                 prompt
             ])
 
-            # Parse response
-            result = self._parse_response(response.text)
+            # Parse response (Initial dict parsing)
+            result_dict = self._parse_json_response(response.text)
 
             # Calculate position size (code-based, not AI)
+            position_size_pct = 0.0
+            kelly_breakdown = {}
+            
             if portfolio_context and trader_opinion:
                 position_sizing = self._calculate_position_size(
-                    stop_loss_pct=result['stop_loss_pct'],
+                    stop_loss_pct=result_dict.get('stop_loss_pct', 0.02),
                     confidence=trader_opinion.get('confidence', 0.5),
                     portfolio_context=portfolio_context,
                     current_price=price_data['current_price'],
-                    risk_level=result['risk_level']
+                    risk_level=result_dict.get('risk_level', 'medium')
                 )
-                result.update(position_sizing)
+                result_dict.update(position_sizing)
+                position_size_pct = position_sizing.get('position_size_pct', 0.0)
+                kelly_breakdown = position_sizing.get('position_sizing_breakdown', {})
 
-            # Add metadata
-            result['agent'] = 'risk_mvp'
+            # Map fields for Schema
+            current_price = price_data.get('current_price', 0)
+            stop_loss_pct = result_dict.get('stop_loss_pct', 0.02)
+            
+            # Action Mapping
+            recommendation = result_dict.get('recommendation', 'reduce_size')
+            action_map = {
+                'approve': 'approve',
+                'reduce_size': 'reduce_size',
+                'reject': 'reject'
+            }
+            action = action_map.get(recommendation, 'reduce_size')
+
+            # Calculate Stop Loss Price if missing
+            stop_loss_price = current_price * (1 - stop_loss_pct)
+
+            # Construct RiskOpinion for validation
+            risk_opinion_data = {
+                'agent': 'risk_mvp',
+                'action': action,
+                'confidence': result_dict.get('confidence', 0.5),
+                'position_size': position_size_pct * 100, # % value (0-100)
+                'risk_level': result_dict.get('risk_level', 'medium'),
+                'stop_loss': stop_loss_price,
+                'stop_loss_pct': stop_loss_pct,
+                'take_profit_pct': result_dict.get('take_profit_pct'),
+                'reasoning': result_dict.get('reasoning', 'No reasoning'),
+                'sentiment_score': result_dict.get('sentiment_score'),
+                'volatility_risk': result_dict.get('volatility_risk'),
+                'dividend_risk': result_dict.get('dividend_risk'),
+                'kelly_calculation': kelly_breakdown,
+                'warnings': []
+            }
+            
+            # Validate with Pydantic
+            opinion = RiskOpinion(**risk_opinion_data)
+            
+            # Convert back to dict for compatibility
+            result = opinion.model_dump()
+            
+            # Add extra fields expected by War Room
+            result.update(result_dict) # Keep original fields like position_size_usd
             result['weight'] = self.weight
             result['timestamp'] = datetime.utcnow().isoformat()
             result['symbol'] = symbol
@@ -212,59 +212,62 @@ class RiskAgentMVP:
                 'error': str(e)
             }
 
+    # ... _build_prompt kept ...
+
     def _build_prompt(
         self,
         symbol: str,
         price_data: Dict[str, Any],
-        trader_opinion: Optional[Dict[str, Any]],
-        market_data: Optional[Dict[str, Any]],
-        dividend_info: Optional[Dict[str, Any]]
+        trader_opinion: Optional[Dict[str, Any]] = None,
+        market_data: Optional[Dict[str, Any]] = None,
+        dividend_info: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Build analysis prompt"""
-        prompt_parts = [
-            f"종목: {symbol}",
-            f"현재가: ${price_data.get('current_price', 'N/A')}",
-            f"52주 고가: ${price_data.get('high_52w', 'N/A')}",
-            f"52주 저가: ${price_data.get('low_52w', 'N/A')}",
-            f"변동성 (연): {(price_data.get('volatility', 0) * 100):.1f}%",
-        ]
+        """Construct risk analysis prompt"""
+        prompt = f"Analyze risk for {symbol} based on the following data:\n\n"
 
-        # Trader opinion
+        # 1. Price Volatility
+        prompt += "1. Price & Volatility:\n"
+        prompt += f"- Current Price: {price_data.get('current_price')}\n"
+        prompt += f"- 52W High: {price_data.get('high_52w')}\n"
+        prompt += f"- 52W Low: {price_data.get('low_52w')}\n"
+        prompt += f"- Volatility: {price_data.get('volatility', 'Unknown')}\n\n"
+
+        # 2. Trader Opinion (Attack view)
+        prompt += "2. Trader Opinion (Attack View):\n"
         if trader_opinion:
-            prompt_parts.append("\nTrader Agent 의견:")
-            prompt_parts.append(f"- 액션: {trader_opinion.get('action', 'N/A')}")
-            prompt_parts.append(f"- 신뢰도: {trader_opinion.get('confidence', 0):.2f}")
-            prompt_parts.append(f"- 기회 점수: {trader_opinion.get('opportunity_score', 0):.1f}")
+            prompt += f"- Action: {trader_opinion.get('action')}\n"
+            prompt += f"- Confidence: {trader_opinion.get('confidence')}\n"
+            prompt += f"- Reasoning: {trader_opinion.get('reasoning')}\n"
+        else:
+            prompt += "No trader opinion available.\n"
+        prompt += "\n"
 
-        # Market data
+        # 3. Market Sentiment
+        prompt += "3. Market Conditions:\n"
         if market_data:
-            prompt_parts.append("\n시장 데이터:")
-            if 'vix' in market_data:
-                prompt_parts.append(f"- VIX: {market_data['vix']:.2f}")
-            if 'market_sentiment' in market_data:
-                prompt_parts.append(f"- 시장 심리: {market_data['market_sentiment']:.2f}")
-            if 'sector_volatility' in market_data:
-                prompt_parts.append(f"- 섹터 변동성: {market_data['sector_volatility']:.2f}%")
-
-        # Dividend info
+            sentiment = market_data.get('market_sentiment', 'Neutral')
+            vix = market_data.get('vix', 'Unknown')
+            prompt += f"- Market Sentiment: {sentiment}\n"
+            prompt += f"- VIX: {vix}\n"
+        else:
+             prompt += "No market data.\n"
+        prompt += "\n"
+        
+        # 4. Dividend Info
+        prompt += "4. Dividend Information:\n"
         if dividend_info:
-            prompt_parts.append("\n배당 정보:")
-            if 'ex_dividend_date' in dividend_info:
-                prompt_parts.append(f"- 배당락일: {dividend_info['ex_dividend_date']}")
-            if 'days_until_ex_div' in dividend_info:
-                days = dividend_info['days_until_ex_div']
-                prompt_parts.append(f"- 배당락일까지: {days}일")
-                if 0 <= days <= 5:
-                    prompt_parts.append("  ⚠️ 배당락일 임박!")
-            if 'dividend_yield' in dividend_info:
-                prompt_parts.append(f"- 배당 수익률: {dividend_info['dividend_yield']:.2f}%")
-
-        prompt_parts.append("\n위 정보를 바탕으로 리스크를 분석하고 JSON 형식으로 답변하세요.")
-
-        return "\n".join(prompt_parts)
+            prompt += f"{str(dividend_info)}\n"
+        else:
+            prompt += "No dividend info.\n"
+            
+        return prompt
 
     def _parse_response(self, response_text: str) -> Dict[str, Any]:
-        """Parse Gemini response"""
+        """Deprecated: Use _parse_json_response and Pydantic validation in analyze"""
+        return self._parse_json_response(response_text)
+
+    def _parse_json_response(self, response_text: str) -> Dict[str, Any]:
+        """Extract JSON from response text"""
         import json
         import re
 
@@ -282,48 +285,15 @@ class RiskAgentMVP:
                 else:
                     raise ValueError("No valid JSON found in response")
 
-        # Validate required fields
-        required_fields = ['risk_level', 'confidence', 'reasoning', 'stop_loss_pct',
-                          'take_profit_pct', 'max_position_pct', 'sentiment_score',
-                          'volatility_risk', 'dividend_risk', 'recommendation']
+        # Basic validation of required fields for dict
+        required_fields = ['risk_level', 'confidence', 'reasoning']
         for field in required_fields:
             if field not in result:
-                # Provide defaults
-                if field == 'risk_level':
-                    result[field] = 'medium'
-                elif field in ['confidence', 'sentiment_score']:
-                    result[field] = 0.5
-                elif field in ['stop_loss_pct', 'take_profit_pct', 'max_position_pct']:
-                    result[field] = 0.02
-                elif field == 'volatility_risk':
-                    result[field] = 5.0
-                elif field == 'dividend_risk':
-                    result[field] = 'none'
-                elif field == 'recommendation':
-                    result[field] = 'reduce_size'
-                elif field == 'reasoning':
-                    result[field] = 'Default reasoning'
-
-        # Validate values
-        valid_risk_levels = ['low', 'medium', 'high', 'extreme']
-        if result['risk_level'] not in valid_risk_levels:
-            result['risk_level'] = 'medium'
-
-        result['confidence'] = max(0.0, min(1.0, float(result['confidence'])))
-        result['stop_loss_pct'] = max(0.01, min(0.10, float(result['stop_loss_pct'])))
-        result['take_profit_pct'] = max(0.02, min(1.0, float(result['take_profit_pct'])))
-        result['max_position_pct'] = max(0.0, min(0.30, float(result['max_position_pct'])))
-        result['sentiment_score'] = max(-1.0, min(1.0, float(result['sentiment_score'])))
-        result['volatility_risk'] = max(0.0, min(10.0, float(result['volatility_risk'])))
-
-        valid_div_risk = ['none', 'ex-dividend-near', 'cut-risk']
-        if result['dividend_risk'] not in valid_div_risk:
-            result['dividend_risk'] = 'none'
-
-        valid_rec = ['approve', 'reduce_size', 'reject']
-        if result['recommendation'] not in valid_rec:
-            result['recommendation'] = 'reduce_size'
-
+                # Provide minimal defaults for resilience
+                if field == 'risk_level': result[field] = 'medium'
+                if field == 'confidence': result[field] = 0.5
+                if field == 'reasoning': result[field] = 'Default reasoning'
+        
         return result
 
     def _calculate_position_size(

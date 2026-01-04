@@ -1,0 +1,109 @@
+{
+    "table_name": "shadow_trading_sessions",
+    "description": "Shadow Trading 세션 추적 (MVP 검증용 가상 트레이딩)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "description": "Primary Key"
+        },
+        {
+            "name": "session_id",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "unique": true,
+            "description": "세션 고유 ID (shadow_YYYY-MM-DDTHH:MM:SS)",
+            "example": "shadow_2025-12-31T13:37:42.235264"
+        },
+        {
+            "name": "status",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "description": "세션 상태 (active/paused/completed/failed)",
+            "example": "active"
+        },
+        {
+            "name": "start_date",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "시작 일시"
+        },
+        {
+            "name": "end_date",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "종료 일시"
+        },
+        {
+            "name": "initial_capital",
+            "type": "NUMERIC(15,2)",
+            "nullable": false,
+            "description": "초기 자본금",
+            "example": "100000.00"
+        },
+        {
+            "name": "current_capital",
+            "type": "NUMERIC(15,2)",
+            "nullable": false,
+            "description": "현재 자본금",
+            "example": "102500.00"
+        },
+        {
+            "name": "available_cash",
+            "type": "NUMERIC(15,2)",
+            "nullable": false,
+            "description": "가용 현금",
+            "example": "85000.00"
+        },
+        {
+            "name": "reason",
+            "type": "VARCHAR(200)",
+            "nullable": true,
+            "description": "세션 시작 이유",
+            "example": "Phase 1: Shadow Trading - 3 Month MVP Validation"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "수정 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_shadow_sessions_session_id",
+            "columns": [
+                "session_id"
+            ],
+            "unique": true
+        },
+        {
+            "name": "idx_shadow_sessions_status",
+            "columns": [
+                "status"
+            ]
+        },
+        {
+            "name": "idx_shadow_sessions_start_date",
+            "columns": [
+                "start_date"
+            ]
+        }
+    ],
+    "metadata": {
+        "phase": "Shadow Trading MVP",
+        "created": "2026-01-03",
+        "purpose": "Track Shadow Trading sessions for MVP validation before live trading",
+        "update_frequency": "Real-time"
+    }
+}

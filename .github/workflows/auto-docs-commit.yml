@@ -1,0 +1,36 @@
+name: Auto Documentation Commit
+
+on:
+  push:
+    paths:
+      - 'docs/**/*.md'
+      - 'backend/ai/skills/**/schemas/*.json'
+      - 'backend/database/migrations/*.sql'
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check for uncommitted doc changes
+        id: check
+        run: |
+          if git diff --quiet docs/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit documentation
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git commit -m "docs: Auto-commit documentation updates [skip ci]"
+          git push

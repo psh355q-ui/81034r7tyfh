@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import './index.css'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/ko'
+
+dayjs.extend(relativeTime)
+dayjs.locale('ko')
 
 const queryClient = new QueryClient({
   defaultOptions: {

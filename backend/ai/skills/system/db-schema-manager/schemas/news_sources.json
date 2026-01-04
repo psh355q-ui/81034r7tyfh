@@ -1,0 +1,69 @@
+{
+    "table_name": "news_sources",
+    "description": "뉴스 소스 설정 및 RSS 피드 관리",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "name",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "unique": true,
+            "description": "소스 이름 (Reuters, Bloomberg 등)"
+        },
+        {
+            "name": "url",
+            "type": "VARCHAR(1000)",
+            "nullable": false,
+            "description": "RSS 피드 URL"
+        },
+        {
+            "name": "source_type",
+            "type": "VARCHAR(20)",
+            "nullable": false,
+            "description": "소스 타입 (rss, api, scraper 등)"
+        },
+        {
+            "name": "is_active",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": true,
+            "description": "활성화 여부"
+        },
+        {
+            "name": "last_crawled",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "마지막 크롤링 시간"
+        },
+        {
+            "name": "crawl_interval_minutes",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": 60,
+            "description": "크롤링 간격 (분)"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "추가 메타데이터 (카테고리, 우선순위 등)"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_news_source_active",
+            "columns": ["is_active"]
+        },
+        {
+            "name": "idx_news_source_type",
+            "columns": ["source_type"]
+        }
+    ]
+}

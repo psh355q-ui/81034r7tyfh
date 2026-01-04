@@ -29,6 +29,7 @@ import {
   NewsArticle,
   NewsStats,
   getTimeAgo,
+  formatDateTimeKorean,
 } from '../services/newsService';
 import { RssCrawlProgress } from '../components/News/RssCrawlProgress';
 import { AnalysisConfigModal } from '../components/News/AnalysisConfigModal';
@@ -370,7 +371,16 @@ const ArticleItem: React.FC<ArticleItemProps> = ({ article, onClick }) => (
         <div className="flex items-center space-x-3 mt-2 text-sm text-gray-500">
           <span>{article.source}</span>
           <span>•</span>
-          <span>{article.published_at ? getTimeAgo(article.published_at) : '날짜 없음'}</span>
+          {article.published_at ? (
+            <span
+              title={formatDateTimeKorean(article.published_at)}
+              className="cursor-help"
+            >
+              {getTimeAgo(article.published_at)} ({formatDateTimeKorean(article.published_at)})
+            </span>
+          ) : (
+            <span>날짜 없음</span>
+          )}
         </div>
         {article.keywords.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">

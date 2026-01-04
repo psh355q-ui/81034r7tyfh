@@ -16,7 +16,8 @@ Usage:
         article = await news_repo.create_article(...)
 """
 
-from typing import List, Optional, Dict, Tuple, TYPE_CHECKING
+from typing import List, Optional, Dict, Tuple, TYPE_CHECKING, Callable, Any
+from functools import wraps
 
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -47,6 +48,49 @@ from backend.database.models import (
 if TYPE_CHECKING:
     from backend.news.rss_crawler import NewsArticle as RSSNewsArticle
     from backend.ai.reasoning.deep_reasoning import DeepReasoningResult
+
+
+# Phase 1 Optimization: TTL-based Query Result Caching
+_query_cache: Dict[str, Tuple[Any, datetime]] = {}
+
+def cache_with_ttl(ttl_seconds: int = 300):
+    """
+    TTL 기반 쿼리 결과 캐싱 데코레이터
+    
+    Phase 1.3: 반복 쿼리 성능 향상
+    
+    Args:
+        ttl_seconds: Cache expiration time in seconds (default: 5 minutes)
+    
+    Example:
+        @cache_with_ttl(300)  # 5분 캐시
+        def get_recent_articles(self, hours=24):
+            ...
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create cache key from function name and arguments
+            cache_key = f"{func.__name__}_{str(args[1:])}_{str(kwargs)}"  # args[0] is self
+            
+            now = datetime.now()
+            
+            # Check cache
+            if cache_key in _query_cache:
+                cached_value, cached_time = _query_cache[cache_key]
+                if (now - cached_time).total_seconds() < ttl_seconds:
+                    return cached_value
+            
+            # Cache miss or expired - execute query
+            result = func(*args, **kwargs)
+            
+            # Store in cache
+            _query_cache[cache_key] = (result, now)
+            
+            return result
+        
+        return wrapper
+    return decorator
 
 
 
@@ -81,61 +125,54 @@ class NewsRepository:
         """
         NLP 처리된 뉴스 저장 (Embeddings 포함)
         
+        Phase 1 Optimization: ON CONFLICT 사용으로 N+1 쿼리 제거
+        
         Args:
             article_data: Dict from ProcessedNews.to_db_dict()
         """
-        # Check existing hash first to avoid duplicates
+        from sqlalchemy.dialects.postgresql import insert
+        
+        # Generate hash if missing
         content_hash = article_data.get('content_hash')
-        if content_hash:
-            existing = self.session.query(NewsArticle).filter_by(content_hash=content_hash).first()
-            if existing:
-                return existing
-        else:
-             # Generated fallback hash if missing
-             import hashlib
-             slug = f"{article_data['title']}{article_data['url']}"
-             content_hash = hashlib.md5(slug.encode()).hexdigest()
-
-        db_article = NewsArticle(
-            title=article_data['title'],
-            content=article_data['content'],
-            url=article_data['url'],
-            source=article_data['source'],
-            source_category=article_data.get('source_category'),
-            published_date=article_data['published_at'],
-            crawled_at=article_data.get('processed_at', datetime.now()),
-            content_hash=content_hash,
-            
-            # Phase 3 Added Fields
-            author=article_data.get('author'),
-            summary=article_data.get('summary'),
-            
-            # New fields
-            embedding=article_data.get('embedding'),
-            sentiment_score=article_data.get('sentiment_score'),
-            sentiment_label=article_data.get('sentiment_label'),
-            tags=article_data.get('tags'),
-            tickers=article_data.get('tickers'),
-            embedding_model=article_data.get('embedding_model')
-        )
+        if not content_hash:
+            import hashlib
+            slug = f"{article_data['title']}{article_data['url']}"
+            content_hash = hashlib.md5(slug.encode()).hexdigest()
+        
+        # Prepare article data
+        article_values = {
+            'title': article_data['title'],
+            'content': article_data['content'],
+            'url': article_data['url'],
+            'source': article_data['source'],
+            'source_category': article_data.get('source_category'),
+            'published_date': article_data['published_at'],
+            'crawled_at': article_data.get('processed_at', datetime.now()),
+            'content_hash': content_hash,
+            'author': article_data.get('author'),
+            'summary': article_data.get('summary'),
+            'embedding': article_data.get('embedding'),
+            'sentiment_score': article_data.get('sentiment_score'),
+            'sentiment_label': article_data.get('sentiment_label'),
+            'tags': article_data.get('tags'),
+            'tickers': article_data.get('tickers'),
+            'embedding_model': article_data.get('embedding_model')
+        }
         
         # Handle metadata JSONB
         if 'metadata' in article_data:
-            db_article.metadata_ = article_data['metadata']
-
-        self.session.add(db_article)
-        try:
-            self.session.commit()
-            self.session.refresh(db_article)
-        except Exception:
-            self.session.rollback()
-            # Double check race condition
-            existing = self.session.query(NewsArticle).filter_by(content_hash=content_hash).first()
-            if existing:
-                return existing
-            raise
-
-        return db_article
+            article_values['metadata_'] = article_data['metadata']
+        
+        # Phase 1 Optimization: ON CONFLICT DO NOTHING
+        # 중복 체크 SELECT 쿼리 제거 - 성능 향상
+        stmt = insert(NewsArticle).values(**article_values)
+        stmt = stmt.on_conflict_do_nothing(index_elements=['content_hash'])
+        
+        result = self.session.execute(stmt)
+        self.session.commit()
+        
+        # 새로 삽입되었든 기존 레로드였든 레코드 반환
+        return self.session.query(NewsArticle).filter_by(content_hash=content_hash).first()
 
     def get_by_hash(self, content_hash: str) -> Optional[NewsArticle]:
         """중복 체크: 해시로 기사 조회"""
@@ -145,6 +182,7 @@ class NewsRepository:
         """URL로 기사 조회"""
         return self.session.query(NewsArticle).filter_by(url=url).first()
 
+    @cache_with_ttl(300)  # Phase 1.3: 5분 캐시
     def get_recent_articles(self, hours: int = 24, source: Optional[str] = None) -> List[NewsArticle]:
         """최근 N시간 내 기사 조회"""
         cutoff_time = datetime.now() - timedelta(hours=hours)

@@ -378,3 +378,35 @@ export const getTimeAgo = (dateString: string): string => {
     return `${diffDays}일 전`;
   }
 };
+
+/**
+ * 정확한 날짜/시간 포맷팅
+ * 예: "2026-01-02 11:30"
+ */
+export const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+};
+
+/**
+ * 한국어 날짜 포맷팅
+ * 예: "2026년 1월 2일 오전 11:30"
+ */
+export const formatDateTimeKorean = (dateString: string): string => {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours < 12 ? '오전' : '오후';
+  const displayHours = hours % 12 || 12;
+
+  return `${year}년 ${month}월 ${day}일 ${ampm} ${displayHours}:${minutes}`;
+};

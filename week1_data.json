@@ -1,0 +1,74 @@
+{
+  "data": {
+    "session": {
+      "session_id": "shadow_2025-12-31T13:37:42.235264",
+      "initial_capital": 100000.0,
+      "available_cash": 80675.23,
+      "current_capital": 100000.0,
+      "status": "active",
+      "created_at": "2025-12-31T13:38:14.002473"
+    },
+    "positions": [
+      {
+        "id": 1,
+        "symbol": "NKE",
+        "action": "buy",
+        "quantity": 259,
+        "entry_price": 63.03,
+        "exit_price": null,
+        "entry_date": "2025-12-31T13:49:00",
+        "exit_date": null,
+        "pnl": 0.0,
+        "pnl_pct": 0.0,
+        "stop_loss_price": 61.7694,
+        "reason": "Shadow buy - Phase 1 Day 0",
+        "status": "open"
+      },
+      {
+        "id": 2,
+        "symbol": "AAPL",
+        "action": "buy",
+        "quantity": 10,
+        "entry_price": 150.0,
+        "exit_price": null,
+        "entry_date": "2026-01-03T06:23:41.529557",
+        "exit_date": null,
+        "pnl": 0.0,
+        "pnl_pct": 0.0,
+        "stop_loss_price": 147.0,
+        "reason": "Shadow buy",
+        "status": "open"
+      },
+      {
+        "id": 3,
+        "symbol": "AAPL",
+        "action": "buy",
+        "quantity": 10,
+        "entry_price": 150.0,
+        "exit_price": null,
+        "entry_date": "2026-01-03T06:26:26.772229",
+        "exit_date": null,
+        "pnl": 0.0,
+        "pnl_pct": 0.0,
+        "stop_loss_price": 147.0,
+        "reason": "Shadow buy",
+        "status": "open"
+      }
+    ],
+    "collected_at": "2026-01-04T11:26:33.400241"
+  },
+  "metrics": {
+    "total_trades": 3,
+    "open_trades": 3,
+    "closed_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate": 0,
+    "profit_factor": 0,
+    "avg_pnl": 0,
+    "realized_pnl": 0,
+    "unrealized_pnl": 0.0,
+    "total_pnl": 0.0,
+    "roi_pct": 0.0
+  }
+}

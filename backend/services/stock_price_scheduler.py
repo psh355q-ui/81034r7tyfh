@@ -282,8 +282,10 @@ def get_stock_price_scheduler(
     
     if _scheduler is None:
         if not tickers:
-            raise ValueError("Tickers required for first initialization")
-        _scheduler = StockPriceScheduler(tickers=tickers)
+            logger.info("StockPriceScheduler initialized with EMPTY tickers list (awaiting configuration)")
+            _scheduler = StockPriceScheduler(tickers=[])
+        else:
+            _scheduler = StockPriceScheduler(tickers=tickers)
     
     return _scheduler
 

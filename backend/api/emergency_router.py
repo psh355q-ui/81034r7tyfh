@@ -121,7 +121,7 @@ async def get_grounding_count_today(db: Session) -> int:
         from datetime import date
         
         count = db.query(func.count(GroundingSearchLog.id)).filter(
-            func.date(GroundingSearchLog.created_at) == date.today()
+            func.date(GroundingSearchLog.search_date) == date.today()
         ).scalar()
         
         return count or 0
@@ -155,7 +155,7 @@ async def track_grounding_search(
             ticker=ticker.upper(),
             search_query=f"latest news about {ticker.upper()} stock",
             results_count=results_count,
-            cost_usd=cost,
+            estimated_cost=cost,
             emergency_trigger=emergency_trigger,
             was_emergency=emergency_trigger is not None
         )
@@ -195,21 +195,21 @@ async def get_grounding_usage(db: Session = Depends(get_db)):
         today = date.today()
         today_data = db.query(
             func.count(GroundingSearchLog.id).label('count'),
-            func.sum(GroundingSearchLog.cost_usd).label('cost'),
+            func.sum(GroundingSearchLog.estimated_cost).label('cost'),
             func.count(func.distinct(GroundingSearchLog.ticker)).label('tickers')
         ).filter(
-            func.date(GroundingSearchLog.created_at) == today
+            func.date(GroundingSearchLog.search_date) == today
         ).first()
         
         # This month's usage
         now = datetime.now()
         month_data = db.query(
             func.count(GroundingSearchLog.id).label('count'),
-            func.sum(GroundingSearchLog.cost_usd).label('cost'),
+            func.sum(GroundingSearchLog.estimated_cost).label('cost'),
             func.count(func.distinct(GroundingSearchLog.ticker)).label('tickers')
         ).filter(
-            extract('year', GroundingSearchLog.created_at) == now.year,
-            extract('month', GroundingSearchLog.created_at) == now.month
+            extract('year', GroundingSearchLog.search_date) == now.year,
+            extract('month', GroundingSearchLog.search_date) == now.month
         ).first()
         
         return {
@@ -266,8 +266,8 @@ async def get_monthly_cost_report(
         
         # Get all searches for the month
         searches = db.query(GroundingSearchLog).filter(
-            extract('year', GroundingSearchLog.created_at) == year,
-            extract('month', GroundingSearchLog.created_at) == month
+            extract('year', GroundingSearchLog.search_date) == year,
+            extract('month', GroundingSearchLog.search_date) == month
         ).all()
         
         # Aggregate by ticker
@@ -279,8 +279,8 @@ async def get_monthly_cost_report(
             by_ticker[ticker] = by_ticker.get(ticker, 0) + 1
             if s.was_emergency:
                 emergency_count += 1
-        
-        total_cost = sum(s.cost_usd for s in searches)
+
+        total_cost = sum(s.estimated_cost for s in searches)
         
         # Top tickers
         top_tickers = sorted(by_ticker.items(), key=lambda x: x[1], reverse=True)[:10]

@@ -33,6 +33,8 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 import google.generativeai as genai
 
+from backend.ai.schemas.war_room_schemas import PMDecision
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -128,57 +130,9 @@ class PMAgentMVP:
     ) -> Dict[str, Any]:
         """
         최종 의사결정 수행
-
-        Args:
-            symbol: 종목 심볼
-            trader_opinion: Trader Agent MVP 의견
-                {
-                    'action': str,
-                    'confidence': float,
-                    'opportunity_score': float,
-                    'weight': 0.35
-                }
-            risk_opinion: Risk Agent MVP 의견
-                {
-                    'risk_level': str,
-                    'confidence': float,
-                    'recommendation': str,
-                    'position_size_usd': float,
-                    'stop_loss_pct': float,
-                    'weight': 0.35
-                }
-            analyst_opinion: Analyst Agent MVP 의견
-                {
-                    'action': str,
-                    'confidence': float,
-                    'overall_information_score': float,
-                    'red_flags': list,
-                    'weight': 0.30
-                }
-            portfolio_state: 포트폴리오 현재 상태
-                {
-                    'total_value': float,
-                    'current_positions': [{'symbol': str, 'value': float, 'sector': str}],
-                    'available_cash': float,
-                    'total_risk': float
-                }
-            correlation_data: 상관관계 데이터 (optional)
-                {
-                    'correlated_positions': [{'symbol': str, 'correlation': float}]
-                }
-
+        
         Returns:
-            Dict containing:
-                - final_decision: approve/reject/reduce_size/silence
-                - confidence: 최종 confidence
-                - reasoning: 결정 근거
-                - recommended_action: buy/sell/hold
-                - position_size_adjustment: 포지션 조정 배율
-                - risk_assessment: 리스크 평가
-                - agent_consensus: Agent 합의 분석
-                - warnings: 경고 사항
-                - hard_rules_passed: Hard Rules 통과 여부
-                - hard_rules_violations: Hard Rules 위반 내역
+            Dict (compatible with PMDecision model)
         """
         # ================================================================
         # STEP 1: HARD RULES VALIDATION (Code-Enforced)
@@ -197,6 +151,7 @@ class PMAgentMVP:
             return {
                 'agent': 'pm_mvp',
                 'final_decision': 'reject',
+                'action': 'reject', # Schema compatibility
                 'confidence': 0.0,
                 'reasoning': f"Hard Rules 위반: {', '.join(hard_rules_result['violations'])}",
                 'recommended_action': 'hold',
@@ -213,6 +168,7 @@ class PMAgentMVP:
                     'resolution': 'Rejected by Hard Rules'
                 },
                 'warnings': hard_rules_result['violations'],
+                'approval_conditions': [],
                 'hard_rules_passed': False,
                 'hard_rules_violations': hard_rules_result['violations'],
                 'timestamp': datetime.utcnow().isoformat(),
@@ -223,9 +179,9 @@ class PMAgentMVP:
         # STEP 2: SILENCE POLICY CHECK
         # ================================================================
         avg_confidence = (
-            trader_opinion['confidence'] * trader_opinion['weight'] +
-            risk_opinion['confidence'] * risk_opinion['weight'] +
-            analyst_opinion['confidence'] * analyst_opinion['weight']
+            trader_opinion.get('confidence', 0) * trader_opinion.get('weight', 0.35) +
+            risk_opinion.get('confidence', 0) * risk_opinion.get('weight', 0.35) +
+            analyst_opinion.get('confidence', 0) * analyst_opinion.get('weight', 0.30)
         )
 
         # Silence Policy: 평균 confidence < threshold → 판단 거부
@@ -233,6 +189,7 @@ class PMAgentMVP:
             return {
                 'agent': 'pm_mvp',
                 'final_decision': 'silence',
+                'action': 'silence', # Schema compatibility
                 'confidence': avg_confidence,
                 'reasoning': f"Silence Policy: Average confidence ({avg_confidence:.2f}) below threshold ({self.SILENCE_THRESHOLD})",
                 'recommended_action': 'hold',
@@ -249,6 +206,7 @@ class PMAgentMVP:
                     'resolution': 'Silence - insufficient confidence'
                 },
                 'warnings': ['Insufficient confidence for decision'],
+                'approval_conditions': [],
                 'hard_rules_passed': True,
                 'hard_rules_violations': [],
                 'timestamp': datetime.utcnow().isoformat(),
@@ -276,8 +234,19 @@ class PMAgentMVP:
                 prompt
             ])
 
-            # Parse response
-            result = self._parse_response(response.text)
+            # Parse and Validate with Pydantic
+            decision = self._parse_response(response.text)
+            
+            # Convert to dict
+            result = decision.model_dump()
+            
+            # Map action -> final_decision (for backward compatibility if needed)
+            if 'action' in result and 'final_decision' not in result:
+                result['final_decision'] = result['action']
+            
+            # Map risk_warnings -> warnings (for compatibility if needed)
+            if 'risk_warnings' in result and 'warnings' not in result:
+                result['warnings'] = result['risk_warnings']
 
             # Add metadata and hard rules info
             result['agent'] = 'pm_mvp'
@@ -294,6 +263,7 @@ class PMAgentMVP:
             return {
                 'agent': 'pm_mvp',
                 'final_decision': 'reject',
+                'action': 'reject',
                 'confidence': 0.0,
                 'reasoning': f'PM analysis failed: {str(e)}',
                 'recommended_action': 'hold',
@@ -310,6 +280,7 @@ class PMAgentMVP:
                     'resolution': 'Error - rejected for safety'
                 },
                 'warnings': [f'PM Agent error: {str(e)}'],
+                'approval_conditions': [],
                 'hard_rules_passed': True,
                 'hard_rules_violations': [],
                 'timestamp': datetime.utcnow().isoformat(),
@@ -482,62 +453,40 @@ class PMAgentMVP:
 
         return "\n".join(prompt_parts)
 
-    def _parse_response(self, response_text: str) -> Dict[str, Any]:
-        """Parse Gemini response"""
+    def _parse_response(self, response_text: str) -> PMDecision:
+        """Parse Gemini response using Pydantic"""
         import json
         import re
 
         # Extract JSON
         try:
-            result = json.loads(response_text)
+            result_dict = json.loads(response_text)
         except json.JSONDecodeError:
             json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
             if json_match:
-                result = json.loads(json_match.group(1))
+                result_dict = json.loads(json_match.group(1))
             else:
                 json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
-                    result = json.loads(json_match.group(0))
+                    result_dict = json.loads(json_match.group(0))
                 else:
                     raise ValueError("No valid JSON found")
 
-        # Provide defaults
-        result.setdefault('final_decision', 'reject')
-        result.setdefault('confidence', 0.5)
-        result.setdefault('reasoning', 'No reasoning provided')
-        result.setdefault('recommended_action', 'hold')
-        result.setdefault('position_size_adjustment', 1.0)
-        result.setdefault('warnings', [])
-        result.setdefault('approval_conditions', [])
+        # Map warnings -> risk_warnings
+        if 'warnings' in result_dict and 'risk_warnings' not in result_dict:
+            result_dict['risk_warnings'] = result_dict.pop('warnings')
+            
+        # Inject hard_rules_passed (logic handled outside AI, so if we are here, it passed)
+        if 'hard_rules_passed' not in result_dict:
+            result_dict['hard_rules_passed'] = True
 
-        if 'risk_assessment' not in result:
-            result['risk_assessment'] = {}
-        risk_assess = result['risk_assessment']
-        risk_assess.setdefault('portfolio_risk_score', 5.0)
-        risk_assess.setdefault('concentration_risk', 5.0)
-        risk_assess.setdefault('correlation_risk', 5.0)
-        risk_assess.setdefault('overall_portfolio_health', 5.0)
-
-        if 'agent_consensus' not in result:
-            result['agent_consensus'] = {}
-        consensus = result['agent_consensus']
-        consensus.setdefault('agreement_level', 0.5)
-        consensus.setdefault('conflicting_opinions', [])
-        consensus.setdefault('resolution', 'N/A')
-
-        # Validate values
-        valid_decisions = ['approve', 'reject', 'reduce_size', 'silence']
-        if result['final_decision'] not in valid_decisions:
-            result['final_decision'] = 'reject'
-
-        valid_actions = ['buy', 'sell', 'hold']
-        if result['recommended_action'] not in valid_actions:
-            result['recommended_action'] = 'hold'
-
-        result['confidence'] = max(0.0, min(1.0, float(result['confidence'])))
-        result['position_size_adjustment'] = max(0.0, min(1.0, float(result['position_size_adjustment'])))
-
-        return result
+        # Ensure compatibility
+        valid_actions = ['approve', 'reject', 'reduce_size', 'silence']
+        if result_dict.get('action') not in valid_actions:
+            result_dict['action'] = 'reject'
+            
+        # Instantiate and Validate with Pydantic
+        return PMDecision(**result_dict)
 
     def get_agent_info(self) -> Dict[str, Any]:
         """Get agent information"""
@@ -609,4 +558,4 @@ if __name__ == "__main__":
     print(f"Confidence: {result['confidence']:.2f}")
     print(f"Recommended Action: {result['recommended_action']}")
     print(f"Hard Rules Passed: {result['hard_rules_passed']}")
-    print(f"Warnings: {result['warnings']}")
+    print(f"Warnings: {result.get('warnings', [])}")

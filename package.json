@@ -1,0 +1,16 @@
+{
+    "name": "ai-trading-system-root",
+    "version": "1.0.0",
+    "description": "Root configuration for Git Hooks and DevOps tools",
+    "private": true,
+    "scripts": {
+        "prepare": "husky install",
+        "test:backend": "./scripts/run_tests.bat",
+        "test:ci": "./scripts/run_tests_ci.sh"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "^20.3.0",
+        "@commitlint/config-conventional": "^20.3.0",
+        "husky": "^9.1.7"
+    }
+}

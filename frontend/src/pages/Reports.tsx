@@ -39,7 +39,10 @@ import {
   Activity,
   AlertTriangle,
 } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import dayjs from 'dayjs';
+
+
+
 
 import {
   getDailyReport,
@@ -57,7 +60,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 const Reports: React.FC = () => {
   // State
   const [selectedDate, setSelectedDate] = useState<string>(
-    format(subDays(new Date(), 1), 'yyyy-MM-dd')
+    dayjs().subtract(1, 'day').format('YYYY-MM-DD')
   );
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [lookbackDays, setLookbackDays] = useState<number>(30);
@@ -71,13 +74,13 @@ const Reports: React.FC = () => {
 
   const { data: dailySummaries, isLoading: summariesLoading } = useQuery({
     queryKey: reportsKeys.dailySummaries(
-      format(subDays(new Date(), lookbackDays), 'yyyy-MM-dd'),
-      format(new Date(), 'yyyy-MM-dd')
+      dayjs().subtract(lookbackDays, 'day').format('YYYY-MM-DD'),
+      dayjs().format('YYYY-MM-DD')
     ),
     queryFn: () =>
       getDailySummaries(
-        format(subDays(new Date(), lookbackDays), 'yyyy-MM-dd'),
-        format(new Date(), 'yyyy-MM-dd')
+        dayjs().subtract(lookbackDays, 'day').format('YYYY-MM-DD'),
+        dayjs().format('YYYY-MM-DD')
       ),
   });
 
@@ -99,8 +102,8 @@ const Reports: React.FC = () => {
   const handleDownloadCSV = async () => {
     try {
       await downloadCSV(
-        format(subDays(new Date(), lookbackDays), 'yyyy-MM-dd'),
-        format(new Date(), 'yyyy-MM-dd')
+        dayjs().subtract(lookbackDays, 'day').format('YYYY-MM-DD'),
+        dayjs().format('YYYY-MM-DD')
       );
     } catch (error) {
       console.error('Error downloading CSV:', error);
@@ -141,13 +144,12 @@ const Reports: React.FC = () => {
           {changeType === 'positive' && <TrendingUp className="w-4 h-4 text-green-500 mr-1" />}
           {changeType === 'negative' && <TrendingDown className="w-4 h-4 text-red-500 mr-1" />}
           <span
-            className={`text-sm font-medium ${
-              changeType === 'positive'
-                ? 'text-green-600'
-                : changeType === 'negative'
+            className={`text-sm font-medium ${changeType === 'positive'
+              ? 'text-green-600'
+              : changeType === 'negative'
                 ? 'text-red-600'
                 : 'text-gray-600'
-            }`}
+              }`}
           >
             {change}
           </span>
@@ -253,14 +255,14 @@ const Reports: React.FC = () => {
               change={formatPercent(
                 (performanceSummary.performance.total_pnl /
                   performanceSummary.current.portfolio_value) *
-                  100
+                100
               )}
               changeType={
                 performanceSummary.performance.total_pnl > 0
                   ? 'positive'
                   : performanceSummary.performance.total_pnl < 0
-                  ? 'negative'
-                  : 'neutral'
+                    ? 'negative'
+                    : 'neutral'
               }
               icon={<TrendingUp className="w-5 h-5" />}
             />
@@ -300,11 +302,10 @@ const Reports: React.FC = () => {
                 <div>
                   <div className="text-sm text-gray-600">Daily P&L</div>
                   <div
-                    className={`text-2xl font-bold ${
-                      dailyReport.executive_summary.daily_pnl >= 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
+                    className={`text-2xl font-bold ${dailyReport.executive_summary.daily_pnl >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                      }`}
                   >
                     {formatCurrency(dailyReport.executive_summary.daily_pnl)}
                   </div>
@@ -312,11 +313,10 @@ const Reports: React.FC = () => {
                 <div>
                   <div className="text-sm text-gray-600">Daily Return</div>
                   <div
-                    className={`text-2xl font-bold ${
-                      dailyReport.executive_summary.daily_return_pct >= 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
+                    className={`text-2xl font-bold ${dailyReport.executive_summary.daily_return_pct >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                      }`}
                   >
                     {formatPercent(dailyReport.executive_summary.daily_return_pct)}
                   </div>

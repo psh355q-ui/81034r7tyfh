@@ -25,7 +25,10 @@ Legacy vs MVP:
 
 import os
 from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List
 from datetime import datetime
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 # MVP Agents
 from .trader_agent_mvp import TraderAgentMVP
@@ -36,8 +39,9 @@ from .pm_agent_mvp import PMAgentMVP
 # Execution layer
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from execution.execution_router import ExecutionRouter
-from execution.order_validator import OrderValidator
+from backend.execution.execution_router import ExecutionRouter
+from backend.execution.order_validator import OrderValidator
+from backend.monitoring.performance_monitor import perf_monitor
 
 
 class WarRoomMVP:
@@ -62,7 +66,8 @@ class WarRoomMVP:
         self.session_id = datetime.utcnow().isoformat()
         self.decision_history: List[Dict[str, Any]] = []
 
-    def deliberate(
+    @perf_monitor.monitor
+    async def deliberate(
         self,
         symbol: str,
         action_context: str,
@@ -144,50 +149,60 @@ class WarRoomMVP:
             }
 
         # ================================================================
-        # STEP 2: AGENT DELIBERATION (3 Agents)
+        # STEP 2: AGENT DELIBERATION (3 Agents - Parallelized)
         # ================================================================
-        print("[STEP 2] Agent Deliberation (3 Agents)...\n")
-
-        # Trader Agent (35% weight)
-        print("  [Trader Agent] Analyzing opportunities...")
-        trader_opinion = self.trader_agent.analyze(
-            symbol=symbol,
-            price_data=market_data.get('price_data', {}),
-            technical_data=market_data.get('technical_data'),
-            chipwar_events=additional_data.get('chipwar_events') if additional_data else None,
-            market_context=market_data.get('market_conditions')
+        print("[STEP 2] Agent Deliberation (3 Agents - Parallelized)...\n")
+        
+        loop = asyncio.get_running_loop()
+        
+        # 1. Start Trader and Analyst in parallel
+        print("  [Parallel] Starting Trader & Analyst Agents...")
+        trader_task = loop.run_in_executor(
+            None, 
+            self.trader_agent.analyze,
+            symbol,
+            market_data.get('price_data', {}),
+            market_data.get('technical_data'),
+            additional_data.get('chipwar_events') if additional_data else None,
+            market_data.get('market_conditions')
         )
-        print(f"    → Action: {trader_opinion['action']} (Confidence: {trader_opinion['confidence']:.2f})")
-        print(f"    → Reasoning: {trader_opinion['reasoning'][:100]}...\n")
-
-        # Analyst Agent (30% weight)
-        print("  [Analyst Agent] Analyzing information...")
-        analyst_opinion = self.analyst_agent.analyze(
-            symbol=symbol,
-            news_articles=additional_data.get('news_articles') if additional_data else None,
-            macro_indicators=additional_data.get('macro_indicators') if additional_data else None,
-            institutional_data=additional_data.get('institutional_data') if additional_data else None,
-            chipwar_events=additional_data.get('chipwar_events') if additional_data else None,
-            price_context=market_data.get('price_data')
+        
+        # Analyst Agent is now async (uses News Agent)
+        analyst_task = asyncio.create_task(
+            self.analyst_agent.analyze(
+                symbol,
+                additional_data.get('news_articles') if additional_data else None,
+                additional_data.get('macro_indicators') if additional_data else None,
+                additional_data.get('institutional_data') if additional_data else None,
+                additional_data.get('chipwar_events') if additional_data else None,
+                market_data.get('price_data')
+            )
         )
-        print(f"    → Action: {analyst_opinion['action']} (Confidence: {analyst_opinion['confidence']:.2f})")
-        print(f"    → Info Score: {analyst_opinion['overall_information_score']:.1f}")
-        print(f"    → Red Flags: {analyst_opinion['red_flags']}\n")
-
-        # Risk Agent (35% weight) - includes Position Sizing
-        print("  [Risk Agent] Assessing risks and calculating position size...")
-        risk_opinion = self.risk_agent.analyze(
-            symbol=symbol,
-            price_data=market_data.get('price_data', {}),
-            trader_opinion=trader_opinion,
-            market_data=market_data.get('market_conditions'),
-            dividend_info=additional_data.get('dividend_info') if additional_data else None,
-            portfolio_context=portfolio_state
+        
+        # 2. Wait for Trader Agent (Dependencies: Risk Agent needs Trader Opinion)
+        trader_opinion = await trader_task
+        print(f"  [Trader Agent] Action: {trader_opinion['action']} (Confidence: {trader_opinion['confidence']:.2f})")
+        
+        # 3. Start Risk Agent (Depends on Trader)
+        print("  [Risk Agent] Starting Risk Agent (using Trader opinion)...")
+        risk_task = loop.run_in_executor(
+            None,
+            self.risk_agent.analyze,
+            symbol,
+            market_data.get('price_data', {}),
+            trader_opinion,
+            market_data.get('market_conditions'),
+            additional_data.get('dividend_info') if additional_data else None,
+            portfolio_state
         )
-        print(f"    → Risk Level: {risk_opinion['risk_level']}")
-        print(f"    → Recommendation: {risk_opinion['recommendation']}")
-        print(f"    → Position Size: ${risk_opinion.get('position_size_usd', 0):,.0f} ({(risk_opinion.get('position_size_pct', 0) * 100):.1f}%)")
-        print(f"    → Stop Loss: {(risk_opinion['stop_loss_pct'] * 100):.1f}%\n")
+        
+        # 4. Wait for remaining tasks
+        risk_opinion = await risk_task
+        analyst_opinion = await analyst_task
+        
+        print(f"  [Risk Agent] Recommendation: {risk_opinion['recommendation']} (Level: {risk_opinion['risk_level']})")
+        print(f"  [Analyst Agent] Action: {analyst_opinion['action']} (Info Score: {analyst_opinion['overall_score']:.1f})")
+
 
         # ================================================================
         # STEP 3: PM FINAL DECISION (Hard Rules + Silence Policy)
@@ -315,7 +330,7 @@ class WarRoomMVP:
             "",
             f"[Analyst Agent - 30%] {analyst_opinion['action'].upper()}",
             f"  Confidence: {analyst_opinion['confidence']:.2f}",
-            f"  Info Score: {analyst_opinion['overall_information_score']:.1f}/10",
+            f"  Info Score: {analyst_opinion['overall_score']:.1f}/10",
             f"  Red Flags: {', '.join(analyst_opinion['red_flags']) if analyst_opinion['red_flags'] else 'None'}",
             "",
             f"[PM Agent] FINAL DECISION: {pm_decision['final_decision'].upper()}",

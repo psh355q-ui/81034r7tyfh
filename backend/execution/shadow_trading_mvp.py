@@ -639,7 +639,7 @@ class ShadowTradingMVP:
             with engine.connect() as conn:
                 # Check if trade exists
                 result = conn.execute(text("""
-                    SELECT id FROM shadow_trades WHERE trade_id = :trade_id
+                    SELECT id FROM shadow_trading_positions WHERE trade_id = :trade_id
                 """), {'trade_id': trade.trade_id})
 
                 existing = result.fetchone()
@@ -647,7 +647,7 @@ class ShadowTradingMVP:
                 if existing:
                     # Update existing trade
                     conn.execute(text("""
-                        UPDATE shadow_trades
+                        UPDATE shadow_trading_positions
                         SET exit_price = :exit_price,
                             exit_date = :exit_date,
                             pnl = :pnl,
@@ -663,7 +663,7 @@ class ShadowTradingMVP:
                 else:
                     # Insert new trade
                     conn.execute(text("""
-                        INSERT INTO shadow_trades
+                        INSERT INTO shadow_trading_positions
                         (session_id, trade_id, symbol, action, quantity, entry_price, entry_date,
                          exit_price, exit_date, pnl, pnl_pct, stop_loss_price, reason,
                          agent_decision, created_at)
@@ -744,11 +744,12 @@ class ShadowTradingMVP:
                 instance.current_capital = session[5]  # current_capital
                 instance.available_cash = session[6]  # available_cash
 
-                # Trades 로드
+
+                # Trades 로드 (올바른 테이블 이름)
                 trades_result = conn.execute(text("""
                     SELECT trade_id, symbol, action, quantity, entry_price, entry_date,
                            exit_price, exit_date, pnl, pnl_pct, stop_loss_price, reason
-                    FROM shadow_trades
+                    FROM shadow_trading_positions
                     WHERE session_id = :session_id
                     ORDER BY entry_date
                 """), {'session_id': instance.session_id})
@@ -774,6 +775,7 @@ class ShadowTradingMVP:
                         instance.open_positions[trade.symbol] = trade
                     else:
                         instance.closed_trades.append(trade)
+
 
                 print(f"✅ Loaded Shadow Trading session: {instance.session_id}")
                 print(f"   Status: {instance.status.value}")

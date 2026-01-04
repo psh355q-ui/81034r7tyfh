@@ -1,0 +1,17 @@
+[App Description]
+I want to build a "AI Video Production Assistant" tool.
+The tool should accept a "JSON Manifest" text input containing a list of video shots (fields: shot_id, character, action_prompt).
+
+For each shot processing, the app needs to:
+1. Parse the input JSON to extract specific shot details.
+2. Enhance the 'action_prompt' by injecting specific visual descriptions for characters:
+   - If character is "HOST", add: "Cute tuxedo cat wearing a headset, enthusiastic expression, Pixar Style 3D".
+   - If character is "NVDA", add: "Black cat with green glowing eyes, wearing a leather jacket, cool vibe, Nvidia green theme".
+   - If character is "TSLA", add: "White cat in a space suit, floating in zero gravity, crazy eyes, Mars background".
+3. Output the final "Enhanced Prompt" that is optimized for Google Veo (Video Generation Model).
+
+The UI should have:
+- A large text area for "Input Manifest".
+- A selector or input for "Shot ID" to process.
+- A display area for the "Final Veo Prompt".
+- A button to "Generate Video" using the Veo model with the generated prompt.

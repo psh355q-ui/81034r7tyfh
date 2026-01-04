@@ -11,7 +11,7 @@
  */
 
 import React, { useState } from 'react';
-import { format, subDays } from 'date-fns';
+import dayjs from 'dayjs';
 import {
   TrendingUp,
   AlertTriangle,
@@ -31,9 +31,9 @@ type TabType = 'performance' | 'risk' | 'trade';
 const AdvancedAnalytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('performance');
   const [startDate, setStartDate] = useState<string>(
-    format(subDays(new Date(), 30), 'yyyy-MM-dd')
+    dayjs().subtract(30, 'day').format('YYYY-MM-DD')
   );
-  const [endDate, setEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
 
   const tabs = [
     { id: 'performance' as TabType, label: 'Performance Attribution', icon: TrendingUp },
@@ -82,8 +82,8 @@ const AdvancedAnalytics: React.FC = () => {
             <Button
               variant="secondary"
               onClick={() => {
-                setStartDate(format(subDays(new Date(), 7), 'yyyy-MM-dd'));
-                setEndDate(format(new Date(), 'yyyy-MM-dd'));
+                setStartDate(dayjs().subtract(7, 'day').format('YYYY-MM-DD'));
+                setEndDate(dayjs().format('YYYY-MM-DD'));
               }}
             >
               Last 7 Days
@@ -91,8 +91,8 @@ const AdvancedAnalytics: React.FC = () => {
             <Button
               variant="secondary"
               onClick={() => {
-                setStartDate(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
-                setEndDate(format(new Date(), 'yyyy-MM-dd'));
+                setStartDate(dayjs().subtract(30, 'day').format('YYYY-MM-DD'));
+                setEndDate(dayjs().format('YYYY-MM-DD'));
               }}
             >
               Last 30 Days
@@ -100,8 +100,8 @@ const AdvancedAnalytics: React.FC = () => {
             <Button
               variant="secondary"
               onClick={() => {
-                setStartDate(format(subDays(new Date(), 90), 'yyyy-MM-dd'));
-                setEndDate(format(new Date(), 'yyyy-MM-dd'));
+                setStartDate(dayjs().subtract(90, 'day').format('YYYY-MM-DD'));
+                setEndDate(dayjs().format('YYYY-MM-DD'));
               }}
             >
               Last 90 Days
@@ -122,10 +122,9 @@ const AdvancedAnalytics: React.FC = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`
                   group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm
-                  ${
-                    isActive
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ${isActive
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
                 `}
               >
