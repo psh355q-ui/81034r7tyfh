@@ -305,6 +305,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to initialize monitoring components: {e}")
 
+    # 🆕 Start News Poller (5m Interval)
+    try:
+        from backend.services.news_poller import NewsPoller
+        news_poller = NewsPoller()
+        asyncio.create_task(news_poller.start())
+        logger.info("✅ News Poller started (5m interval - Pre-filtered AI Analysis)")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to start News Poller: {e}")
+
+    # 👻 Start Shadow Trading Agent
+    try:
+        from backend.ai.trading.shadow_trader import ShadowTradingAgent
+        shadow_trader = ShadowTradingAgent()
+        asyncio.create_task(shadow_trader.start())
+        logger.info("✅ Shadow Trading Agent started (Monitoring Signals)")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to start Shadow Trading Agent: {e}")
+
     yield
 
     # Shutdown sequence
@@ -557,7 +575,42 @@ try:
 except Exception as e:
     logger.warning(f"Data Backfill router not available: {e}")
 
+# 🆕 Phase 4: Grand Unified Strategy APIs (2026-01-05)
+# Persona Router - Investment Mode Switching
+try:
+    from backend.api.persona_router import router as persona_router
+    app.include_router(persona_router)
+    logger.info("Persona router registered (Dividend/Long-Term/Trading/Aggressive modes)")
+except Exception as e:
+    logger.warning(f"Persona router not available: {e}")
+
+# Thesis Violation Detector - Investment Thesis Health Check
+try:
+    from backend.api.thesis_router import router as thesis_router
+    app.include_router(thesis_router)
+    logger.info("Thesis Violation router registered")
+except Exception as e:
+    logger.warning(f"Thesis Violation router not available: {e}")
+
+# Investment Journey Memory - Decision Tracking & Coaching
+try:
+    from backend.api.journey_router import router as journey_router
+    app.include_router(journey_router)
+    logger.info("Investment Journey Memory router registered")
+except Exception as e:
+    logger.warning(f"Investment Journey Memory router not available: {e}")
+
+# Account Partitioning - Virtual Wallet System (Core/Income/Satellite)
+try:
+    from backend.api.partitions_router import router as partitions_router
+    app.include_router(partitions_router)
+    logger.info("Account Partitioning router registered (Core/Income/Satellite wallets)")
+except Exception as e:
+    logger.warning(f"Account Partitioning router not available: {e}")
+
 # System/Mock routers (no prefix)=============================================================================
+
+
 # Request/Response models
 # =============================================================================
 class AnalyzeRequest(BaseModel):

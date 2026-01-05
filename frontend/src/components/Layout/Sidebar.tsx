@@ -33,7 +33,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       title: 'Overview',
       items: [
         { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/portfolio', icon: PieChart, label: 'Portfolio' },
+        { path: '/partitions', icon: PieChart, label: 'AI Partitions' }, // 🆕 Phase 6.2
+        { path: '/portfolio', icon: BarChart3, label: 'Total Portfolio' },
         { path: '/dividend', icon: DollarSign, label: 'Dividend Intelligence' },
       ]
     },

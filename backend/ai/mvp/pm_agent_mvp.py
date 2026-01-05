@@ -34,6 +34,7 @@ from datetime import datetime
 import google.generativeai as genai
 
 from backend.ai.schemas.war_room_schemas import PMDecision
+from backend.ai.safety.leverage_guardian import get_leverage_guardian
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -391,6 +392,29 @@ class PMAgentMVP:
             if max_sector_pct > self.HARD_RULES['max_sector_concentration']:
                 violations.append(
                     f"섹터 집중도 {max_sector_pct*100:.1f}%가 최대 허용치 {self.HARD_RULES['max_sector_concentration']*100:.1f}%를 초과합니다"
+                )
+
+        # Rule 9: Leverage Guardian (10% cap on leveraged ETFs)
+        leverage_guardian = get_leverage_guardian()
+        if leverage_guardian.is_leveraged(symbol):
+            portfolio_value = portfolio_state.get('total_value', 100000)
+            current_leverage_value = sum(
+                pos.get('value', 0) for pos in current_positions 
+                if leverage_guardian.is_leveraged(pos.get('symbol', ''))
+            )
+            position_value = risk_opinion.get('position_size_usd', 0)
+            
+            # Check if this order would exceed leverage cap
+            max_leverage_value = portfolio_value * 0.10  # 10% cap
+            if current_leverage_value + position_value > max_leverage_value:
+                violations.append(
+                    f"레버리지 상품 한도 초과: 현재 {current_leverage_value:,.0f}원 + 신규 {position_value:,.0f}원 > 최대 {max_leverage_value:,.0f}원 (10%)"
+                )
+            else:
+                # Add warning (not violation) for leverage products
+                logger.warning(
+                    f"⚠️ 레버리지 상품 {symbol} 거래: 현재 레버리지 비중 "
+                    f"{(current_leverage_value + position_value) / portfolio_value * 100:.1f}%"
                 )
 
         return {

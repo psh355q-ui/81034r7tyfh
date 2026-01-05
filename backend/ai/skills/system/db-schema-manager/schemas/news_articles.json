@@ -37,6 +37,12 @@
             "example": "TechCrunch"
         },
         {
+            "name": "summary",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "기사 요약"
+        },
+        {
             "name": "published_date",
             "type": "TIMESTAMP",
             "nullable": false,
@@ -55,6 +61,12 @@
             "nullable": false,
             "unique": true,
             "description": "중복 체크용 해시"
+        },
+        {
+            "name": "author",
+            "type": "VARCHAR(200)",
+            "nullable": true,
+            "description": "기사 작성자"
         },
         {
             "name": "embedding",
@@ -103,6 +115,51 @@
             "type": "TIMESTAMP",
             "nullable": true,
             "description": "NLP 처리 완료 시각"
+        },
+        {
+            "name": "feed_source",
+            "type": "VARCHAR(64)",
+            "nullable": true,
+            "description": "피드 소스 타입 (rss | newsapi)"
+        },
+        {
+            "name": "keywords",
+            "type": "JSON",
+            "nullable": true,
+            "description": "키워드 리스트"
+        },
+        {
+            "name": "top_image",
+            "type": "VARCHAR(2048)",
+            "nullable": true,
+            "description": "대표 이미지 URL"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "description": "수정 시각"
+        },
+        {
+            "name": "has_tags",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": false,
+            "description": "태그 존재 여부"
+        },
+        {
+            "name": "has_embedding",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": false,
+            "description": "임베딩 존재 여부"
+        },
+        {
+            "name": "rag_indexed",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": false,
+            "description": "RAG 인덱싱 여부"
         },
         {
             "name": "embedding_model",

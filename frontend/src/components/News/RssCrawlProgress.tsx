@@ -46,6 +46,7 @@ export const RssCrawlProgress: React.FC<RssCrawlProgressProps> = ({ isOpen, onCl
   useEffect(() => {
     if (!isOpen) return;
 
+    // Prevent multiple EventSource connections
     const es = new EventSource('/api/news/crawl/stream?extract_content=true');
     let isCompleted = false; // Track completion locally
 
@@ -91,7 +92,9 @@ export const RssCrawlProgress: React.FC<RssCrawlProgressProps> = ({ isOpen, onCl
     return () => {
       es.close();
     };
-  }, [isOpen, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Remove onClose from deps to prevent multiple EventSource connections
+
 
   const handleClose = () => {
     if (eventSource) {

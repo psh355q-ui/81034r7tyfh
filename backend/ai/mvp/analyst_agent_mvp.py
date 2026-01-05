@@ -32,6 +32,7 @@ import google.generativeai as genai
 
 from backend.ai.schemas.war_room_schemas import AnalystOpinion
 from backend.ai.debate.news_agent import NewsAgent
+from backend.ai.reasoning.deep_reasoning_agent import DeepReasoningAgent
 
 
 class AnalystAgentMVP:
@@ -45,11 +46,11 @@ class AnalystAgentMVP:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
 
         genai.configure(api_key=api_key)
-        genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
-        # Initialize News Agent for interpretation
+        # Initialize Agents
         self.news_agent = NewsAgent()
+        self.deep_reasoning_agent = DeepReasoningAgent()
 
         # Agent configuration
         self.weight = 0.30  # 30% voting weight
@@ -127,18 +128,36 @@ class AnalystAgentMVP:
         """
         # Get News Interpretations from News Agent
         news_interpretations = []
+        deep_reasoning_result = None
+        
         if news_articles:
             try:
-                # Use NewsAgent to interpret articles with Macro Context
+                # 1. Use NewsAgent to interpret articles with Macro Context
                 news_interpretations = await self.news_agent.interpret_articles(symbol, news_articles)
+                
+                # 2. [NEW] Check for Critical Geopolitical/ChipWar Events
+                critical_event = self.news_agent.detect_critical_events(news_articles)
+                
+                if critical_event['detected']:
+                    print(f"🚨 AnalystAgent: Detected {critical_event['event_type']} ({critical_event['keywords']})")
+                    keywords = critical_event['keywords']
+                    base_info = {'ticker': symbol, 'news_count': len(news_articles)}
+                    
+                    # 3. [NEW] Trigger Deep Reasonig Agent
+                    deep_reasoning_result = await self.deep_reasoning_agent.analyze_event(
+                        event_type=critical_event['event_type'],
+                        keywords=keywords,
+                        base_info=base_info
+                    )
             except Exception as e:
-                print(f"⚠️ AnalystAgent: News interpretation failed: {e}")
+                print(f"⚠️ AnalystAgent: News interpretation/reasoning failed: {e}")
 
         # Construct analysis prompt
         prompt = self._build_prompt(
             symbol=symbol,
             news_articles=news_articles,
             news_interpretations=news_interpretations,
+            deep_reasoning_result=deep_reasoning_result, # [NEW] Pass result
             macro_indicators=macro_indicators,
             institutional_data=institutional_data,
             chipwar_events=chipwar_events,
@@ -212,6 +231,7 @@ class AnalystAgentMVP:
         symbol: str,
         news_articles: Optional[List[Dict[str, Any]]] = None,
         news_interpretations: Optional[List[Dict[str, Any]]] = None,
+        deep_reasoning_result: Optional[Dict[str, Any]] = None, # [NEW]
         macro_indicators: Optional[Dict[str, Any]] = None,
         institutional_data: Optional[Dict[str, Any]] = None,
         chipwar_events: Optional[List[Dict[str, Any]]] = None,
@@ -223,6 +243,25 @@ class AnalystAgentMVP:
         # 1. News Analysis (with Interpretations)
         prompt += "1. News & Events:\n"
         
+        # [NEW] Add Deep Reasoning Analysis (Top Priority)
+        if deep_reasoning_result and deep_reasoning_result.get('status') == 'SUCCESS':
+            prompt += "🚨 [CRITICAL: DEEP REASONING ANALYSIS]\n"
+            prompt += f"Event Type: {deep_reasoning_result.get('event_type')}\n"
+            
+            # Add classification
+            classification = deep_reasoning_result.get('classification', {})
+            prompt += f"Classification: {classification.get('type')} (Confidence: {classification.get('confidence')})\n"
+            
+            # Add simulation
+            simulation = deep_reasoning_result.get('simulation', {})
+            prompt += f"Simulation Channel: {simulation.get('channel')}\n"
+            prompt += f"Impact Chain: {simulation.get('impact_chain')}\n"
+            
+            # Add action plan (Most important)
+            action_plan = deep_reasoning_result.get('action_plan', {})
+            prompt += f"⚠️ RECOMMENDED STRATEGY: {action_plan.get('action')} (Scenario: {action_plan.get('key_scenario')})\n"
+            prompt += f"   Reasoning: {action_plan.get('reasoning')}\n\n"
+
         # Add Expert Interpretations (High Value)
         if news_interpretations:
             prompt += "[News Agent Expert Analysis]\n"

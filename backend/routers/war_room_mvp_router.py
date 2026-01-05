@@ -79,6 +79,7 @@ class DeliberationRequest(BaseModel):
     market_data: Optional[Dict[str, Any]] = Field(default=None, description="Optional - 자동으로 yfinance에서 가져옴")
     portfolio_state: Optional[Dict[str, Any]] = Field(default=None, description="Optional - Shadow Trading에서 가져옴")
     additional_data: Optional[Dict[str, Any]] = Field(default=None, description="추가 데이터")
+    persona_mode: Optional[str] = Field(default=None, description="투자 페르소나 모드: dividend | long_term | trading | aggressive")
 
 
 class ShadowTradeRequest(BaseModel):
@@ -257,7 +258,8 @@ async def deliberate(request: DeliberationRequest) -> Dict[str, Any]:
                 action_context=request.action_context,
                 market_data=market_data,
                 portfolio_state=portfolio_state,
-                additional_data=request.additional_data
+                additional_data=request.additional_data,
+                persona_mode=request.persona_mode  # NEW: Pass persona mode
             )
         
         # Add execution mode to result for transparency

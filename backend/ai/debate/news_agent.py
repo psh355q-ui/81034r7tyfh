@@ -191,21 +191,30 @@ class NewsAgent:
 
             # 5. 규제/소송 뉴스 감지
             regulatory_analysis = self._detect_regulatory_litigation(news_summaries)
+            
+            # 6. [NEW] 지정학/칩워 위기 감지
+            critical_event = self._detect_critical_events(news_summaries)
 
-            # 6. 시계열 트렌드 분석
+            # 7. 시계열 트렌드 분석
             trend_analysis = self._analyze_temporal_trend(news_summaries)
 
-            # 7. Gemini로 감성 분석
+            # 8. Gemini로 감성 분석
             logger.info(f"📰 News Agent: Analyzing {len(news_summaries)} news for {ticker}")
-            sentiment_result = await self._analyze_sentiment(ticker, news_summaries, trend_analysis, regulatory_analysis)
+            sentiment_result = await self._analyze_sentiment(
+                ticker, 
+                news_summaries, 
+                trend_analysis, 
+                regulatory_analysis
+            )
 
-            # 7. 투표 결정
+            # 9. 투표 결정
             action, confidence = self._decide_action(
                 sentiment_result,
                 len(emergency_news),
                 len(recent_news),
                 trend_analysis,
-                regulatory_analysis
+                regulatory_analysis,
+                critical_event  # [NEW] Pass critical event
             )
             
             # 트렌드 정보 추가
@@ -324,11 +333,11 @@ class NewsAgent:
     def _detect_regulatory_litigation(self, news_summaries: List[Dict]) -> Dict[str, Any]:
         """
         규제/소송 뉴스 감지
-
+        
         키워드 기반 감지:
         - 소송: lawsuit, litigation, sued, settlement, class action
         - 규제: regulation, SEC, FTC, antitrust, investigation, probe
-
+        
         Returns:
             {
                 "has_risk": bool,
@@ -343,25 +352,25 @@ class NewsAgent:
             'lawsuit', 'litigation', 'sued', 'settlement', 'class action',
             '소송', '집단소송', '합의금', '법적 분쟁', '소송 패소'
         ]
-
+        
         # 규제 관련 키워드
         regulatory_keywords = [
             'sec', 'ftc', 'doj', 'antitrust', 'investigation', 'probe',
             'fine', 'penalty', 'violation', 'compliance',
             '규제', '조사', '제재', '위반', '벌금', '당국', '감사'
         ]
-
+        
         litigation_count = 0
         regulatory_count = 0
         keywords_found = []
-
+        
         for news in news_summaries:
             content = ""
             if news['type'] == 'EMERGENCY':
                 content = news.get('content', '').lower()
             else:
                 content = news.get('title', '').lower()
-
+                
             # 소송 키워드 검사
             for keyword in litigation_keywords:
                 if keyword.lower() in content:
@@ -369,7 +378,7 @@ class NewsAgent:
                     if keyword not in keywords_found:
                         keywords_found.append(keyword)
                     break  # 한 뉴스당 한 번만 카운트
-
+            
             # 규제 키워드 검사
             for keyword in regulatory_keywords:
                 if keyword.lower() in content:
@@ -377,10 +386,10 @@ class NewsAgent:
                     if keyword not in keywords_found:
                         keywords_found.append(keyword)
                     break
-
+                    
         # 심각도 판정
         total_issues = litigation_count + regulatory_count
-
+        
         if total_issues == 0:
             severity = "NONE"
             has_risk = False
@@ -396,13 +405,91 @@ class NewsAgent:
         else:
             severity = "LOW"
             has_risk = True
-
+            
         return {
             "has_risk": has_risk,
             "litigation_count": litigation_count,
             "regulatory_count": regulatory_count,
             "severity": severity,
             "keywords_found": keywords_found[:5]  # 최대 5개만
+        }
+
+    def detect_critical_events(self, news_items: List[Dict]) -> Dict[str, Any]:
+        """
+        [New] 지정학적 위기 / 칩 워 감지 (Deep Reasoning Trigger)
+        Public method for external agents (e.g. AnalystAgentMVP)
+        
+        키워드 기반 감지:
+        - Geopolitics: invasion, war, military operation, sanctions, blockade
+        - Chip War: export control, tpu, custom silicon, chip ban
+        
+        Args:
+            news_items: List of dicts. Keys can be 'title', 'content', 'summary'.
+        
+        Returns:
+            {
+                "event_type": "GEOPOLITICS|CHIP_WAR|NONE",
+                "detected": bool,
+                "urgency": "CRITICAL|HIGH|NONE",
+                "keywords": List[str]
+            }
+        """
+        # 지정학 키워드 (물리적 전쟁)
+        geo_keywords = [
+            'invasion', 'war', 'military operation', 'sanctions', 'blockade',
+            '침공', '전쟁', '군사 작전', '제재', '봉쇄', '공습', 'airstrike'
+        ]
+        
+        # 칩 워 키워드 (기술 전쟁)
+        chip_keywords = [
+            'export control', 'chip ban', 'tpu', 'custom silicon', 'semiconductor restriction',
+            '수출 통제', '반도체 제재', '자체 칩', '기술 유출'
+        ]
+        
+        detected_geo = []
+        detected_chip = []
+        
+        for news in news_items:
+            # Construct consolidated text for searching
+            text_monitor = []
+            if 'title' in news: text_monitor.append(news['title'])
+            if 'headline' in news: text_monitor.append(news['headline'])
+            if 'content' in news: text_monitor.append(str(news['content']))
+            if 'summary' in news: text_monitor.append(str(news['summary']))
+            if 'query' in news: text_monitor.append(str(news['query'])) # For GroundingSearchLog
+            
+            full_text = " ".join(text_monitor).lower()
+                
+            # Check Geopolitics
+            for kw in geo_keywords:
+                if kw in full_text:
+                    detected_geo.append(kw)
+                    
+            # Check Chip War
+            for kw in chip_keywords:
+                if kw in full_text:
+                    detected_chip.append(kw)
+                    
+        if detected_geo:
+            return {
+                "event_type": "GEOPOLITICS",
+                "detected": True,
+                "urgency": "CRITICAL",  # 전쟁 관련은 무조건 CRITICAL
+                "keywords": list(set(detected_geo))[:5]
+            }
+        elif detected_chip:
+            return {
+                "event_type": "CHIP_WAR",
+                "detected": True,
+                "urgency": "HIGH",
+                "keywords": list(set(detected_chip))[:5]
+            }
+            
+        return {
+            "event_type": "NONE",
+            "detected": False,
+            "urgency": "NONE",
+            "keywords": []
         }
 
     async def _analyze_sentiment(self, ticker: str, news_summaries: List[Dict], trend_analysis: Dict = None, regulatory_analysis: Dict = None) -> Dict[str, Any]:
@@ -518,9 +605,10 @@ class NewsAgent:
         emergency_count: int,
         news_count: int,
         trend_analysis: Dict = None,
-        regulatory_analysis: Dict = None
+        regulatory_analysis: Dict = None,
+        critical_event: Dict = None
     ) -> tuple[str, float]:
-        """감성 점수 → 매매 결정 (시계열 트렌드 및 규제/소송 반영)"""
+        """감성 점수 → 매매 결정 (시계열 트렌드, 규제, 지정학 위기 반영)"""
 
         score = sentiment_result['score']
 
@@ -530,34 +618,42 @@ class NewsAgent:
         # 시계열 트렌드 반영
         trend_boost = 0
         if trend_analysis:
-            # IMPROVING: 긍정 뉴스 증가 → BUY 신호 강화
-            # DETERIORATING: 부정 뉴스 증가 → SELL 신호 강화
             if trend_analysis['trend'] == 'IMPROVING':
                 trend_boost = 0.1
             elif trend_analysis['trend'] == 'DETERIORATING':
                 trend_boost = -0.1
 
-        # 규제/소송 리스크 반영 (HIGHEST PRIORITY)
+        # 규제/소송 리스크 반영
         regulatory_penalty = 0
         force_sell = False
         if regulatory_analysis and regulatory_analysis['has_risk']:
             if regulatory_analysis['severity'] == 'CRITICAL':
-                # 심각한 규제/소송 → 강제 SELL
                 regulatory_penalty = -0.5
                 force_sell = True
             elif regulatory_analysis['severity'] == 'HIGH':
                 regulatory_penalty = -0.3
             elif regulatory_analysis['severity'] == 'MODERATE':
                 regulatory_penalty = -0.2
-            else:  # LOW
+            else:
                 regulatory_penalty = -0.1
+                
+        # [NEW] 지정학/칩워 위기 반영 (SUPER PRIORITY)
+        geo_penalty = 0
+        if critical_event and critical_event['detected']:
+            if critical_event['urgency'] == 'CRITICAL':
+                # 전쟁/침공 등은 무조건 매도 및 최대 신뢰도
+                force_sell = True
+                geo_penalty = -1.0 # 강력한 하방 압력
+                logger.warning(f"🚨 CRITICAL GEOPOLITICAL EVENT: {critical_event['keywords']}")
+            elif critical_event['urgency'] == 'HIGH':
+                geo_penalty = -0.5
+                
+        adjusted_score = score + trend_boost + regulatory_penalty + geo_penalty
 
-        adjusted_score = score + trend_boost + regulatory_penalty
-
-        # 규제/소송이 CRITICAL이면 무조건 SELL
+        # 강제 매도 조건 (규제 Critical or 지정학 Critical)
         if force_sell:
             action = "SELL"
-            confidence = 0.90
+            confidence = 0.95  # 매우 높은 확신
         elif adjusted_score > 0.6:
             action = "BUY"
             confidence = min(0.95, abs(adjusted_score) + urgency_boost)

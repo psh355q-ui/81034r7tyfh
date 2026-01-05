@@ -1,14 +1,17 @@
 /**
  * War Room List - 여러 티커의 토론 목록
+ * 
+ * Dashboard 스타일과 동일하게 Tailwind CSS 적용
  */
 
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Search, Filter, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { DebateSession } from '../../data/mockDebateSessions';
 import { warRoomApi } from '../../services/warRoomApi';
 import WarRoomCard from './WarRoomCard';
-import { TickerAutocompleteInput } from '../common/TickerAutocompleteInput';
-import './WarRoomList.css';
+import { Card } from '../common/Card';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'pending';
 
@@ -22,7 +25,7 @@ const WarRoomList: React.FC = () => {
     const { data: apiSessions, isLoading, error, refetch } = useQuery({
         queryKey: ['war-room-sessions'],
         queryFn: () => warRoomApi.getSessions({ limit: 20 }),
-        refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
+        refetchInterval: 10000,
     });
 
     // Transform API response to match DebateSession interface
@@ -30,24 +33,19 @@ const WarRoomList: React.FC = () => {
         if (!apiSessions) return [];
 
         return apiSessions.map(session => {
-            // Convert votes/votes_detail to messages format
             const messages: any[] = [];
-            
-            // Prefer 'votes' (dict) from backend, fallback to 'votes_detail' (list)
-            // Note: backend returns 'votes' key, but interface might verify 'agent_votes'. check both.
+
             let votesDict: Record<string, any> = (session as any).votes || session.agent_votes || {};
             const votesDetail = session.votes_detail || [];
 
-            // Helper: Convert list to dict if needed
             if (Object.keys(votesDict).length === 0 && Array.isArray(votesDetail) && votesDetail.length > 0) {
-                 votesDetail.forEach((v: any) => {
-                     if(v.agent) votesDict[v.agent] = v;
-                 });
+                votesDetail.forEach((v: any) => {
+                    if (v.agent) votesDict[v.agent] = v;
+                });
             }
 
-            // Include ALL 8 agents
             const agentOrder = [
-                'risk', 'macro', 'institutional', 'trader', 
+                'risk', 'macro', 'institutional', 'trader',
                 'news', 'analyst', 'chip_war', 'dividend_risk'
             ];
 
@@ -55,7 +53,6 @@ const WarRoomList: React.FC = () => {
                 const vote = votesDict[agent] || votesDetail.find((v: any) => v.agent === agent);
 
                 if (vote) {
-                    // Risk Agent uses 'recommendation' instead of 'action'
                     const action = vote.action || vote.recommendation || 'hold';
 
                     messages.push({
@@ -64,27 +61,19 @@ const WarRoomList: React.FC = () => {
                         action: action,
                         confidence: vote.confidence,
                         reasoning: vote.reasoning || `${agent} agent vote: ${action}`,
-                        timestamp: new Date(session.created_at + 'Z'),  // Force UTC interpretation
+                        timestamp: new Date(session.created_at + 'Z'),
                         isDecision: false
                     });
                 }
             });
 
-            // Add PM decision
             const actionLabels: { [key: string]: string } = {
-                'buy': '매수',
-                'sell': '매도',
-                'hold': '보류',
-                'reject': '거부',
-                'approve': '승인',
-                'BUY': '매수',
-                'SELL': '매도',
-                'HOLD': '보류',
-                'REJECT': '거부',
-                'APPROVE': '승인'
+                'buy': '매수', 'sell': '매도', 'hold': '보류',
+                'reject': '거부', 'approve': '승인',
+                'BUY': '매수', 'SELL': '매도', 'HOLD': '보류',
+                'REJECT': '거부', 'APPROVE': '승인'
             };
 
-            // Use PM decision details if available
             const pmDecision = (session as any).pm_decision;
             const finalAction = pmDecision?.final_decision || session.consensus_action;
             const finalConfidence = pmDecision?.confidence ?? session.consensus_confidence;
@@ -92,7 +81,6 @@ const WarRoomList: React.FC = () => {
 
             const actionLabel = actionLabels[finalAction] || finalAction;
 
-            // Create detailed PM reasoning
             let pmMessage = `PM 최종 결정: ${actionLabel} (${(finalConfidence * 100).toFixed(0)}% 신뢰도)`;
             if (pmReasoning) {
                 pmMessage = pmReasoning;
@@ -104,15 +92,15 @@ const WarRoomList: React.FC = () => {
                 action: finalAction,
                 confidence: finalConfidence,
                 reasoning: pmMessage,
-                timestamp: new Date(session.created_at + 'Z'),  // Force UTC interpretation
+                timestamp: new Date(session.created_at + 'Z'),
                 isDecision: true
             });
 
             return {
                 id: session.id.toString(),
                 ticker: session.ticker,
-                status: 'completed', // All sessions with votes are completed
-                startedAt: new Date(session.created_at + 'Z'),  // Force UTC interpretation
+                status: 'completed',
+                startedAt: new Date(session.created_at + 'Z'),
                 completedAt: new Date(session.created_at + 'Z'),
                 messages: messages,
                 consensus: session.consensus_confidence,
@@ -128,6 +116,7 @@ const WarRoomList: React.FC = () => {
             };
         });
     }, [apiSessions]);
+
     const [searchTicker, setSearchTicker] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -136,31 +125,22 @@ const WarRoomList: React.FC = () => {
     const filteredSessions = useMemo(() => {
         return sessions
             .filter(session => {
-                // 티커 검색
                 const matchesTicker = searchTicker === '' ||
                     session.ticker.toUpperCase().includes(searchTicker.toUpperCase());
-
-                // 상태 필터
                 const matchesStatus = statusFilter === 'all' ||
                     session.status === statusFilter;
-
                 return matchesTicker && matchesStatus;
             })
-            .sort((a, b) => {
-                // 최신순 정렬 (created_at 기준 내림차순)
-                return b.startedAt.getTime() - a.startedAt.getTime();
-            });
+            .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
     }, [sessions, searchTicker, statusFilter]);
 
     // 통계
-    const stats = useMemo(() => {
-        return {
-            total: sessions.length,
-            active: sessions.filter(s => s.status === 'active').length,
-            completed: sessions.filter(s => s.status === 'completed').length,
-            pending: sessions.filter(s => s.status === 'pending').length
-        };
-    }, [sessions]);
+    const stats = useMemo(() => ({
+        total: sessions.length,
+        active: sessions.filter(s => s.status === 'active').length,
+        completed: sessions.filter(s => s.status === 'completed').length,
+        pending: sessions.filter(s => s.status === 'pending').length
+    }), [sessions]);
 
     // 카드 토글
     const handleCardToggle = (cardId: string) => {
@@ -185,14 +165,9 @@ const WarRoomList: React.FC = () => {
         try {
             const result = await warRoomApi.runDebate(newDebateTicker.toUpperCase());
             console.log('Debate result:', result);
-
-            // 성공: 세션 목록 갱신
             await refetch();
-
-            // 입력 초기화
             setNewDebateTicker('');
 
-            // 알림 (latency 정보 포함)
             const latencyInfo = result.latency_ms
                 ? `\n⏱️ 응답 시간: ${(result.latency_ms / 1000).toFixed(1)}초`
                 : '';
@@ -210,11 +185,9 @@ const WarRoomList: React.FC = () => {
     // Loading state
     if (isLoading) {
         return (
-            <div className="war-room-list">
-                <div className="loading-state" style={{ textAlign: 'center', padding: '40px' }}>
-                    <div className="spinner">🔄</div>
-                    <p>War Room 세션 불러오는 중...</p>
-                </div>
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+                <LoadingSpinner size="lg" />
+                <p className="text-gray-500 font-medium">War Room 세션 불러오는 중...</p>
             </div>
         );
     }
@@ -222,29 +195,27 @@ const WarRoomList: React.FC = () => {
     // Error state
     if (error) {
         return (
-            <div className="war-room-list">
-                <div className="error-state" style={{ textAlign: 'center', padding: '40px', color: '#F44336' }}>
-                    <p>⚠️ War Room 세션을 불러올 수 없습니다</p>
-                    <p style={{ fontSize: '14px', opacity: 0.7 }}>{(error as Error).message}</p>
+            <div className="p-6">
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex items-center gap-2">
+                    <AlertCircle size={20} />
+                    <div>
+                        <p className="font-medium">War Room 세션을 불러올 수 없습니다</p>
+                        <p className="text-sm opacity-70">{(error as Error).message}</p>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="war-room-list">
+        <div className="space-y-6">
             {/* 새로운 토론 시작 섹션 */}
-            <div className="new-debate-section" style={{
-                marginBottom: '24px',
-                padding: '20px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '12px',
-                color: 'white'
-            }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
-                    🚀 새로운 토론 시작
+            <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Plus size={20} />
+                    새로운 토론 시작
                 </h3>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div className="flex gap-3 items-start">
                     <input
                         type="text"
                         value={newDebateTicker}
@@ -252,95 +223,81 @@ const WarRoomList: React.FC = () => {
                         onKeyPress={(e) => e.key === 'Enter' && handleRunDebate()}
                         placeholder="티커 입력 (예: AAPL, TSLA)"
                         disabled={isRunningDebate}
-                        style={{
-                            flex: 1,
-                            padding: '12px 16px',
-                            fontSize: '16px',
-                            border: '2px solid rgba(255,255,255,0.3)',
-                            borderRadius: '8px',
-                            background: 'rgba(255,255,255,0.15)',
-                            color: 'white',
-                            fontWeight: 'bold'
-                        }}
+                        className="flex-1 px-4 py-3 text-gray-900 rounded-lg border-0 focus:ring-2 focus:ring-white font-medium"
                     />
                     <button
                         onClick={handleRunDebate}
                         disabled={isRunningDebate || !newDebateTicker.trim()}
-                        style={{
-                            padding: '12px 24px',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            border: 'none',
-                            borderRadius: '8px',
-                            background: isRunningDebate ? '#999' : 'white',
-                            color: '#667eea',
-                            cursor: isRunningDebate ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.2s',
-                            opacity: !newDebateTicker.trim() ? 0.5 : 1
-                        }}
+                        className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2
+                            ${isRunningDebate || !newDebateTicker.trim()
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-white text-blue-600 hover:bg-gray-100 shadow-lg hover:shadow-xl'
+                            }`}
                     >
-                        {isRunningDebate ? '🔄 실행중...' : '🎭 토론 시작'}
+                        {isRunningDebate ? (
+                            <>
+                                <Loader2 className="animate-spin" size={18} />
+                                실행중...
+                            </>
+                        ) : (
+                            <>🎭 토론 시작</>
+                        )}
                     </button>
                 </div>
                 {debateError && (
-                    <div style={{
-                        marginTop: '12px',
-                        padding: '8px 12px',
-                        background: 'rgba(244, 67, 54, 0.2)',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                    }}>
-                        ⚠️ {debateError}
+                    <div className="mt-3 px-3 py-2 bg-red-500/20 rounded-lg text-sm flex items-center gap-2">
+                        <AlertCircle size={16} />
+                        {debateError}
                     </div>
                 )}
-            </div>
+            </Card>
 
             {/* 검색 & 필터 */}
-            <div className="list-controls">
-                <div className="search-section">
-                    <TickerAutocompleteInput
-                        label=""
-                        value={searchTicker}
-                        onChange={setSearchTicker}
-                        placeholder="🔍 티커 검색... (예: NVDA, AAPL)"
-                    />
-                </div>
+            <Card>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    {/* 검색 */}
+                    <div className="relative flex-1 w-full sm:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            value={searchTicker}
+                            onChange={(e) => setSearchTicker(e.target.value)}
+                            placeholder="티커 검색..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
 
-                <div className="filter-section">
-                    <button
-                        className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setStatusFilter('all')}
-                    >
-                        전체 ({stats.total})
-                    </button>
-                    <button
-                        className={`filter-btn ${statusFilter === 'active' ? 'active' : ''}`}
-                        onClick={() => setStatusFilter('active')}
-                    >
-                        🔄 진행중 ({stats.active})
-                    </button>
-                    <button
-                        className={`filter-btn ${statusFilter === 'completed' ? 'active' : ''}`}
-                        onClick={() => setStatusFilter('completed')}
-                    >
-                        ✅ 완료 ({stats.completed})
-                    </button>
-                    <button
-                        className={`filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
-                        onClick={() => setStatusFilter('pending')}
-                    >
-                        ⏳ 대기중 ({stats.pending})
-                    </button>
+                    {/* 필터 버튼 */}
+                    <div className="flex gap-2 flex-wrap">
+                        {[
+                            { value: 'all', label: `전체 (${stats.total})` },
+                            { value: 'active', label: `🔄 진행중 (${stats.active})` },
+                            { value: 'completed', label: `✅ 완료 (${stats.completed})` },
+                            { value: 'pending', label: `⏳ 대기중 (${stats.pending})` },
+                        ].map(filter => (
+                            <button
+                                key={filter.value}
+                                onClick={() => setStatusFilter(filter.value as StatusFilter)}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                                    ${statusFilter === filter.value
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            </Card>
 
             {/* 결과 표시 */}
-            <div className="results-info">
+            <div className="text-sm text-gray-500 px-1">
                 {filteredSessions.length}개의 토론 세션
             </div>
 
             {/* 세션 카드 목록 */}
-            <div className="sessions-container" onClick={handleBackdropClick}>
+            <div className="space-y-4" onClick={handleBackdropClick}>
                 {filteredSessions.length > 0 ? (
                     filteredSessions.map(session => (
                         <WarRoomCard
@@ -351,10 +308,12 @@ const WarRoomList: React.FC = () => {
                         />
                     ))
                 ) : (
-                    <div className="empty-result">
-                        <p>검색 결과가 없습니다</p>
-                        <p className="hint">다른 티커를 검색해보세요</p>
-                    </div>
+                    <Card>
+                        <div className="text-center py-8 text-gray-500">
+                            <p className="text-lg">검색 결과가 없습니다</p>
+                            <p className="text-sm mt-1">다른 티커를 검색해보세요</p>
+                        </div>
+                    </Card>
                 )}
             </div>
         </div>

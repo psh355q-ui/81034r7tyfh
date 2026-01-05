@@ -158,7 +158,7 @@ class NewsDeepAnalyzer:
     def create_analysis_prompt(self, article: NewsArticle) -> str:
         """분석 프롬프트 생성"""
         # 본문 우선, 없으면 요약 사용
-        content = article.content_text or article.content_summary or ""
+        content = article.content or article.summary or ""
         if len(content) > 8000:  # ~2000 토큰
             content = content[:8000] + "... [truncated]"
         
@@ -170,7 +170,7 @@ class NewsDeepAnalyzer:
 ====== 뉴스 정보 ======
 제목: {article.title}
 출처: {article.source}
-발행일: {article.published_at}
+발행일: {article.published_date}
 키워드: {keywords}
 
 ====== 본문 내용 ======
@@ -249,8 +249,8 @@ CRITICAL:
             return article.analysis
         
         # 본문 확인
-        if not article.content_text or len(article.content_text) < 50:
-            if not article.content_summary or len(article.content_summary) < 50:
+        if not article.content or len(article.content) < 50:
+            if not article.summary or len(article.summary) < 50:
                 return None
         
         # 프롬프트 생성

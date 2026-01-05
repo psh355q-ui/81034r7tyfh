@@ -9,6 +9,7 @@ Features:
 """
 
 import asyncio
+import logging
 import feedparser
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
@@ -28,6 +29,8 @@ except ImportError:
 
 from sqlalchemy.orm import Session
 from backend.data.news_models import NewsArticle, RSSFeed, SessionLocal, init_db
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -95,7 +98,7 @@ class RSSCrawler:
                     "title": entry.get("title", "").strip(),
                     "url": entry.get("link", "").strip(),
                     "summary": entry.get("summary", "").strip(),
-                    "published_at": published,
+                    "published_date": published,
                     "source": feed.feed.get("title", feed_name),
                     "feed_source": "rss",
                 }
@@ -113,6 +116,8 @@ class RSSCrawler:
             })
             return []
     
+
+
     def extract_full_content(self, url: str) -> Dict[str, Any]:
         """
         뉴스 본문 전체 추출 (newspaper3k)
@@ -149,9 +154,9 @@ class RSSCrawler:
             
             return {
                 "title": article.title,
-                "text": article.text,  # 전체 본문
-                "authors": article.authors or [],
-                "publish_date": article.publish_date,
+                "content": article.text,  # 전체 본문
+                "author": article.authors or [],
+                "published_date": article.publish_date,
                 "top_image": article.top_image or "",
                 "keywords": keywords,
                 "summary": summary,
@@ -184,11 +189,11 @@ class RSSCrawler:
             title=article_data.get("title", ""),
             source=article_data.get("source", ""),
             feed_source=article_data.get("feed_source", "rss"),
-            published_at=article_data.get("published_at"),
-            content_text=article_data.get("text", ""),
-            content_summary=article_data.get("summary", ""),
+            published_date=article_data.get("published_date"),
+            content=article_data.get("content", ""),
+            summary=article_data.get("summary", ""),
             keywords=article_data.get("keywords", []),
-            authors=article_data.get("authors", []),
+            author=article_data.get("author", []),
             top_image=article_data.get("top_image", ""),
         )
         
@@ -223,7 +228,7 @@ class RSSCrawler:
         self.stats["feeds_processed"] += 1
         return saved_articles
     
-    def crawl_all_feeds(self, extract_content: bool = True) -> Dict[str, Any]:
+    def crawl_all_feeds(self, extract_content: bool = True) -> List[NewsArticle]:
         """모든 활성화된 피드 크롤링"""
         feeds = self.db.query(RSSFeed).filter(RSSFeed.enabled == True).all()
         
@@ -234,11 +239,7 @@ class RSSCrawler:
             all_articles.extend(articles)
             time.sleep(0.5)  # Rate limiting (예의)
         
-        return {
-            "total_articles": len(all_articles),
-            "stats": self.stats,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        return all_articles
     
     def crawl_ticker_news(self, ticker: str) -> List[NewsArticle]:
         """특정 티커 관련 뉴스 (Yahoo Finance RSS)"""
@@ -272,12 +273,12 @@ def get_recent_articles(
     """최근 기사 조회"""
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     
-    query = db.query(NewsArticle).filter(NewsArticle.published_at >= cutoff)
+    query = db.query(NewsArticle).filter(NewsArticle.published_date >= cutoff)
     
     if source:
         query = query.filter(NewsArticle.source.ilike(f"%{source}%"))
     
-    return query.order_by(NewsArticle.published_at.desc()).limit(limit).all()
+    return query.order_by(NewsArticle.published_date.desc()).limit(limit).all()
 
 
 def get_unanalyzed_articles(db: Session, limit: int = 100) -> List[NewsArticle]:
@@ -286,9 +287,9 @@ def get_unanalyzed_articles(db: Session, limit: int = 100) -> List[NewsArticle]:
         db.query(NewsArticle)
         .outerjoin(NewsArticle.analysis)
         .filter(NewsArticle.analysis == None)
-        .filter(NewsArticle.content_text != None)
-        .filter(NewsArticle.content_text != "")
-        .order_by(NewsArticle.published_at.desc())
+        .filter(NewsArticle.content != None)
+        .filter(NewsArticle.content != "")
+        .order_by(NewsArticle.published_date.desc())
         .limit(limit)
         .all()
     )

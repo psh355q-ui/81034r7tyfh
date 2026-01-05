@@ -43,6 +43,9 @@ from backend.execution.execution_router import ExecutionRouter
 from backend.execution.order_validator import OrderValidator
 from backend.monitoring.performance_monitor import perf_monitor
 
+# Persona Router for dynamic weights
+from backend.ai.router.persona_router import PersonaRouter, PersonaMode, get_persona_router
+
 
 class WarRoomMVP:
     """MVP War Room - 3+1 Agent Voting System"""
@@ -65,15 +68,18 @@ class WarRoomMVP:
         # War Room metadata
         self.session_id = datetime.utcnow().isoformat()
         self.decision_history: List[Dict[str, Any]] = []
+        
+        # Persona Router for dynamic weights
+        self.persona_router = get_persona_router()
 
-    @perf_monitor.monitor
     async def deliberate(
         self,
         symbol: str,
         action_context: str,
         market_data: Dict[str, Any],
         portfolio_state: Dict[str, Any],
-        additional_data: Optional[Dict[str, Any]] = None
+        additional_data: Optional[Dict[str, Any]] = None,
+        persona_mode: Optional[str] = None  # NEW: Dynamic persona mode
     ) -> Dict[str, Any]:
         """
         전쟁실 심의 - 3+1 Agent 협업 의사결정
@@ -203,11 +209,25 @@ class WarRoomMVP:
         print(f"  [Risk Agent] Recommendation: {risk_opinion['recommendation']} (Level: {risk_opinion['risk_level']})")
         print(f"  [Analyst Agent] Action: {analyst_opinion['action']} (Info Score: {analyst_opinion['overall_score']:.1f})")
 
+        # ================================================================
+        # STEP 2.5: INJECT DYNAMIC WEIGHTS FROM PERSONA ROUTER
+        # ================================================================
+        weights = self.persona_router.get_weights(persona_mode)
+        persona_config = self.persona_router.get_config(persona_mode)
+        
+        # Inject weights into each agent's opinion
+        trader_opinion['weight'] = weights.get('trader_mvp', 0.35)
+        risk_opinion['weight'] = weights.get('risk_mvp', 0.35)
+        analyst_opinion['weight'] = weights.get('analyst_mvp', 0.30)
+        
+        print(f"\n  [Persona Mode] {persona_config.mode.value.upper()}")
+        print(f"  [Dynamic Weights] Trader={weights['trader_mvp']:.0%}, Risk={weights['risk_mvp']:.0%}, Analyst={weights['analyst_mvp']:.0%}")
 
         # ================================================================
         # STEP 3: PM FINAL DECISION (Hard Rules + Silence Policy)
         # ================================================================
         print("[STEP 3] PM Final Decision (Hard Rules + Silence Policy)...\n")
+
         pm_decision = self.pm_agent.make_final_decision(
             symbol=symbol,
             trader_opinion=trader_opinion,

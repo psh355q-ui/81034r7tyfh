@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Bell, User, Menu } from 'lucide-react';
 import { NotificationCenter, Notification } from '../Notifications/NotificationCenter';
+import { PersonaModeSwitcher } from '../Persona/ModeSwitcher';
 
 const MOCK_NOTIFICATIONS: Notification[] = [
+
   {
     id: '1',
     type: 'warning',
@@ -63,8 +65,12 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
 
         <div className="flex items-center gap-2 lg:gap-4">
+          {/* Persona Mode Switcher */}
+          <PersonaModeSwitcher />
+
           <div className="relative">
             <button
+
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
             >

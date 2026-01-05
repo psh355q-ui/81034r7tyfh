@@ -23,11 +23,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from pathlib import Path
 
-# Docker 컨테이너 호환 경로
-DB_PATH = Path("/app/data/news.db")
+# Docker 컨테이너 호환 경로 - 프로젝트 루트 기준 data 디렉토리 사용
+DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "news.db"
 try:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-except PermissionError:
+except Exception as e:
+    # 윈도우/권한문제시 임시폴더 사용 (Fallback)
+    print(f"Warning: Could not create DB at {DB_PATH}, falling back to /tmp/news.db. Error: {e}")
     DB_PATH = Path("/tmp/news.db")
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -50,16 +52,28 @@ class NewsArticle(Base):
     title = Column(String(512), nullable=False)
     source = Column(String(128))
     feed_source = Column(String(64))  # 'rss' | 'newsapi'
-    published_at = Column(DateTime)
+    published_date = Column(DateTime)
     
     # Content
-    content_text = Column(Text)  # 전체 본문
-    content_summary = Column(Text)  # 자동 요약
+    content = Column(Text)  # 전체 본문
+    summary = Column(Text)  # 자동 요약
     keywords = Column(JSON)  # 키워드 리스트
     
     # Metadata
-    authors = Column(JSON)
+    author = Column(JSON) # JSON으로 유지하되 이름은 author로 통일 (Postgres와 호환성 고려)
     top_image = Column(String(2048))
+    content_hash = Column(String(64), index=True) # Added for compatibility
+    
+    # NLP & Embedding Fields (Added for compatibility with Postgres model)
+    embedding = Column(JSON) # Stored as JSON list in SQLite
+    tags = Column(JSON)      # Stored as JSON list
+    tickers = Column(JSON)   # Stored as JSON list
+    sentiment_score = Column(Float)
+    sentiment_label = Column(String(20))
+    source_category = Column(String(50))
+    metadata_ = Column("metadata", JSON)
+    processed_at = Column(DateTime)
+    embedding_model = Column(String(100))
     
     # Timestamps
     crawled_at = Column(DateTime, default=datetime.utcnow)
@@ -76,7 +90,7 @@ class NewsArticle(Base):
     
     # Indexes
     __table_args__ = (
-        Index('idx_published_at', 'published_at'),
+        Index('idx_published_at', 'published_date'),
         Index('idx_source', 'source'),
         Index('idx_feed_source', 'feed_source'),
     )

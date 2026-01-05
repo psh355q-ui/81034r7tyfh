@@ -184,7 +184,10 @@ async def crawl_rss_feeds_stream(
                 await asyncio.sleep(0.1)  # Allow client to receive
 
                 try:
-                    # 피드 크롤링
+                    # 피드 크롤링 (동기 작업이므로 heartbeat 필요)
+                    # Heartbeat 전송으로 SSE 연결 유지
+                    yield f": heartbeat\n\n"
+                    
                     articles = crawler.crawl_feed(feed, extract_content)
                     articles_found += len(articles)
 
@@ -408,10 +411,10 @@ async def get_news_articles(
             url=a.url,
             title=a.title,
             source=a.source or "",
-            feed_source=a.feed_source or "rss",
-            published_at=a.published_at.isoformat() if a.published_at else None,
-            content_summary=a.content_summary[:500] if a.content_summary else None,
-            keywords=a.keywords or [],
+            feed_source=getattr(a, "feed_source", "rss") or "rss",
+            published_at=a.published_date.isoformat() if a.published_date else None,
+            content_summary=a.summary[:500] if a.summary else None,
+            keywords=getattr(a, "keywords", getattr(a, "tags", [])) or [],
             crawled_at=a.crawled_at.isoformat() if a.crawled_at else datetime.utcnow().isoformat(),
             has_analysis=a.analysis is not None,
             sentiment=a.analysis.sentiment_overall if a.analysis else None,
@@ -470,11 +473,11 @@ async def get_news_detail(
         url=article.url,
         title=article.title,
         source=article.source or "",
-        published_at=article.published_at.isoformat() if article.published_at else None,
-        content_text=article.content_text,
-        content_summary=article.content_summary,
+        published_at=article.published_date.isoformat() if article.published_date else None,
+        content_text=article.content,
+        content_summary=article.summary,
         keywords=article.keywords or [],
-        authors=article.authors or [],
+        authors=article.author or [],
         analysis=analysis_response,
         related_tickers=related_tickers
     )
