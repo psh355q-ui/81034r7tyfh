@@ -185,8 +185,14 @@ async def get_report_content(
 
         file_path = os.path.join(docs_dir, filename)
         
+        # Absolute path for debugging
+        abs_path = os.path.abspath(file_path)
+        logger.info(f"Report Access Request: Type={type}, Year={year}, Month={month}, Filename={filename}")
+        logger.info(f"Looking for file at: {abs_path}")
+        
         # Fallback logic for finding files if exact name match fails (especially for weekly/daily dates)
         if not os.path.exists(file_path):
+             logger.warning(f"File not found at {abs_path}, attempting fallback...")
              if type == "weekly":
                  # Find any weekly report for the year if specific one missing
                  for f in sorted(os.listdir(docs_dir), reverse=True):
@@ -209,7 +215,8 @@ async def get_report_content(
                          break
 
         if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail=f"Report file not found: {filename}")
+            logger.error(f"Final check failed. File does not exist: {file_path}")
+            raise HTTPException(status_code=404, detail=f"Report file not found: {filename} (Path: {abs_path})")
             
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()

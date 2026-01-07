@@ -311,7 +311,11 @@ class WarRoomMVP:
             'stop_loss_pct': risk_opinion.get('stop_loss_pct', 0),
             'conversation_summary': conversation_summary,
             'can_execute': validation_result['can_execute'] if validation_result else False,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.utcnow().isoformat(),
+            # 🆕 Include weights and persona info for frontend display
+            'weights': weights,
+            'persona_mode': persona_config.mode.value,
+            'persona_description': persona_config.description
         }
 
         # Record in history
@@ -372,24 +376,29 @@ class WarRoomMVP:
 
     def get_war_room_info(self) -> Dict[str, Any]:
         """Get War Room information"""
+        # Get current persona config
+        current_mode = self.persona_router.get_current_mode()
+        weights = self.persona_router.get_weights(current_mode)
+        
         return {
             'name': 'WarRoomMVP',
             'version': '1.0.0',
+            'current_mode': current_mode.value,
             'agent_structure': '3+1 Voting System',
             'agents': [
                 {
                     'name': 'Trader Agent MVP',
-                    'weight': 0.35,
+                    'weight': weights.get('trader_mvp', 0.35),
                     'focus': 'Attack - Opportunities'
                 },
                 {
                     'name': 'Risk Agent MVP',
-                    'weight': 0.35,
+                    'weight': weights.get('risk_mvp', 0.35),
                     'focus': 'Defense - Risk Management + Position Sizing'
                 },
                 {
                     'name': 'Analyst Agent MVP',
-                    'weight': 0.30,
+                    'weight': weights.get('analyst_mvp', 0.30),
                     'focus': 'Information - News + Macro + Institutional + ChipWar'
                 },
                 {

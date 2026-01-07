@@ -1,43 +1,187 @@
-# 2026-01-07 일일 개발 보고서
+# 2026-01-07 Daily Progress Report
 
-**작성일**: 2026-01-07
-**작성자**: Antigravity Agent
-**주제**: Deep Reasoning 안정화 및 최적화 (Bug Fix & Optimization)
-
----
-
-## 📅 주요 달성 사항 (Key Achievements)
-
-### 4. Shadow Trading 구현 (가상 매매) 👻
-*   **Shadow Mode**: 실제 거래소에 주문을 전송하지 않고 실시간 호가(KIS Broker)를 받아 체결을 시뮬레이션하는 '그림자 매매' 루프 구현.
-*   **Executor & Agent**: `ShadowOrderExecutor` 및 `ShadowTradingAgent` 구현 완료. `TradingSignal` 발생 시 가상 주문(`SHADOW_` 접두사) 생성 및 체결 확인.
-
-### 5. 리포트 고도화 및 PDF/텔레그램 연동 📢
-*   **Async Report Orchestrator**: 리포트 생성 엔진을 완전 비동기(Async) 기반으로 리팩토링하여 시스템 부하 감소.
-*   **Deep Reasoning 통합**: `DeepReasoningAnalysis` 테이블을 리포트 생성 파이프라인에 연동, 단순 수치 요약을 넘어선 '심층 추론(Narrative)' 포함.
-*   **PDF Reporting**: ReportLab을 활용하여 차트, 테이블, Markdown 분석글이 포함된 전문적인 PDF 리포트 생성기(`pdf_renderer.py`) 구현.
-*   **Telegram Automation**: 매일 **07:10 (미국 장 종료 후)** 자동으로 리포트를 생성하고, 텔레그램으로 PDF 파일을 전송하는 완전 자동화 스케줄러(`scheduler.py`) 구축.
+**Date**: 2026년 1월 7일 화요일  
+**Focus**: War Room 동적 가중치 미반영 문제 해결 및 Reports API 디버깅
 
 ---
 
-## 📝 변경된 파일 (Modified Files)
+## 🎯 Today's Achievements
 
-1.  `backend/api/reasoning_router.py`: DB 세션 처리 개선, History 엔드포인트 추가.
-2.  `backend/ai/reasoning/deep_reasoning_agent.py`: 한국어 프롬프트 적용.
-3.  `backend/ai/reasoning/prompts.py`: 프롬프트 최적화.
-4.  `backend/ai/reasoning/models.py`: 모델 정의 수정.
-5.  `backend/services/news_poller.py`: 크롤러 최적화.
-6.  `backend/ai/trading/shadow_trading_agent.py`: [NEW] 가상 트레이딩 에이전트.
-7.  `backend/ai/order_execution/shadow_order_executor.py`: [NEW] 가상 주문 실행기.
-8.  `backend/ai/reporters/report_orchestrator.py`: Async 변환, Deep Reasoning 연동, PDF 생성 로직 추가.
-9.  `backend/reporting/pdf_renderer.py`: Narrative 렌더링 기능 추가.
-10. `backend/automation/scheduler.py`: 07:10 리포트 자동 생성 스케줄 등록.
-11. `backend/notifications/telegram_notifier.py`: 파일 전송(`send_file`) 기능 추가.
+### 1. War Room 동적 가중치 미반영 문제 진단 및 해결 ✅
+
+**문제 상황**:
+- 사용자가 투자 페르소나(Dividend/Long-Term/Trading/Aggressive) 변경 시
+- AI War Room의 Agent 비율이 화면에 반영되지 않음
+- 백엔드 로그에는 "Dynamic Weights" 출력됨
+
+**근본 원인**:
+- 백엔드 로직은 정상 작동 (PersonaRouter, WarRoomMVP 모두 올바르게 동작)
+- 프론트엔드가 `/api/war-room-mvp/info` 엔드포인트를 호출하지 않음
+- `WarRoomList.tsx`에 하드코딩된 주석: "Trader (35%), Risk (35%), Analyst (30%)"
+
+**해결 방법**:
+
+#### Backend 수정 (완료)
+
+1. **`war_room_mvp.py::get_war_room_info()` 개선**
+   ```python
+   def get_war_room_info(self) -> Dict[str, Any]:
+       # Get current persona config
+       current_mode = self.persona_router.get_current_mode()
+       weights = self.persona_router.get_weights(current_mode)
+       
+       return {
+           'current_mode': current_mode.value,  # 🆕 현재 모드 추가
+           'agents': [
+               {
+                   'name': 'Trader Agent MVP',
+                   'weight': weights.get('trader_mvp', 0.35),  # 🆕 동적 가중치
+                   ...
+               }
+           ]
+       }
+   ```
+
+2. **`war_room_mvp.py::deliberate()` 응답 확장**
+   ```python
+   final_result = {
+       ...
+       'weights': weights,                          # 🆕 사용된 가중치
+       'persona_mode': persona_config.mode.value,   # 🆕 페르소나 모드
+       'persona_description': persona_config.description  # 🆕 모드 설명
+   }
+   ```
+
+#### Frontend 수정 필요 (가이드 제공)
+
+- `frontend/src/services/warRoomApi.ts`에 `getInfo()` 메서드 추가
+- `frontend/src/components/war-room/WarRoomList.tsx`에 가중치 표시 UI 추가
+- (선택) Persona 전환 UI 추가
+
+**결과**:
+- ✅ 백엔드가 동적 가중치를 올바르게 반환
+- ✅ API 응답에 현재 페르소나 정보 포함
+- ⏳ 프론트엔드 수정 대기 중
 
 ---
 
-## 🔥 다음 단계 (Next Steps)
+### 2. Reports API 404 에러 디버깅 강화 ✅
 
-1.  **사용자 피드백 루프 (Human-in-the-loop)**: 생성된 리포트/신호에 대해 사용자가 Good/Bad 평가를 내리고, 이를 다시 학습 데이터로 활용하는 파이프라인 구축.
-2.  **Dashboard 연동 강화**: 생성된 PDF 리포트 아카이브를 프론트엔드 대시보드에서 열람할 수 있도록 UI 업데이트.
-3.  **실전 매매 전환 준비**: Shadow Trading 결과 검증이 완료되면 소액 실전 매매 스위칭 테스트 진행.
+**문제 상황**:
+- 월간/분기 보고서 접근 시 404 에러 발생
+- `GET /api/reports/content?type=monthly&year=2026&month=1` → 404
+
+**디버깅 개선**:
+- `backend/api/reports_router.py`에 상세 로깅 추가
+  - 요청 파라미터 로깅: `Type, Year, Month, Filename`
+  - 절대 경로 로깅: `Looking for file at: {abs_path}`
+  - Fallback 시도 로깅: `File not found, attempting fallback...`
+  - 최종 실패 로깅: `Final check failed. File does not exist`
+
+**개선 효과**:
+- 파일 경로 문제를 정확히 추적 가능
+- CWD(현재 작업 디렉토리) 문제 식별 가능
+- Fallback 로직 동작 여부 확인 가능
+
+---
+
+## 📝 Modified Files
+
+### Backend
+1. **`backend/ai/mvp/war_room_mvp.py`**
+   - Line 373-413: `get_war_room_info()` - 동적 가중치 반환
+   - Line 293-318: `deliberate()` - 응답에 weights, persona_mode 추가
+
+2. **`backend/api/reports_router.py`**
+   - Line 186-216: `get_report_content()` - 디버깅 로그 추가
+
+### Documentation
+3. **`war_room_weights_fix_summary.md`** (Artifact)
+   - 문제 진단 및 해결 방법 상세 문서
+   - API 응답 예시
+   - 프론트엔드 수정 가이드
+
+---
+
+## 🔍 Technical Insights
+
+### Persona Router 동작 방식
+```
+User → POST /api/persona/switch → PersonaRouter(싱글톤).set_mode()
+                                                ↓
+                                        _current_mode 변경
+                                                ↓
+War Room → get_current_mode() → 변경된 모드의 가중치 사용
+```
+
+### 가중치 매핑
+| Persona Mode | Trader | Risk | Analyst |
+|--------------|--------|------|---------|
+| DIVIDEND     | 10%    | 40%  | 50%     |
+| LONG_TERM    | 15%    | 25%  | 60%     |
+| TRADING      | 35%    | 35%  | 30%     |
+| AGGRESSIVE   | 50%    | 30%  | 20%     |
+
+---
+
+## 🐛 Known Issues
+
+1. **프론트엔드 가중치 미표시**
+   - 상태: 백엔드 수정 완료, 프론트엔드 수정 필요
+   - 우선순위: 높음
+   - 해결방법: `war_room_weights_fix_summary.md` 참조
+
+2. **Reports 404 에러**
+   - 상태: 디버깅 로그 추가, 근본 원인 추적 중
+   - 우선순위: 중간
+   - 다음 단계: 실제 요청 로그 확인 필요
+
+---
+
+## 🎯 Next Steps
+
+### Immediate
+1. ⏳ **프론트엔드 수정**: War Room 가중치 표시 UI 구현
+2. ⏳ **404 에러 분석**: 실제 로그 확인 후 경로 수정
+
+### Short-term
+1. Persona 전환 UI 개선 (Dashboard에 통합)
+2. War Room 세션 상세 페이지에 사용된 가중치 표시
+3. Reports 자동 생성 스케줄러 점검
+
+### Long-term
+1. War Room MVP → Full War Room 마이그레이션 계획
+2. Dynamic portfolio allocation 최적화
+3. Persona별 백테스팅 결과 비교 대시보드
+
+---
+
+## 📊 System Status
+
+- **Backend**: ✅ Running (Port 8001)
+- **Frontend**: ✅ Running (Port 5173)
+- **Database**: ✅ Connected
+- **War Room MVP**: ✅ Operational
+- **Persona Router**: ✅ Operational
+- **Reports API**: ⚠️ 404 Issue (Under Investigation)
+
+---
+
+## 💡 Lessons Learned
+
+1. **Frontend-Backend 연동 확인의 중요성**
+   - 백엔드 로직이 정상이어도 프론트엔드가 API를 호출하지 않으면 무용지물
+   - API 계약(Contract) 문서화 및 프론트엔드 사용 여부 확인 필수
+
+2. **디버깅 로그의 가치**
+   - 상세한 로그가 있으면 문제 진단 시간이 크게 단축
+   - 경로, 파라미터, 상태 등을 명확히 로깅
+
+3. **싱글톤 패턴의 주의사항**
+   - `PersonaRouter`가 싱글톤이므로 전역 상태 관리에 유의
+   - 멀티스레드 환경에서는 thread-safety 고려 필요
+
+---
+
+**Report Generated**: 2026-01-07 23:53 KST  
+**Next Report**: 2026-01-08
