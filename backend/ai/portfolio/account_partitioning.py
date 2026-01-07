@@ -386,10 +386,12 @@ class AccountPartitionManager:
         for wallet_type in WalletType:
             summary = self.get_wallet_summary(wallet_type.value)
             summaries[wallet_type.value] = {
-                "value": summary.current_value,
-                "pct": summary.current_pct,
+                "wallet": wallet_type.value,
+                "current_value": summary.current_value,
+                "current_pct": summary.current_pct,
                 "target_pct": summary.target_pct,
                 "deviation": summary.deviation,
+                "cash": self.wallet_cash[wallet_type],
                 "positions_count": summary.positions_count,
                 "unrealized_pnl": summary.unrealized_pnl,
                 "unrealized_pnl_pct": summary.unrealized_pnl_pct,

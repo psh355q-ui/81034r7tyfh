@@ -162,6 +162,65 @@ class TelegramNotifier:
             self.stats["failed"] += 1
             return False
     
+    async def send_file(
+        self,
+        file_path: str,
+        caption: Optional[str] = None,
+        disable_notification: bool = False,
+    ) -> bool:
+        """
+        Send a file (document) via Telegram.
+        
+        Args:
+            file_path: Path to the file to send
+            caption: Optional caption for the file
+            disable_notification: Silent message
+            
+        Returns:
+            True if sent successfully
+        """
+        if not self.enabled:
+            return False
+            
+        if not await self._check_rate_limit():
+            return False
+            
+        try:
+            url = f"{self.base_url}/sendDocument"
+            
+            data = aiohttp.FormData()
+            data.add_field('chat_id', self.chat_id)
+            if caption:
+                data.add_field('caption', caption)
+            if disable_notification:
+                data.add_field('disable_notification', 'true')
+                
+            # Open file and add to form data
+            f = open(file_path, 'rb')
+            # Extract filename regardless of OS path separator
+            filename = file_path.replace('\\', '/').split('/')[-1]
+            data.add_field('document', f, filename=filename)
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, data=data, timeout=30) as response:
+                    f.close() # Close file after request
+                    
+                    if response.status == 200:
+                        self._message_times.append(datetime.now())
+                        self.stats["total_sent"] += 1
+                        logger.info(f"Telegram file sent: {file_path}")
+                        return True
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"Telegram API error (sendDocument): {response.status} - {error_text}")
+                        self.stats["failed"] += 1
+                        return False
+                        
+        except Exception as e:
+            logger.error(f"Telegram file send error: {e}")
+            self.stats["failed"] += 1
+            return False
+
     # ==================== Trading Alerts ====================
     
     async def send_trade_signal(

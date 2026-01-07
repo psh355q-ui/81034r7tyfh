@@ -23,7 +23,11 @@ class ShadowTradingAgent:
         self.partition_manager = get_partition_manager(self.user_id)
         self.is_running = False
         self.interval_seconds = 60
-        self.broker = KISBroker()  # For price data
+        
+        # Determine account number (virtual default)
+        import os
+        account_no = os.getenv("KIS_ACCOUNT_NUMBER", "50155969-01")
+        self.broker = KISBroker(account_no=account_no, is_virtual=True)  # For price data
         self.guardian = get_leverage_guardian()
         
         self.last_signal_id = self._load_last_id()
@@ -163,14 +167,18 @@ class ShadowTradingAgent:
                 ticker=ticker,
                 action=side,
                 quantity=qty,
-                price=price,
+                order_type="MARKET",
+                filled_price=price if status == "FILLED" else None,
+                limit_price=price,
                 status=status,
                 signal_id=signal.id,
                 error_message=msg if msg else None,
-                created_at=datetime.utcnow()
-                # is_virtual=True if column exists? Assuming Order table usage for now.
+                created_at=datetime.utcnow(),
+                filled_at=datetime.utcnow() if status == "FILLED" else None,
+                order_id=f"SHADOW_{ticker}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
             )
             db.add(order)
             db.commit()
+            logger.info(f"📝 Order recorded: {side} {ticker} x{qty} @ ${price:.2f} - {status}")
         except Exception as e:
             logger.error(f"Failed to record order: {e}")

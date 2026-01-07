@@ -23,7 +23,7 @@ import TradingDashboard from './pages/TradingDashboard';
 import SignalDetail from './pages/SignalDetail';
 import PortfolioManagement from './pages/PortfolioManagement';
 import BacktestDashboard from './pages/BacktestDashboard';
-import GlobalMacro from './pages/GlobalMacro';
+
 import WarRoomPage from './pages/WarRoomPage';
 import SignalConsolidationPage from './pages/SignalConsolidationPage';
 import { CostReport } from './pages/CostReport';
@@ -31,6 +31,12 @@ import DataBackfill from './pages/DataBackfill';
 import Orders from './pages/Orders';  // 🆕 Phase 27
 import PartitionDashboard from './pages/PartitionDashboard'; // 🆕 Phase 6.2 Partition Dashboard
 import Portfolio from './pages/Portfolio';  // 🆕 Phase 27 (new portfolio page)
+import DividendDashboard from './pages/DividendDashboard';  // 🆕 Phase 21 (dividend intelligence)
+import AccountabilityDashboard from './pages/AccountabilityDashboard';  // 🆕 Phase 29 (AI accountability)
+import FailureLearningDashboard from './pages/FailureLearningDashboard';  // 🆕 Phase 29 확장 (auto-learning)
+import MultiAssetDashboard from './pages/MultiAssetDashboard';  // 🆕 Phase 30 (multi-asset support)
+import PortfolioOptimizationPage from './pages/PortfolioOptimizationPage';  // 🆕 Phase 31 (portfolio optimization)
+import CorrelationDashboard from './pages/CorrelationDashboard';  // 🆕 Phase 32 (asset correlation)
 
 import Performance from './pages/Performance';  // 🆕 Phase 25.2 (performance dashboard)
 // ... (imports)
@@ -77,7 +83,7 @@ const App: React.FC = () => {
               <Route path="/multi-asset" element={<MultiAssetDashboard />} />  {/* 🆕 Phase 30 Multi-Asset Support */}
               <Route path="/portfolio-optimization" element={<PortfolioOptimizationPage />} />  {/* 🆕 Phase 31 Portfolio Optimization */}
               <Route path="/correlation" element={<CorrelationDashboard />} />  {/* 🆕 Phase 32 Asset Correlation */}
-              <Route path="/global-macro" element={<GlobalMacro />} />
+
               <Route path="/war-room" element={<WarRoomPage />} />
               <Route path="/signal-consolidation" element={<SignalConsolidationPage />} />
               <Route path="/cost-report" element={<CostReport />} />

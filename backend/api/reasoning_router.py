@@ -46,19 +46,30 @@ async def analyze_ticker_manually(request: AnalyzeRequest):
         raise HTTPException(status_code=500, detail="Failed to generate thesis")
     
     # 💾 Save to database (Phase 2: Signal Generator Integration)
-    if thesis.direction in ["BUY", "SELL"]:  # Don't save HOLD
+    if thesis.direction in ["BUY", "SELL", "HOLD"]:  # Save ALL for history
         try:
             from backend.database.models import TradingSignal as DBTradingSignal
             from backend.database.repository import get_sync_session
             from datetime import datetime
+            import inspect
             
             db = get_sync_session()
+            
+            # Handle if get_sync_session returns a generator (safety check)
+            if inspect.isgenerator(db):
+                db = next(db)
+            
             try:
+                # Ensure we have a valid session
+                if not hasattr(db, "add"):
+                     logger.error(f"Invalid DB session object type: {type(db)}")
+                     raise ValueError("Invalid DB session")
+
                 signal = DBTradingSignal(
                     analysis_id=None,  # Deep Reasoning is independent
                     ticker=request.ticker,
                     action=thesis.direction,
-                    signal_type="PRIMARY",  # Deep Reasoning = primary signal
+                    signal_type="DEEP_REASONING",  # Correct signal type
                     confidence=thesis.final_confidence_score,
                     reasoning=thesis.summary,
                     source="deep_reasoning",  # 🆕 Source tracking
@@ -74,10 +85,11 @@ async def analyze_ticker_manually(request: AnalyzeRequest):
                 logger.error(f"Failed to save Deep Reasoning signal: {db_error}")
                 # Don't fail the request if DB save fails
             finally:
-                db.close()
+                if hasattr(db, "close"):
+                    db.close()
         
         except Exception as import_error:
-            logger.error(f"Failed to import DB models: {import_error}")
+            logger.error(f"Failed to import DB models or session: {import_error}")
     
     # Prepare response
     response = thesis.dict()
@@ -211,3 +223,56 @@ async def analyze_ticker_manually(request: AnalyzeRequest):
 @log_endpoint("reasoning", "system")
 def health_check():
     return {"status": "active", "engine": "ready" if reasoning_engine else "disabled"}
+
+
+@router.get("/history")
+@log_endpoint("reasoning", "history")
+def get_analysis_history(limit: int = 20):
+    """
+    Get recent Deep Reasoning analysis history from database.
+    """
+    try:
+        from backend.database.repository import get_sync_session
+        from backend.database.models import TradingSignal as DBTradingSignal
+        from sqlalchemy import desc
+        import inspect
+        
+        db = get_sync_session()
+        if inspect.isgenerator(db):
+            db = next(db)
+            
+        try:
+            # Fetch signals created by deep_reasoning
+            signals = (
+                db.query(DBTradingSignal)
+                .filter(DBTradingSignal.source == "deep_reasoning")
+                .order_by(desc(DBTradingSignal.generated_at))
+                .limit(limit)
+                .all()
+            )
+            
+            # Format response
+            history = []
+            for s in signals:
+                history.append({
+                    "id": s.id,
+                    "ticker": s.ticker,
+                    "action": s.action,
+                    "confidence": s.confidence,
+                    "reasoning": s.reasoning,
+                    "date": s.generated_at.isoformat() if s.generated_at else None,
+                    "type": s.signal_type
+                })
+                
+            return history
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch history: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            if hasattr(db, "close"):
+                db.close()
+                
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        return []

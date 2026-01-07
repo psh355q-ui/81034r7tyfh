@@ -130,107 +130,101 @@ async def get_daily_report(
         }
 
 
-@router.get("/daily/summary")
+@router.get("/content")
 @log_endpoint("reports", "system")
-async def get_daily_summaries(
-    start_date: date = Query(..., description="Start date"),
-    end_date: date = Query(..., description="End date"),
+async def get_report_content(
+    type: str = Query(..., description="Report type: daily, weekly, monthly, quarterly, annual"),
+    date: Optional[str] = Query(None, description="Date for daily report"),
+    year: Optional[int] = Query(None, description="Year for periodic reports"),
+    week: Optional[int] = Query(None, description="Week number for weekly report"),
+    month: Optional[int] = Query(None, description="Month for monthly report"),
+    quarter: Optional[int] = Query(None, description="Quarter for quarterly report"),
     db: Session = Depends(get_db),
 ):
     """
-    Get summary of daily reports for a date range.
-
-    Useful for displaying a list of available reports.
+    Get raw content of a generated report (Markdown).
     """
-    try:
-        # TODO: Fix SQLAlchemy 2.0 async compatibility
-        # For now, return empty array as no data exists yet
-        return []
-    except Exception as e:
-        logger.error(f"Error fetching daily summaries: {e}")
-        return []
-
-
-# =============================================================================
-# Weekly Report Endpoints
-# =============================================================================
-
-@router.get("/weekly")
-@log_endpoint("reports", "system")
-async def get_weekly_report(
-    year: int = Query(..., description="Year"),
-    week: int = Query(..., description="ISO week number (1-53)"),
-    format: str = Query("json", description="Response format: json or pdf"),
-    db: Session = Depends(get_db),
-):
-    """
-    Get weekly trading report.
-    """
-    try:
-        generator = ReportGenerator(db)
-        report = await generator.generate_weekly_report(year, week)
-
-        if format == "pdf":
-            # TODO: Implement weekly PDF rendering
-            raise HTTPException(status_code=501, detail="Weekly PDF reports not yet implemented")
-        else:
-            return {
-                "report_id": report.report_id,
-                "year": report.year,
-                "week_number": report.week_number,
-                "week_start_date": report.week_start_date.isoformat(),
-                "week_end_date": report.week_end_date.isoformat(),
-                "portfolio_value_start": float(report.portfolio_value_start),
-                "portfolio_value_end": float(report.portfolio_value_end),
-                "weekly_pnl": float(report.weekly_pnl),
-                "weekly_return_pct": float(report.weekly_return_pct) if report.weekly_return_pct else None,
-                "total_trades": report.total_trades,
-                "win_rate": float(report.win_rate) if report.win_rate else None,
-            }
-
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error generating weekly report: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
-
-
-@router.get("/weekly/list")
-@log_endpoint("reports", "system")
-async def list_weekly_reports(
-    year: Optional[int] = Query(None, description="Filter by year"),
-    limit: int = Query(20, description="Maximum number of reports"),
-    db: Session = Depends(get_db),
-):
-    """
-    List available weekly reports.
-    """
-    from sqlalchemy import select
-    stmt = select(WeeklyAnalytics)
-
-    if year:
-        stmt = stmt.where(WeeklyAnalytics.year == year)
-
-    stmt = stmt.order_by(
-        WeeklyAnalytics.year.desc(),
-        WeeklyAnalytics.week_number.desc()
-    ).limit(limit)
+    import os
     
-    result = await db.execute(stmt)
-    reports = result.scalars().all()
+    filename = ""
+    docs_dir = "docs"
+    
+    try:
+        if type == "daily":
+            if not date:
+                date = (datetime.utcnow() - timedelta(days=1)).strftime("%Y%m%d")
+            date_clean = date.replace("-", "")
+            filename = f"Daily_Briefing_{date_clean}.md"
+            
+        elif type == "weekly":
+            if not year: year = datetime.now().year
+            if date:
+                date_clean = date.replace("-", "")
+                filename = f"Weekly_Report_{date_clean}.md"
+            else:
+                 # Try to find recent weekly report if specific date not provided
+                 # Logic: Look for file matching pattern Weekly_Report_YYYYMMDD.md
+                 filename = f"Weekly_Report_{year}.md" # Placeholder, improved logic below
 
-    return [
-        {
-            "year": r.year,
-            "week_number": r.week_number,
-            "week_start_date": r.week_start_date.isoformat(),
-            "week_end_date": r.week_end_date.isoformat(),
-            "weekly_pnl": float(r.weekly_pnl),
-            "weekly_return_pct": float(r.weekly_return_pct) if r.weekly_return_pct else None,
-            "total_trades": r.total_trades,
+        elif type == "monthly":
+            if not year: year = datetime.now().year
+            if not month: month = datetime.now().month
+            filename = f"Monthly_Report_{year}_{month:02d}.md"
+
+        elif type == "quarterly":
+            if not year: year = datetime.now().year
+            if not quarter: quarter = (datetime.now().month - 1) // 3 + 1
+            filename = f"Quarterly_Report_{year}_Q{quarter}.md"
+
+        elif type == "annual":
+            if not year: year = datetime.now().year
+            filename = f"Annual_Report_{year}.md"
+            
+        else:
+            raise HTTPException(status_code=400, detail="Invalid report type")
+
+        file_path = os.path.join(docs_dir, filename)
+        
+        # Fallback logic for finding files if exact name match fails (especially for weekly/daily dates)
+        if not os.path.exists(file_path):
+             if type == "weekly":
+                 # Find any weekly report for the year if specific one missing
+                 for f in sorted(os.listdir(docs_dir), reverse=True):
+                     if f.startswith(f"Weekly_Report_") and f.endswith(".md"):
+                         file_path = os.path.join(docs_dir, f)
+                         filename = f
+                         break
+             elif type == "monthly":
+                  # Last available monthly
+                  for f in sorted(os.listdir(docs_dir), reverse=True):
+                     if f.startswith(f"Monthly_Report_") and f.endswith(".md"):
+                         file_path = os.path.join(docs_dir, f)
+                         filename = f
+                         break
+             elif type == "quarterly":
+                  for f in sorted(os.listdir(docs_dir), reverse=True):
+                     if f.startswith(f"Quarterly_Report_") and f.endswith(".md"):
+                         file_path = os.path.join(docs_dir, f)
+                         filename = f
+                         break
+
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail=f"Report file not found: {filename}")
+            
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            
+        return {
+            "content": content,
+            "filename": filename,
+            "generated_at": datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
         }
-        for r in reports
-    ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reading report content: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =============================================================================
@@ -246,35 +240,53 @@ async def get_monthly_report(
     db: Session = Depends(get_db),
 ):
     """
-    Get monthly trading report.
+    Generate or retrieve monthly trading report.
     """
     try:
-        generator = ReportGenerator(db)
-        report = await generator.generate_monthly_report(year, month)
+        from backend.ai.reporters.monthly_reporter import MonthlyReporter
+        reporter = MonthlyReporter()
+        filename = await reporter.generate_monthly_report(year, month)
+        
+        return {
+            "message": "Monthly report generated successfully",
+            "filename": filename,
+            "year": year,
+            "month": month
+        }
 
-        if format == "pdf":
-            # TODO: Implement monthly PDF rendering
-            raise HTTPException(status_code=501, detail="Monthly PDF reports not yet implemented")
-        else:
-            return {
-                "report_id": report.report_id,
-                "year": report.year,
-                "month": report.month,
-                "portfolio_value_start": float(report.portfolio_value_start),
-                "portfolio_value_end": float(report.portfolio_value_end),
-                "monthly_pnl": float(report.monthly_pnl),
-                "monthly_return_pct": float(report.monthly_return_pct) if report.monthly_return_pct else None,
-                "total_trades": report.total_trades,
-                "trading_days": report.trading_days,
-                "win_rate": float(report.win_rate) if report.win_rate else None,
-                "sharpe_ratio": float(report.sharpe_ratio) if report.sharpe_ratio else None,
-                "total_ai_cost_usd": float(report.total_ai_cost_usd) if report.total_ai_cost_usd else None,
-            }
-
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error generating monthly report: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
+
+# =============================================================================
+# Quarterly Report Endpoints
+# =============================================================================
+
+@router.get("/quarterly")
+@log_endpoint("reports", "system")
+async def get_quarterly_report(
+    year: int = Query(..., description="Year"),
+    quarter: int = Query(..., description="Quarter (1-4)"),
+    format: str = Query("json", description="Response format: json or pdf"),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate or retrieve quarterly trading report.
+    """
+    try:
+        from backend.ai.reporters.quarterly_reporter import QuarterlyReporter
+        reporter = QuarterlyReporter()
+        filename = await reporter.generate_quarterly_report(year, quarter)
+        
+        return {
+            "message": "Quarterly report generated successfully",
+            "filename": filename,
+            "year": year,
+            "quarter": quarter
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating quarterly report: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
 
 

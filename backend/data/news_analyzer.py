@@ -43,12 +43,17 @@ logger = logging.getLogger(__name__)
 
 from pathlib import Path
 
-# Docker 컨테이너 호환 경로
-USAGE_FILE = Path("/app/data/gemini_daily_usage.json")
+# Data directory path (Windows/Linux compatible)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = BASE_DIR / "data"
+USAGE_FILE = DATA_DIR / "gemini_daily_usage.json"
+
 try:
-    USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
-except (PermissionError, OSError):
-    USAGE_FILE = Path("/tmp/gemini_daily_usage.json")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    # Fallback for restricted environments
+    import tempfile
+    USAGE_FILE = Path(tempfile.gettempdir()) / "gemini_daily_usage.json"
 
 
 def get_daily_usage() -> dict:

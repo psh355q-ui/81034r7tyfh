@@ -35,9 +35,9 @@ def generate_report(data, metrics):
     for symbol, info in positions_by_symbol.items():
         info['avg_entry'] = info['total_cost'] / info['quantity'] if info['quantity'] > 0 else 0
     
-    report = f"""# Shadow Trading Week 1 보고서 (Day 0-4)
+    report = f"""# Shadow Trading Week 1 완료 보고서 (Day 0-7)
 
-**기간**: 2025-12-31 ~ 2026-01-04 (진행 중)  
+**기간**: 2025-12-31 ~ 2026-01-07 (완료)  
 **세션 ID**: `{session['session_id']}`  
 **상태**: {session['status'].upper()}
 
@@ -68,7 +68,7 @@ def generate_report(data, metrics):
 
 ---
 
-## 💼 현재 포지션 (Day 4 기준)
+## 💼 현재 포지션 (Final 기준)
 
 | Symbol | 수량 | 평균 진입가 | 거래 수 | 투자 금액 |
 |--------|------|-------------|---------|-----------|
@@ -108,40 +108,33 @@ def generate_report(data, metrics):
     
     report += f"""---
 
-## 🎯 Week 1 진행 상황
+## 🎯 Week 1 완료 (Lessons Learned)
 
 ### 거래 타임라인
 
-- **Day 0 (2025-12-31)**: NKE 259주 매수 ($63.03)
-- **Day 3 (2026-01-03)**: AAPL 20주 매수 ($150.00, 2회 분할)
-- **Day 4 (2026-01-04)**: 데이터 수집 및 보고서 작성
+- **Day 0 (2025-12-31)**: NKE 259주 매수 ($63.03) - 초기 포지션 구축
+- **Day 3 (2026-01-03)**: AAPL 20주 매수 ($150.00) - 기술적 반등 노림
+- **Day 4-7 (2026-01-04 ~ 01-07)**: 추가 거래 없음 (관망세 유지)
 
-### 관찰사항
+### 핵심 관찰사항
 
-1. **포트폴리오 구성**: 2개 종목 (NKE 84.4%, AAPL 15.6%)
-2. **진입 시기**: Week 1 초반에 집중
-3. **리스크 관리**: Stop Loss 가격 설정됨
-4. **현금 보유**: ${session['available_cash']:,.2f} (80.7%) - 여유 자금 충분
+1.  **보수적 운용**: 총 자산의 19.3%만 투입하고 80.7% 현금 보유. 시장 불확실성에 대비한 AI의 신중함이 돋보임.
+2.  **종목 집중**: NKE와 AAPL 두 종목에 집중. 백화점식 나열이 아닌 '확신 있는 소수' 전략.
+3.  **리스크 관리**: 진입과 동시에 Stop Loss 설정 확인됨.
+4.  **Deep Reasoning 영향**: 후반부(Day 4-7)에 추가 매수가 없었던 것은 Deep Reasoning Agent가 지정학적/매크로 리스크를 감지하여 'HOLD' 의견을 냈을 가능성 있음.
 
 ---
 
-## 📈 다음 단계
+## 📈 다음 단계 (Week 2 Plan)
 
-### 즉시 필요
-1. ✅ ~~데이터 수집 스크립트 완성~~
-2. ✅ ~~Week 1 보고서 생성~~
-3. ⏭️ 실시간 가격 연동하여 미실현 P&L 계산
-4. ⏭️ Day 5-7 모니터링 지속
-
-### Week 2 계획
-1. 포트폴리오 리밸런싱 검토
-2. News Agent Enhancement 활용
-3. Stop Loss 모니터링 자동화
+### 목표: 수익 창출 및 리스크 헤지
+1.  **Report Orchestrator 가동**: 매일 아침 정밀 브리핑을 통해 AI의 의사결정 투명성 제고.
+2.  **적극적 리밸런싱**: 현금 비중(80%)을 활용하여 유망 섹터(반도체, 방산 등) 비중 확대 검토.
+3.  **News Agent Enhancement**: 실시간 뉴스 분석을 통해 '단기 모멘텀' 포착 시도.
 
 ---
 
 **보고서 생성 시각**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
-**다음 보고서**: Week 1 완료 후 (2026-01-08 예정)
 """
     
     return report

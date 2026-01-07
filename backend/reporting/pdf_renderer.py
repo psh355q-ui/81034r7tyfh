@@ -147,6 +147,10 @@ class PDFRenderer:
         if report.executive_summary:
             story.extend(self._build_executive_summary_section(report.executive_summary))
 
+        # Narrative Analysis (LLM)
+        if report.narrative_analysis:
+            story.extend(self._build_narrative_section(report.narrative_analysis))
+
         # Trading Activity
         if report.trading_activity:
             story.extend(self._build_trading_activity_section(report.trading_activity))
@@ -266,6 +270,41 @@ class PDFRenderer:
 
         elements.append(Spacer(1, 0.3*inch))
 
+        return elements
+
+    def _build_narrative_section(self, text: str) -> list:
+        """Build narrative analysis section."""
+        elements = []
+        
+        elements.append(Paragraph("AI Deep Analysis", self.styles['CustomHeading']))
+        elements.append(Spacer(1, 0.1*inch))
+        
+        # Simple Markdown parsing
+        paragraphs = text.split('\n\n')
+        
+        for p_text in paragraphs:
+            if not p_text.strip():
+                continue
+                
+            # Handle headers
+            if p_text.strip().startswith('##'):
+                 elements.append(Paragraph(p_text.replace('#', '').strip(), self.styles['Heading3']))
+            elif p_text.strip().startswith('#'):
+                 elements.append(Paragraph(p_text.replace('#', '').strip(), self.styles['Heading2']))
+            elif p_text.strip().startswith('- '):
+                # List item
+                elements.append(Paragraph(f"• {p_text[2:]}", self.styles['Normal']))
+            else:
+                # Regular paragraph
+                # Simple bold replacement attempts (fragile but better than raw **)
+                # We won't do full regex parsing here to avoid complexity
+                clean_text = p_text.replace('<', '&lt;').replace('>', '&gt;')
+                elements.append(Paragraph(clean_text, self.styles['Normal']))
+            
+            elements.append(Spacer(1, 0.05*inch))
+            
+        elements.append(Spacer(1, 0.2*inch))
+        
         return elements
 
     def _build_trading_activity_section(self, activity) -> list:

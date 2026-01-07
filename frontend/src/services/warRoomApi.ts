@@ -50,6 +50,18 @@ export interface DebateSession {
     consensus_confidence: number;
     constitutional_valid: boolean;
     agent_votes: Record<string, any>;
+    votes_detail?: Array<{
+        agent: string;
+        action?: string;
+        recommendation?: string;
+        confidence: number;
+        reasoning?: string;
+    }>;
+    pm_decision?: {
+        final_decision: string;
+        confidence: number;
+        reasoning: string;
+    };
     signal_generated: boolean;
     created_at: string;
 }

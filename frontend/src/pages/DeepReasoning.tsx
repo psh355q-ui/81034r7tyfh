@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Brain, TrendingUp, TrendingDown, Network, Search, Lightbulb, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
+import LogicTraceViewer from '../components/LogicTraceViewer';
 
 interface ReasoningResult {
   success: boolean;
@@ -230,22 +231,20 @@ const DeepReasoning: React.FC = () => {
       <div className="flex gap-2 border-b border-gray-200">
         <button
           onClick={() => setActiveTab('analysis')}
-          className={`px-6 py-3 font-semibold transition-colors ${
-            activeTab === 'analysis'
-              ? 'text-purple-600 border-b-2 border-purple-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'analysis'
+            ? 'text-purple-600 border-b-2 border-purple-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
         >
           <Brain className="inline w-4 h-4 mr-2" />
           Analysis Results
         </button>
         <button
           onClick={() => setActiveTab('trace')}
-          className={`px-6 py-3 font-semibold transition-colors ${
-            activeTab === 'trace'
-              ? 'text-purple-600 border-b-2 border-purple-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'trace'
+            ? 'text-purple-600 border-b-2 border-purple-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
           disabled={!result}
         >
           <Network className="inline w-4 h-4 mr-2" />
@@ -253,22 +252,20 @@ const DeepReasoning: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('knowledge')}
-          className={`px-6 py-3 font-semibold transition-colors ${
-            activeTab === 'knowledge'
-              ? 'text-purple-600 border-b-2 border-purple-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'knowledge'
+            ? 'text-purple-600 border-b-2 border-purple-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
         >
           <Search className="inline w-4 h-4 mr-2" />
           Knowledge Graph
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-6 py-3 font-semibold transition-colors ${
-            activeTab === 'history'
-              ? 'text-purple-600 border-b-2 border-purple-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'history'
+            ? 'text-purple-600 border-b-2 border-purple-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
         >
           <svg className="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -280,239 +277,188 @@ const DeepReasoning: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'analysis' && (
         <>
-      {/* News Input Section */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Search className="w-5 h-5" />
-          News Analysis
-        </h2>
-        <textarea
-          className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          placeholder="Enter news text to analyze (e.g., 'Google announced TPU v6 with 2x efficiency improvement')"
-          value={newsText}
-          onChange={(e) => setNewsText(e.target.value)}
-        />
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={analyzeNews}
-            disabled={loading}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Brain className="w-4 h-4" />
-                Analyze with Deep Reasoning
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setNewsText('tpu npu gpu 간 현재 최대 쟁점을 확인하고 그 정보를 바탕으로 googl 주식 전망에 대해 분석하자');
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Load Example
-          </button>
-        </div>
+          {/* News Input Section */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Search className="w-5 h-5" />
+              News Analysis
+            </h2>
+            <textarea
+              className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="Enter news text to analyze (e.g., 'Google announced TPU v6 with 2x efficiency improvement')"
+              value={newsText}
+              onChange={(e) => setNewsText(e.target.value)}
+            />
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={analyzeNews}
+                disabled={loading}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4" />
+                    Analyze with Deep Reasoning
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setNewsText('tpu npu gpu 간 현재 최대 쟁점을 확인하고 그 정보를 바탕으로 googl 주식 전망에 대해 분석하자');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Load Example
+              </button>
+            </div>
 
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            {error}
-          </div>
-        )}
-      </div>
-
-      {/* Results Section */}
-      {result && (
-        <div className="space-y-6">
-          {/* Theme */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-purple-600" />
-              Investment Theme
-            </h3>
-            <p className="text-xl font-bold text-purple-900">{result.theme}</p>
-          </div>
-
-          {/* Beneficiaries Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Primary Beneficiary */}
-            {result.primary_beneficiary && (
-              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                <h3 className="text-sm font-semibold text-gray-600 mb-3">Primary Beneficiary</h3>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {getActionIcon(result.primary_beneficiary.action)}
-                    <span className="text-2xl font-bold">{result.primary_beneficiary.ticker}</span>
-                  </div>
-                  <span className={`text-sm font-semibold ${getConfidenceColor(result.primary_beneficiary.confidence)}`}>
-                    {(result.primary_beneficiary.confidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="text-sm bg-gray-50 p-3 rounded">
-                  <span className="font-semibold">Action:</span> {result.primary_beneficiary.action}
-                </div>
-                <p className="text-sm text-gray-600 mt-3">{result.primary_beneficiary.reasoning}</p>
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                {error}
               </div>
             )}
+          </div>
 
-            {/* Hidden Beneficiary */}
-            {result.hidden_beneficiary && (
-              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                  <Network className="w-4 h-4" />
-                  Hidden Beneficiary
+          {/* Results Section */}
+          {result && (
+            <div className="space-y-6">
+              {/* Theme */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-purple-600" />
+                  Investment Theme
                 </h3>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {getActionIcon(result.hidden_beneficiary.action)}
-                    <span className="text-2xl font-bold">{result.hidden_beneficiary.ticker}</span>
-                  </div>
-                  <span className={`text-sm font-semibold ${getConfidenceColor(result.hidden_beneficiary.confidence)}`}>
-                    {(result.hidden_beneficiary.confidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="text-sm bg-green-50 p-3 rounded">
-                  <span className="font-semibold">Action:</span> {result.hidden_beneficiary.action}
-                </div>
-                <p className="text-sm text-gray-600 mt-3">{result.hidden_beneficiary.reasoning}</p>
+                <p className="text-xl font-bold text-purple-900">{result.theme}</p>
               </div>
-            )}
 
-            {/* Loser */}
-            {result.loser && (
-              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
-                <h3 className="text-sm font-semibold text-gray-600 mb-3">Potential Loser</h3>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {getActionIcon(result.loser.action)}
-                    <span className="text-2xl font-bold">{result.loser.ticker}</span>
+              {/* Beneficiaries Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Primary Beneficiary */}
+                {result.primary_beneficiary && (
+                  <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+                    <h3 className="text-sm font-semibold text-gray-600 mb-3">Primary Beneficiary</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getActionIcon(result.primary_beneficiary.action)}
+                        <span className="text-2xl font-bold">{result.primary_beneficiary.ticker}</span>
+                      </div>
+                      <span className={`text-sm font-semibold ${getConfidenceColor(result.primary_beneficiary.confidence)}`}>
+                        {(result.primary_beneficiary.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="text-sm bg-gray-50 p-3 rounded">
+                      <span className="font-semibold">Action:</span> {result.primary_beneficiary.action}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-3">{result.primary_beneficiary.reasoning}</p>
                   </div>
-                  <span className={`text-sm font-semibold ${getConfidenceColor(result.loser.confidence)}`}>
-                    {(result.loser.confidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="text-sm bg-red-50 p-3 rounded">
-                  <span className="font-semibold">Action:</span> {result.loser.action}
-                </div>
-                <p className="text-sm text-gray-600 mt-3">{result.loser.reasoning}</p>
+                )}
+
+                {/* Hidden Beneficiary */}
+                {result.hidden_beneficiary && (
+                  <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+                    <h3 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                      <Network className="w-4 h-4" />
+                      Hidden Beneficiary
+                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getActionIcon(result.hidden_beneficiary.action)}
+                        <span className="text-2xl font-bold">{result.hidden_beneficiary.ticker}</span>
+                      </div>
+                      <span className={`text-sm font-semibold ${getConfidenceColor(result.hidden_beneficiary.confidence)}`}>
+                        {(result.hidden_beneficiary.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="text-sm bg-green-50 p-3 rounded">
+                      <span className="font-semibold">Action:</span> {result.hidden_beneficiary.action}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-3">{result.hidden_beneficiary.reasoning}</p>
+                  </div>
+                )}
+
+                {/* Loser */}
+                {result.loser && (
+                  <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+                    <h3 className="text-sm font-semibold text-gray-600 mb-3">Potential Loser</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {getActionIcon(result.loser.action)}
+                        <span className="text-2xl font-bold">{result.loser.ticker}</span>
+                      </div>
+                      <span className={`text-sm font-semibold ${getConfidenceColor(result.loser.confidence)}`}>
+                        {(result.loser.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="text-sm bg-red-50 p-3 rounded">
+                      <span className="font-semibold">Action:</span> {result.loser.action}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-3">{result.loser.reasoning}</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Bull/Bear Cases */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-3 text-green-700 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Bull Case
-              </h3>
-              <p className="text-gray-700">{result.bull_case}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-3 text-red-700 flex items-center gap-2">
-                <TrendingDown className="w-5 h-5" />
-                Bear Case
-              </h3>
-              <p className="text-gray-700">{result.bear_case}</p>
-            </div>
-          </div>
+              {/* Bull/Bear Cases */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold mb-3 text-green-700 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Bull Case
+                  </h3>
+                  <p className="text-gray-700">{result.bull_case}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold mb-3 text-red-700 flex items-center gap-2">
+                    <TrendingDown className="w-5 h-5" />
+                    Bear Case
+                  </h3>
+                  <p className="text-gray-700">{result.bear_case}</p>
+                </div>
+              </div>
 
-          {/* Metadata */}
-          <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 flex items-center justify-between">
-            <div>
-              <span className="font-semibold">Model:</span> {result.model_used}
+              {/* Metadata */}
+              <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold">Model:</span> {result.model_used}
+                </div>
+                <div>
+                  <span className="font-semibold">Processing Time:</span> {result.processing_time_ms.toFixed(0)}ms
+                </div>
+                <div>
+                  <span className="font-semibold">Analyzed:</span> {new Date(result.analyzed_at).toLocaleString()}
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="font-semibold">Processing Time:</span> {result.processing_time_ms.toFixed(0)}ms
-            </div>
-            <div>
-              <span className="font-semibold">Analyzed:</span> {new Date(result.analyzed_at).toLocaleString()}
-            </div>
-          </div>
-        </div>
-      )}
-      </>
+          )}
+        </>
       )}
 
       {/* Reasoning Trace Tab */}
       {activeTab === 'trace' && result && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-800">Reasoning Trace</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setExpandedSteps(new Set(result.reasoning_trace.map((_, i) => i)))}
-                className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
-              >
-                Expand All
-              </button>
-              <button
-                onClick={() => setExpandedSteps(new Set())}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-              >
-                Collapse All
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {result.reasoning_trace.map((step, index) => {
-              const isExpanded = expandedSteps.has(index);
-              return (
-                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <button
-                    onClick={() => toggleStep(index)}
-                    className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center font-bold text-lg shadow-md">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-gray-800 font-medium">{step.substring(0, 80)}{step.length > 80 ? '...' : ''}</p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
-                    </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pt-2 border-t border-gray-100">
-                      <p className="text-gray-700 leading-relaxed">{step}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Summary */}
-          <div className="mt-6 p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-            <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
-              <Brain className="w-5 h-5" />
-              Analysis Summary
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Total Steps:</span>
-                <span className="ml-2 font-semibold text-purple-900">{result.reasoning_trace.length}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Model Used:</span>
-                <span className="ml-2 font-semibold text-purple-900">{result.model_used}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Processing Time:</span>
-                <span className="ml-2 font-semibold text-purple-900">{result.processing_time_ms.toFixed(0)}ms</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <LogicTraceViewer
+          trace={{
+            id: 'trace_' + Date.now(),
+            ticker: result.primary_beneficiary?.ticker || 'UNKNOWN',
+            signal: result.primary_beneficiary?.action || 'HOLD',
+            totalTime: result.processing_time_ms,
+            confidence: result.primary_beneficiary?.confidence || 0,
+            steps: result.reasoning_trace.map((step, idx) => ({
+              id: `step_${idx}`,
+              stepNumber: idx + 1,
+              title: `Reasoning Step ${idx + 1}`,
+              description: step,
+              inputs: [],
+              output: 'Processed',
+              confidence: 0.9,
+              timestamp: new Date().toISOString()
+            })),
+            debate: undefined // Add debate data if available in future
+          }}
+        />
       )}
 
       {/* Knowledge Graph Tab */}

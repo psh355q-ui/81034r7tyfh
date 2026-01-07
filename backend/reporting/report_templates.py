@@ -191,6 +191,9 @@ class DailyReport:
     # Charts
     performance_chart: Optional[ChartData] = None  # Portfolio value over time
     pnl_chart: Optional[ChartData] = None  # Daily PnL
+    
+    # Narrative Analysis (LLM Generated)
+    narrative_analysis: Optional[str] = None
 
     # Metadata
     notes: Optional[str] = None

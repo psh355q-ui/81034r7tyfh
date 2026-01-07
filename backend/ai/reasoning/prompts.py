@@ -99,9 +99,16 @@ News Sentiment: {news_sentiment}
 - ❌ Bad: "RSI is 65" → "Stock is overbought" → "Might pull back"
 - ✅ Good: "RSI 65 (관찰)" → "왜? 강한 매수세" → "왜? 실적 기대감" → "왜? AI 수요 구조적 증가" → "따라서 단기 조정 가능하나 장기 모멘텀은 유지"
 
+[OUTPUT LANGUAGE REQUIREMENT]
+**CRITICAL: The output JSON MUST be written in KOREAN (한국어).**
+- Even if the input news is in English, you MUST TRANSLATE your analysis and reasoning into Korean.
+- Do NOT output English for the 'summary', 'bull_case', 'bear_case', 'reasoning', or 'conclusion' fields.
+- Only technical terms (ticker, direction, time_horizon) can remain in English.
+
 3. Explicitly look for contradictions between News Sentiment and Technical Signals.
 4. If they conflict, ask WHY they conflict and which signal reflects the true underlying reality.
 5. Generate the Final JSON output following the EXACT schema provided in the system prompt.
 6. **IMPORTANT: Write ALL text content in KOREAN (한국어)**. Only ticker, direction, and time_horizon values should be in English.
 7. **Each reasoning step must answer "왜?"** - Always be asking "Why did this happen?" and "What caused that?"
+
 """

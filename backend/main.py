@@ -17,6 +17,7 @@ Date: 2025-11-14
 
 import logging
 import asyncio
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
@@ -306,13 +307,17 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Failed to initialize monitoring components: {e}")
 
     # 🆕 Start News Poller (5m Interval)
-    try:
-        from backend.services.news_poller import NewsPoller
-        news_poller = NewsPoller()
-        asyncio.create_task(news_poller.start())
-        logger.info("✅ News Poller started (5m interval - Pre-filtered AI Analysis)")
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to start News Poller: {e}")
+    # Set DISABLE_EMBEDDED_NEWS_POLLER=1 to disable (when running standalone crawler)
+    if os.environ.get("DISABLE_EMBEDDED_NEWS_POLLER", "").lower() not in ("1", "true", "yes"):
+        try:
+            from backend.services.news_poller import NewsPoller
+            news_poller = NewsPoller()
+            asyncio.create_task(news_poller.start())
+            logger.info("✅ News Poller started (5m interval - Pre-filtered AI Analysis)")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to start News Poller: {e}")
+    else:
+        logger.info("⏭️ Embedded News Poller disabled (DISABLE_EMBEDDED_NEWS_POLLER=1)")
 
     # 👻 Start Shadow Trading Agent
     try:
@@ -527,8 +532,8 @@ if INCREMENTAL_AVAILABLE:
     app.include_router(incremental_router)
     logger.info("Incremental router registered")
 if REPORTS_AVAILABLE:
-    app.include_router(reports_router)
-    logger.info("Reports router registered")
+    app.include_router(reports_router, prefix="/api")
+    logger.info("Reports router registered (/api/reports)")
 if REASONING_AVAILABLE:
     app.include_router(reasoning_router)
     logger.info("Reasoning router registered")

@@ -34,3 +34,90 @@ code {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Premium PDF/Print Styles */
+@media print {
+  @page {
+    margin: 2cm;
+    size: A4;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-family: 'Times New Roman', 'Garamond', serif !important;
+    background-color: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  /* Hide UI Elements */
+  nav, button, input, select, .no-print, header, .flex-wrap, .bg-blue-600, .bg-green-600 {
+    display: none !important;
+  }
+
+  /* Specific fix for Reports.tsx controls container */
+  .bg-white.rounded-lg.shadow.p-6.mb-6 {
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: none !important; /* Hide the entire control panel in print */
+  }
+
+  /* Typography Enhancements */
+  h1 {
+    font-size: 24pt !important;
+    font-weight: 900 !important;
+    border-bottom: 2px solid #1a365d !important; /* Navy Blue */
+    padding-bottom: 0.5cm !important;
+    margin-bottom: 1cm !important;
+    color: #1a365d !important;
+    text-align: center;
+  }
+
+  h2 {
+    font-size: 16pt !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #ccc !important;
+    margin-top: 1cm !important;
+    margin-bottom: 0.5cm !important;
+    page-break-after: avoid;
+    opacity: 0.9;
+  }
+
+  h3 {
+    font-size: 13pt !important;
+    font-weight: 600 !important;
+    margin-top: 0.5cm !important;
+    color: #444 !important;
+    page-break-after: avoid;
+  }
+
+  p, li {
+    line-height: 1.6 !important;
+    margin-bottom: 0.2cm !important;
+  }
+
+  /* Executive Summary Box (Blockquote) */
+  blockquote {
+    background-color: #f8f9fa !important;
+    border-left: 5px solid #1a365d !important;
+    padding: 0.5cm !important;
+    margin: 0.5cm 0 !important;
+    font-style: italic;
+    font-size: 12pt !important;
+    page-break-inside: avoid;
+  }
+
+  /* Code blocks in print */
+  pre, code {
+    background-color: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+    white-space: pre-wrap !important;
+  }
+
+  /* Ensure main content is visible */
+  .prose {
+    max-width: 100% !important;
+  }
+}

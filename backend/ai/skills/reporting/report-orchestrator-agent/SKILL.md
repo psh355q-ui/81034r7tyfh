@@ -52,6 +52,18 @@ NIA = (정확한 해석 수) / (검증된 전체 해석 수) × 100
 - **사용처**: Annual Report의 "AI Accountability Report"
 - **추가 분석**: 유형별 정확도 (Macro, Earnings, Geopolitics)
 
+### 3. Report Data Aggregation
+**정의**: 다양한 시스템 컴포넌트로부터 데이터를 수집하여 종합 리포트 생성
+
+**데이터 소스**:
+- **Portfolio**: `AccountPartitionManager` (Core/Income/Satellite 비중, 수익률)
+- **News**: `NewsInterpretation` (War Room 분석 결과, 감성, 영향도)
+- **Deep Reasoning**: `AnalysisResult` (3단계 심층 분석), `TradingSignal` (생성된 시그널)
+
+**출력물**:
+- Daily Briefing (시장/포트폴리오/이슈/전략 종합)
+- Weekly/Annual Report (Accountability 포함)
+
 ### 3. 리포트 섹션 생성
 
 #### Daily Report Enhancement

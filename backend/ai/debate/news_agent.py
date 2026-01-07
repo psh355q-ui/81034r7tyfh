@@ -416,38 +416,35 @@ class NewsAgent:
 
     def detect_critical_events(self, news_items: List[Dict]) -> Dict[str, Any]:
         """
-        [New] 지정학적 위기 / 칩 워 감지 (Deep Reasoning Trigger)
+        [New] 지정학적 위기 / 칩 워 / 매크로 충격 감지 (The Watchtower Trigger)
         Public method for external agents (e.g. AnalystAgentMVP)
         
-        키워드 기반 감지:
-        - Geopolitics: invasion, war, military operation, sanctions, blockade
-        - Chip War: export control, tpu, custom silicon, chip ban
+        Uses centralized keywords from `watchtower_triggers.py` to optimize AI costs.
+        Only triggers Deep Reasoning for truly critical events.
         
         Args:
             news_items: List of dicts. Keys can be 'title', 'content', 'summary'.
         
         Returns:
             {
-                "event_type": "GEOPOLITICS|CHIP_WAR|NONE",
+                "event_type": "GEOPOLITICS|CHIP_WAR|MACRO|REGULATORY|NONE",
                 "detected": bool,
-                "urgency": "CRITICAL|HIGH|NONE",
+                "urgency": "CRITICAL|HIGH|MEDIUM|NONE",
                 "keywords": List[str]
             }
         """
-        # 지정학 키워드 (물리적 전쟁)
-        geo_keywords = [
-            'invasion', 'war', 'military operation', 'sanctions', 'blockade',
-            '침공', '전쟁', '군사 작전', '제재', '봉쇄', '공습', 'airstrike'
-        ]
-        
-        # 칩 워 키워드 (기술 전쟁)
-        chip_keywords = [
-            'export control', 'chip ban', 'tpu', 'custom silicon', 'semiconductor restriction',
-            '수출 통제', '반도체 제재', '자체 칩', '기술 유출'
-        ]
-        
-        detected_geo = []
-        detected_chip = []
+        try:
+            from backend.ai.monitoring.watchtower_triggers import (
+                GEOPOLITICAL_TRIGGERS,
+                CHIP_WAR_TRIGGERS,
+                MACRO_SHOCK_TRIGGERS,
+                REGULATORY_TRIGGERS
+            )
+        except ImportError:
+            logger.error("❌ Failed to import Watchtower triggers, using fallback")
+            return {"event_type": "NONE", "detected": False, "urgency": "NONE", "keywords": []}
+
+        detected_events = []
         
         for news in news_items:
             # Construct consolidated text for searching
@@ -460,29 +457,45 @@ class NewsAgent:
             
             full_text = " ".join(text_monitor).lower()
                 
-            # Check Geopolitics
-            for kw in geo_keywords:
-                if kw in full_text:
-                    detected_geo.append(kw)
-                    
-            # Check Chip War
-            for kw in chip_keywords:
-                if kw in full_text:
-                    detected_chip.append(kw)
-                    
-        if detected_geo:
+            # 1. Geopolitics (Highest Priority)
+            geo_matches = [kw for kw in GEOPOLITICAL_TRIGGERS if kw in full_text]
+            if geo_matches:
+                detected_events.append({
+                    "type": "GEOPOLITICS",
+                    "urgency": "CRITICAL",
+                    "keywords": geo_matches
+                })
+            
+            # 2. Chip War
+            chip_matches = [kw for kw in CHIP_WAR_TRIGGERS if kw in full_text]
+            if chip_matches:
+                detected_events.append({
+                    "type": "CHIP_WAR",
+                    "urgency": "HIGH",
+                    "keywords": chip_matches
+                })
+
+            # 3. Macro Shock
+            macro_matches = [kw for kw in MACRO_SHOCK_TRIGGERS if kw in full_text]
+            if macro_matches:
+                detected_events.append({
+                    "type": "MACRO_SHOCK",
+                    "urgency": "HIGH", 
+                    "keywords": macro_matches
+                })
+                
+        # Sort by urgency (CRITICAL > HIGH > MEDIUM)
+        urgency_map = {"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1, "NONE": 0}
+        
+        if detected_events:
+            # Select the most urgent event
+            top_event = max(detected_events, key=lambda x: urgency_map.get(x['urgency'], 0))
+            
             return {
-                "event_type": "GEOPOLITICS",
+                "event_type": top_event['type'],
                 "detected": True,
-                "urgency": "CRITICAL",  # 전쟁 관련은 무조건 CRITICAL
-                "keywords": list(set(detected_geo))[:5]
-            }
-        elif detected_chip:
-            return {
-                "event_type": "CHIP_WAR",
-                "detected": True,
-                "urgency": "HIGH",
-                "keywords": list(set(detected_chip))[:5]
+                "urgency": top_event['urgency'],
+                "keywords": list(set(top_event['keywords']))[:5]
             }
             
         return {

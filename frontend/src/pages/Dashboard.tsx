@@ -114,8 +114,7 @@ export const Dashboard: React.FC = () => {
         return <RiskMatrix />;
       case 'rebalance':
         return <InteractivePortfolio />;
-      case 'macro':
-        return <GlobalMacroPanel />;
+
       default:
         return <PortfolioPerformanceChart />;
     }
@@ -256,18 +255,7 @@ export const Dashboard: React.FC = () => {
                     : 'text-gray-600 hover:bg-gray-100'
                     }`}
                 >
-                  <RefreshCw size={16} />
                   Rebalance
-                </button>
-                <button
-                  onClick={() => setActiveTab('macro')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'macro'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                >
-                  🌍
-                  Global Macro
                 </button>
               </div>
             </div>
@@ -277,101 +265,110 @@ export const Dashboard: React.FC = () => {
             </div>
           </Card>
         </div>
-      </div>
+      </div >
 
       {/* Positions Table */}
-      <Card>
+      < Card >
         <h2 className="text-xl font-semibold mb-4">Current Positions</h2>
-        {portfolio?.positions && portfolio.positions.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ticker
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Shares
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Avg Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Current
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Value
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    P&L
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {portfolio.positions.map((position, index) => (
-                  <tr key={`${position.ticker}-${index}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-semibold text-blue-600">{position.ticker}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {position.quantity}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${(position.entry_price || 0).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${(position.current_price || 0).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${(position.market_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${position.unrealized_pnl_pct >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                        {position.unrealized_pnl_pct >= 0 ? '+' : ''}
-                        ${(position.unrealized_pnl || 0).toFixed(2)}
-                        <span className="text-xs ml-1">
-                          ({position.unrealized_pnl_pct >= 0 ? '+' : ''}{(position.unrealized_pnl_pct || 0).toFixed(2)}%)
-                        </span>
-                      </div>
-                    </td>
+        {
+          portfolio?.positions && portfolio.positions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ticker
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Shares
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Avg Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Current
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Value
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      P&L
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            No positions yet. Start trading to see your portfolio here.
-          </div>
-        )}
-      </Card>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {portfolio.positions.map((position, index) => (
+                    <tr key={`${position.ticker}-${index}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-semibold text-blue-600">{position.ticker}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {position.quantity}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${(position.entry_price || 0).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${(position.current_price || 0).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${(position.market_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-medium ${position.unrealized_pnl_pct >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          {position.unrealized_pnl_pct >= 0 ? '+' : ''}
+                          ${(position.unrealized_pnl || 0).toFixed(2)}
+                          <span className="text-xs ml-1">
+                            ({position.unrealized_pnl_pct >= 0 ? '+' : ''}{(position.unrealized_pnl_pct || 0).toFixed(2)}%)
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No positions yet. Start trading to see your portfolio here.
+            </div>
+          )
+        }
+      </Card >
 
       {/* Recent Trades */}
-      {portfolio?.recent_trades && portfolio.recent_trades.length > 0 && (
-        <Card>
-          <h2 className="text-xl font-semibold mb-4">Recent Trades</h2>
-          <div className="space-y-3">
-            {portfolio.recent_trades.slice(0, 5).map((trade) => (
-              <div key={trade.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded ${trade.action === 'BUY' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                    {trade.action}
-                  </span>
-                  <span className="font-semibold text-gray-900">{trade.ticker}</span>
-                  <span className="text-sm text-gray-600">
-                    {trade.quantity} @ ${(trade.price || 0).toFixed(2)}
-                  </span>
+      {
+        portfolio?.recent_trades && portfolio.recent_trades.length > 0 && (
+          <Card>
+            <h2 className="text-xl font-semibold mb-4">Recent Trades</h2>
+            <div className="space-y-3">
+              {portfolio.recent_trades.slice(0, 5).map((trade) => (
+                <div key={trade.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded ${trade.action === 'BUY' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                      {trade.action}
+                    </span>
+                    <span className="font-semibold text-gray-900">{trade.ticker}</span>
+                    <span className="text-sm text-gray-600">
+                      {trade.quantity} @ ${(trade.price || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {new Date(trade.timestamp).toLocaleTimeString()}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-600">
-                  {new Date(trade.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-    </div>
+              ))}
+            </div>
+          </Card>
+        )
+      }
+
+      {/* Global Macro Section */}
+      <Card>
+        <GlobalMacroPanel />
+      </Card>
+    </div >
   );
 };

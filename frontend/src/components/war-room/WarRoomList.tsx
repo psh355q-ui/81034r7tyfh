@@ -7,8 +7,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Filter, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { DebateSession } from '../../data/mockDebateSessions';
-import { warRoomApi } from '../../services/warRoomApi';
+import { DebateSession as MockDebateSession } from '../../data/mockDebateSessions';
+import { warRoomApi, DebateSession as ApiDebateSession } from '../../services/warRoomApi';
 import WarRoomCard from './WarRoomCard';
 import { Card } from '../common/Card';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -28,8 +28,8 @@ const WarRoomList: React.FC = () => {
         refetchInterval: 10000,
     });
 
-    // Transform API response to match DebateSession interface
-    const sessions: DebateSession[] = useMemo(() => {
+    // Transform API response to match MockDebateSession interface
+    const sessions: MockDebateSession[] = useMemo(() => {
         if (!apiSessions) return [];
 
         return apiSessions.map(session => {

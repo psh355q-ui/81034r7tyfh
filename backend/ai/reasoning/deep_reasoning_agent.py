@@ -116,7 +116,7 @@ class DeepReasoningAgent:
         3. Duration: Days (1) -> Months (5) -> Years (10).
         4. Economic: Direct GDP hit, supply chain breakage.
         
-        JSON Response:
+        JSON Response (Must be in Korean Language for 'reasoning'):
         {{
             "type": "STRUCTURAL" | "NOISE",
             "vectors": {{
@@ -126,7 +126,7 @@ class DeepReasoningAgent:
                 "economic": 0-10
             }},
             "confidence": 0.0-1.0,
-            "reasoning": "Short explanation"
+            "reasoning": "짧은 설명 (한국어)"
         }}
         """
         
@@ -204,14 +204,14 @@ class DeepReasoningAgent:
             Trace the impact chain:
             Event -> Channel 1 (e.g., Oil Price) -> Channel 2 (e.g., Inflation) -> Channel 3 (e.g., Fed Rates) -> Asset Impact
             
-            JSON Response:
+            JSON Response (Values in Korean):
             {{
-                "primary_channel": "Oil" | "Supply Chain" | "Sentiment",
-                "impact_chain": ["Step 1", "Step 2", "Step 3"],
+                "primary_channel": "Oil" | "Supply Chain" | "Sentiment" (Korean),
+                "impact_chain": ["Step 1 (Korean)", "Step 2 (Korean)", "Step 3 (Korean)"],
                 "est_severity": "HIGH" | "MEDIUM" | "LOW",
                 "sector_impacts": {{
-                    "Energy": "Bullish/Bearish",
-                    "Defense": "Bullish/Bearish"
+                    "Energy": "Bullish/Bearish (Korean)",
+                    "Defense": "Bullish/Bearish (Korean)"
                 }}
             }}
             """
@@ -227,13 +227,13 @@ class DeepReasoningAgent:
         Event Type: {event_type}
         Simulation: {simulation}
         
-        JSON Response (List of objects):
+        JSON Response (List of objects, ALL TEXT IN KOREAN):
         [
             {{
-                "name": "Scenario A: Best Case",
+                "name": "시나리오 A: 최상의 경우",
                 "probability": 0.3,
-                "description": "...",
-                "market_implication": "Bullish for..."
+                "description": "설명...",
+                "market_implication": "시장 영향..."
             }},
             ...
         ]
@@ -259,9 +259,13 @@ class DeepReasoningAgent:
         action = "HOLD"
         confidence = dominant_scenario.get('probability', 0.5)
         
-        if "bearish" in implication or "negative" in implication or "sell" in implication:
+        # English & Korean Sentiment Keywords
+        bearish_keywords = ["bearish", "negative", "sell", "부정", "하락", "매도", "위험", "약세"]
+        bullish_keywords = ["bullish", "positive", "buy", "긍정", "상승", "매수", "기회", "강세"]
+        
+        if any(k in implication for k in bearish_keywords):
             action = "SELL"
-        elif "bullish" in implication or "positive" in implication or "buy" in implication:
+        elif any(k in implication for k in bullish_keywords):
             action = "BUY"
             
         return {

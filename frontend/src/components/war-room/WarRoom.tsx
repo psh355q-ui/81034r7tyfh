@@ -18,7 +18,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './WarRoom.css';
 import { CONSTITUTION_ARTICLES, getArticleByNumber } from '../../constants/constitution';
 
-// Agent 정의 - MVP 3+1 System
+// Agent 정의 - MVP 3+1 System + Extended Agents
 const AGENTS = {
     trader: {
         name: 'Trader MVP',
@@ -51,6 +51,23 @@ const AGENTS = {
         role: '결정자 (+1)',
         weight: 'final',
         focus: 'Hard Rules + Silence Policy'
+    },
+    // Extended Agents (Legacy Support)
+    macro: {
+        name: 'Macro Analyst',
+        icon: '🌍',
+        color: '#9C27B0',
+        role: '매크로 분석',
+        weight: 0.25,
+        focus: 'Global Macro Trends'
+    },
+    institutional: {
+        name: 'Institutional',
+        icon: '🏛️',
+        color: '#795548',
+        role: '기관 동향',
+        weight: 0.20,
+        focus: 'Institutional Flow Analysis'
     }
 };
 

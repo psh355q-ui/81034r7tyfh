@@ -213,7 +213,7 @@ export const getDailyReport = async (
   if (format) params.append('format', format);
 
   const response = await axios.get(
-    `${API_BASE_URL}/reports/daily?${params.toString()}`,
+    `${API_BASE_URL}/api/reports/daily?${params.toString()}`,
     format === 'pdf' ? { responseType: 'blob' } : {}
   );
 
@@ -227,7 +227,7 @@ export const getDailySummaries = async (
   startDate: string,
   endDate: string
 ): Promise<DailyReportSummary[]> => {
-  const response = await axios.get(`${API_BASE_URL}/reports/daily/summary`, {
+  const response = await axios.get(`${API_BASE_URL}/api/reports/daily/summary`, {
     params: { start_date: startDate, end_date: endDate },
   });
 
@@ -242,7 +242,7 @@ export const getWeeklyReport = async (
   week: number,
   format: 'json' | 'pdf' = 'json'
 ): Promise<WeeklyReport | Blob> => {
-  const response = await axios.get(`${API_BASE_URL}/reports/weekly`, {
+  const response = await axios.get(`${API_BASE_URL}/api/reports/weekly`, {
     params: { year, week, format },
     responseType: format === 'pdf' ? 'blob' : 'json',
   });
@@ -257,7 +257,7 @@ export const listWeeklyReports = async (
   year?: number,
   limit: number = 20
 ): Promise<WeeklyReport[]> => {
-  const response = await axios.get(`${API_BASE_URL}/reports/weekly/list`, {
+  const response = await axios.get(`${API_BASE_URL}/api/reports/weekly/list`, {
     params: { year, limit },
   });
 
@@ -272,7 +272,7 @@ export const getMonthlyReport = async (
   month: number,
   format: 'json' | 'pdf' = 'json'
 ): Promise<MonthlyReport | Blob> => {
-  const response = await axios.get(`${API_BASE_URL}/reports/monthly`, {
+  const response = await axios.get(`${API_BASE_URL}/api/reports/monthly`, {
     params: { year, month, format },
     responseType: format === 'pdf' ? 'blob' : 'json',
   });
@@ -286,7 +286,7 @@ export const getMonthlyReport = async (
 export const listMonthlyReports = async (
   year?: number
 ): Promise<MonthlyReport[]> => {
-  const response = await axios.get(`${API_BASE_URL}/reports/monthly/list`, {
+  const response = await axios.get(`${API_BASE_URL}/api/reports/monthly/list`, {
     params: { year },
   });
 
@@ -300,7 +300,7 @@ export const getPerformanceSummary = async (
   lookbackDays: number = 30
 ): Promise<PerformanceSummary> => {
   const response = await axios.get(
-    `${API_BASE_URL}/reports/analytics/performance-summary`,
+    `${API_BASE_URL}/api/reports/analytics/performance-summary`,
     {
       params: { lookback_days: lookbackDays },
     }
@@ -318,7 +318,7 @@ export const getTimeSeriesData = async (
   endDate: string
 ): Promise<TimeSeriesData> => {
   const response = await axios.get(
-    `${API_BASE_URL}/reports/analytics/time-series`,
+    `${API_BASE_URL}/api/reports/analytics/time-series`,
     {
       params: {
         metric,
@@ -339,7 +339,7 @@ export const exportToCSV = async (
   endDate: string
 ): Promise<Blob> => {
   const response = await axios.post(
-    `${API_BASE_URL}/reports/export/csv`,
+    `${API_BASE_URL}/api/reports/export/csv`,
     null,
     {
       params: { start_date: startDate, end_date: endDate },
@@ -406,4 +406,29 @@ export const reportsKeys = {
     [...reportsKeys.all, 'performance-summary', lookbackDays] as const,
   timeSeries: (metric: string, startDate: string, endDate: string) =>
     [...reportsKeys.all, 'time-series', metric, startDate, endDate] as const,
+  content: (type: string, date?: string, year?: number, month?: number, quarter?: number) =>
+    [...reportsKeys.all, 'content', type, date || '', year || '', month || '', quarter || ''] as const,
+};
+
+/**
+ * Get report raw content (markdown)
+ */
+/**
+ * Get report raw content (markdown)
+ */
+export const getReportContent = async (
+  type: string,
+  date?: string,
+  year?: number,
+  month?: number,
+  quarter?: number
+): Promise<{ content: string; filename: string; generated_at: string }> => {
+  const params: any = { type };
+  if (date) params.date = date;
+  if (year) params.year = year;
+  if (month) params.month = month;
+  if (quarter) params.quarter = quarter;
+
+  const response = await axios.get(`${API_BASE_URL}/api/reports/content`, { params });
+  return response.data;
 };

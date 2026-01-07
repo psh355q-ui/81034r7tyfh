@@ -233,7 +233,13 @@ async def check_leverage(ticker: str):
     
     guardian = get_leverage_guardian()
     is_lev = guardian.is_leveraged(ticker)
-    ratio = guardian.get_leverage_ratio(ticker) if is_lev else 1.0
+    if is_lev:
+        category = guardian.get_category(ticker)
+        # 3x 레버리지/인버스 여부에 따라 비율 설정 (기본값 3.0으로 가정)
+        # 실제로는 카테고리나 메타데이터에 비율 정보가 있어야 하지만, 현재는 3x 위주이므로 3.0으로 설정
+        ratio = 3.0 if "3x" in str(category) or category.value in ["leveraged_long", "leveraged_short"] else 1.0
+    else:
+        ratio = 1.0
     
     allowed_wallets = ["core", "income", "satellite"]
     if is_lev:
@@ -244,5 +250,5 @@ async def check_leverage(ticker: str):
         "is_leveraged": is_lev,
         "leverage_ratio": ratio,
         "allowed_wallets": allowed_wallets,
-        "note": "레버리지 상품은 SATELLITE 지갑에만 허용됩니다." if is_lev else "모든 지갑에 허용됩니다."
+        "note": "레버리지 상품은 SATELLITE 지갑에만 허용됩니다." if is_lev else "레버리지 DB에 없는 티커입니다. 일반 종목으로 간주됩니다."
     }

@@ -43,19 +43,35 @@
 - **Dashboard Component**: `frontend/src/pages/PartitionDashboard.tsx` 기본 구조 구현 (Core/Income/Satellite 시각화).
 - **Navigation**: `App.tsx` 및 `Sidebar.tsx`에 "AI Partitions" 메뉴 추가.
 
+### 7. System Stability (Phase 6.4 - Hotfix)
+- **Backend Critical Fixes**:
+  - **SQLite Table Missing Issue**: `trading_signals` 및 `orders` 테이블이 로컬 SQLite DB(`news.db`)에 생성되지 않아 `ShadowTradingAgent`가 크래시되는 현상을 `fix_sqlite_tables.py` 스크립트를 통해 해결.
+  - **News Analyzer Logic**: `analyze_article` 메서드 호출 시 ID 대신 객체 자체를 전달하도록 `news_poller.py` 수정 (`AttributeError` 해결).
+- **Frontend Issues**:
+  - `LogicTraceViewer` 및 `GlobalMacroPanel`의 중복 컴포넌트 선언(`StepCard` 등)을 제거하고 Light Theme 스타일로 통일하여 Lint 에러 해결.
+  - `Dashboard.tsx`의 문법 오류(중첩된 button 태그) 수정.
+
 ---
 
 ## 📅 내일 진행 계획 (Tomorrow's Plan - 2026-01-06)
 
-오늘은 백엔드 로직 완성 후 프론트엔드 연동을 시작했습니다. 내일은 사용자가 시스템을 완전히 모니터링할 수 있도록 **시각화 완성**에 집중합니다.
+오늘은 백엔드 안정화와 프론트엔드 기본 구조를 잡았습니다. 내일은 **"Full Integration & UI Polishing"**에 집중합니다.
 
-### 1. Frontend Dashboard 완성 (Phase 6.2)
-- **Partition Dashboard 고도화**:
-  - 실제 데이터 연동 테스트 및 UI 폴리싱.
-  - **Shadow Trade Log**: `getOrders` API를 연결하여 AI 매매 로그 실시간 표시.
-- **Route 검증**: 추가된 라우트 정상 작동 확인.
+### 1. Frontend Dashboard 완성 (Phase 6.5)
+- **Shadow Trade Log 연동**:
+  - `PartitionDashboard.tsx`의 "Shadow Trading Status" 섹션에 `getOrders` API를 연결하여 실제 AI 매매 로그를 표시합니다.
+- **UI/UX Polishing**:
+  - Global Macro 패널과 Deep Reasoning 뷰어의 반응형 디자인 점검.
+  - Dark/Light 모드 간의 일관성 확인.
 
-### 2. Cost Optimization (Phase 3.3)
+
+### 3. Backend Architecture Improvement (Process Separation)
+- **RSS Poller 분리**:
+  - 현재 `main.py` 내부에서 실행되는 `NewsPoller`가 종료 시그널(Ctrl+C)을 제대로 처리하지 못하는 문제가 발견됨.
+  - `backend/run_news_crawler.py`를 활용하여 RSS 수집기를 **완전히 별도의 프로세스**로 분리 실행하도록 구조 변경.
+  - 이를 통해 메인 백엔드 서버의 가벼운 상태 유지 및 재시작 편의성 확보.
+
+### 4. Cost Optimization (Phase 3.3)
 - 시스템이 24시간 돌아가면서 LLM 토큰 비용이 발생할 수 있습니다 (현재는 필터링으로 1차 방어).
 - **Token Bucket**이나 **Conditional Trigger**를 더 정교하게 다듬어 비용 효율성을 극대화합니다.
 

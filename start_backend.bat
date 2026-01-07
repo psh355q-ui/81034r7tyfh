@@ -1,43 +1,18 @@
 @echo off
-REM ============================================================================
-REM AI Trading System - Backend Server Starter
-REM ============================================================================
-
-echo.
+title AI Trading System - Main Backend
 echo ================================================================================
-echo Starting AI Trading System Backend Server
+echo Starting AI Trading System
 echo ================================================================================
-echo.
 
-REM Change to PROJECT ROOT (not backend directory)
-cd /d "%~dp0"
+:: 1. Start News Poller in a separate window
+echo Starting News Poller in separate window...
+start "AI Trading - News Poller" cmd /k "python -m backend.run_news_crawler"
 
-echo Current Directory: %CD%
+:: 2. Start Main Backend Server in this window
 echo.
-
-REM Check Python version
-python --version
+echo Starting Main Backend Server...
+echo (News Poller is running in the other window)
 echo.
-
-REM Install dependencies to CURRENT Python (important!)
-echo Installing dependencies to current Python environment...
-python -m pip install --user fastapi "uvicorn[standard]" --upgrade --quiet
-
-echo.
-echo ================================================================================
-echo Starting Server...
-echo ================================================================================
-echo.
-echo API Documentation: http://localhost:8001/docs
-echo News API (Realtime): http://localhost:8001/news/realtime/health
-echo.
-
-REM Disable Python bytecode generation to prevent cache issues
-set PYTHONDONTWRITEBYTECODE=1
-echo [CACHE FIX] PYTHONDONTWRITEBYTECODE=1
-echo.
-
-REM Start uvicorn from PROJECT ROOT with backend.main:app
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
+python -m uvicorn backend.main:app --reload --port 8001
 
 pause

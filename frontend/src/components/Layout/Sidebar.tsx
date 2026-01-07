@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
     {
       title: 'Analysis',
       items: [
-        { path: '/global-macro', icon: Globe, label: 'Global Macro' },
+
         { path: '/ceo-analysis', icon: MessageSquare, label: 'CEO Analysis' },
         { path: '/analysis', icon: TrendingUp, label: 'Analysis' },
         { path: '/cost-report', icon: DollarSign, label: 'Emergency Cost' },

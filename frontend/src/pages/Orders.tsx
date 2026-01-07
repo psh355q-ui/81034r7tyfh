@@ -77,9 +77,9 @@ const Orders: React.FC = () => {
     const [searchTicker, setSearchTicker] = useState('');
 
     // Fetch orders from API
-    const { data: orders = [], isLoading, error } = useQuery({
+    const { data: orders = [], isLoading, error } = useQuery<Order[]>({
         queryKey: ['orders', statusFilter, searchTicker],
-        queryFn: async () => {
+        queryFn: async (): Promise<Order[]> => {
             const params = new URLSearchParams();
             if (statusFilter !== 'ALL') {
                 params.append('status', statusFilter);

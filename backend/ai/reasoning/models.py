@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from pydantic import BaseModel, Field
 
 @dataclass
 class ReasoningStep:
@@ -12,13 +13,38 @@ class ReasoningStep:
     relationships_found: List[Dict] = field(default_factory=list)
     confidence: float = 0.0
     
+    # Allow loose matching for pydantic conversion
     def to_dict(self) -> Dict:
         return asdict(self)
 
 
+class MarketThesis(BaseModel):
+    """
+    Final Output Schema for Deep Reasoning Engine.
+    Matches the JSON structure from the LLM.
+    """
+    ticker: str
+    direction: str = Field(description="BULLISH, BEARISH, NEUTRAL")
+    time_horizon: str = Field(description="SCALPING, DAY, SWING, LONG")
+    summary: str = Field(description="Executive summary of the thesis")
+    bull_case: str
+    bear_case: str
+    reasoning_trace: List[ReasoningStep]
+    key_risks: List[str]
+    catalysts: List[str]
+    final_confidence_score: float = 0.0
+    
+    # Optional fields for extended metadata
+    trace_id: Optional[str] = None
+    model_version: Optional[str] = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+
+
 @dataclass
 class DeepReasoningResult:
-    """심층 추론 최종 결과"""
+    """심층 추론 최종 결과 (Legacy / Internal)"""
     # 메타데이터
     news_text: str
     analyzed_at: datetime

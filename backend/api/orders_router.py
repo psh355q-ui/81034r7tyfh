@@ -97,19 +97,21 @@ async def get_orders(
         # Convert to response models
         result = []
         for order in orders:
+            # Use filled_price or limit_price as price
+            price = order.filled_price or order.limit_price or 0.0
             result.append(OrderResponse(
                 id=order.id,
                 ticker=order.ticker,
                 action=order.action,
                 quantity=order.quantity,
-                price=order.price,
-                order_type=order.order_type,
+                price=price,
+                order_type=order.order_type or "MARKET",
                 status=order.status,
-                broker=order.broker,
+                broker="SHADOW",  # Default broker for shadow trading
                 order_id=order.order_id or "",
                 signal_id=order.signal_id,
                 created_at=order.created_at.isoformat() if order.created_at else None,
-                updated_at=order.updated_at.isoformat() if order.updated_at else None,
+                updated_at=None,  # Not in current model
                 filled_at=order.filled_at.isoformat() if order.filled_at else None
             ))
 
@@ -145,19 +147,20 @@ async def get_order(order_id: int):
 
         logger.info(f"📊 Fetched order #{order_id}")
 
+        price = order.filled_price or order.limit_price or 0.0
         return OrderResponse(
             id=order.id,
             ticker=order.ticker,
             action=order.action,
             quantity=order.quantity,
-            price=order.price,
-            order_type=order.order_type,
+            price=price,
+            order_type=order.order_type or "MARKET",
             status=order.status,
-            broker=order.broker,
+            broker="SHADOW",
             order_id=order.order_id or "",
             signal_id=order.signal_id,
             created_at=order.created_at.isoformat() if order.created_at else None,
-            updated_at=order.updated_at.isoformat() if order.updated_at else None,
+            updated_at=None,
             filled_at=order.filled_at.isoformat() if order.filled_at else None
         )
 

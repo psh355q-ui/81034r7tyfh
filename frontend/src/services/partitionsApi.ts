@@ -159,9 +159,14 @@ export interface Order {
     action: string;
     quantity: number;
     price: number;
+    order_type: string;
     status: string;
-    created_at: string;
+    broker: string;
+    order_id: string;
     signal_id?: number;
+    created_at: string;
+    updated_at?: string;
+    filled_at?: string;
 }
 
 export default partitionsApi;
