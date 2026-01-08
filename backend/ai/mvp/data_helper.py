@@ -1,0 +1,135 @@
+"""
+War Room MVP - Data Helper
+데이터 수집 및 준비
+"""
+
+from typing import Dict, Any, List, Optional
+from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+
+from backend.data.news_models import NewsArticle, get_db
+from backend.data.rss_crawler import get_recent_articles
+from backend.data.news_analyzer import get_ticker_news
+
+
+def get_news_for_symbol(
+    symbol: str,
+    db: Session,
+    hours: int = 24,
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    특정 심볼에 대한 뉴스 기사 가져오기
+    
+    Args:
+        symbol: 티커 심볼 (예: TSLA, AAPL)
+        db: DB 세션
+        hours: 최근 N시간 (기본 24시간)
+        limit: 최대 개수 (기본 10개)
+        
+    Returns:
+        뉴스 기사 리스트
+    """
+    try:
+        # 1. 티커별 뉴스 먼저 시도
+        ticker_news = get_ticker_news(db, symbol.upper(), limit)
+        
+        if ticker_news:
+            return [
+                {
+                    'title': article.get('title', ''),
+                    'source': article.get('source', 'Unknown'),
+                    'published': article.get('published_at', datetime.utcnow().isoformat()),
+                    'summary': article.get('summary', ''),
+                    'sentiment': article.get('sentiment'),
+                    'url': article.get('url', '')
+                }
+                for article in ticker_news[:limit]
+            ]
+        
+        # 2. 일반 뉴스에서 심볼 키워드로 검색
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        query = db.query(NewsArticle).filter(
+            NewsArticle.crawled_at >= cutoff_time
+        )
+        
+        # 제목이나 요약에 심볼이 포함된 기사
+        query = query.filter(
+            (NewsArticle.title.ilike(f'%{symbol}%')) |
+            (NewsArticle.summary.ilike(f'%{symbol}%')) |
+            (NewsArticle.content.ilike(f'%{symbol}%'))
+        )
+        
+        articles = query.order_by(
+            NewsArticle.published_date.desc()
+        ).limit(limit).all()
+        
+        return [
+            {
+                'title': a.title,
+                'source': a.source or 'RSS',
+                'published': a.published_date.isoformat() if a.published_date else datetime.utcnow().isoformat(),
+                'summary': a.summary or a.content[:200] if a.content else '',
+                'sentiment': a.analysis.sentiment_overall if a.analysis else 'neutral',
+                'url': a.url
+            }
+            for a in articles
+        ]
+        
+    except Exception as e:
+        print(f"⚠️ Failed to fetch news for {symbol}: {e}")
+        return []
+
+
+def prepare_additional_data(
+    symbol: str,
+    db: Session
+) -> Dict[str, Any]:
+    """
+    War Room MVP를 위한 추가 데이터 준비
+    
+    Args:
+        symbol: 티커 심볼
+        db: DB 세션
+        
+    Returns:
+        additional_data 딕셔너리
+    """
+    # News Articles (최근 24시간, 최대 10개)
+    news_articles = get_news_for_symbol(symbol, db, hours=24, limit=10)
+    
+    # Macro Indicators (TODO: 외부 API 연동)
+    macro_indicators = {
+        'interest_rate': 5.25,  # Fed Funds Rate (mock)
+        'inflation_rate': 3.2,  # CPI (mock)
+        'vix': 18.5,  # Volatility Index (mock)
+        'yield_curve': {
+            '2y': 4.5,
+            '10y': 4.2
+        }
+    }
+    
+    # Institutional Data (TODO: 13F filings, insider trading)
+    institutional_data = {
+        'recent_activity': 'accumulation',  # mock
+        'confidence': 0.6  # mock
+    }
+    
+    # ChipWar Events (반도체 관련 종목에만 적용)
+    chipwar_events = []
+    if any(keyword in symbol.upper() for keyword in ['NVDA', 'AMD', 'INTC', 'TSM', 'ASML']):
+        chipwar_events = [
+            {
+                'event_type': 'export_control',
+                'severity': 'medium',
+                'date': datetime.utcnow().isoformat()
+            }
+        ]
+    
+    return {
+        'news_articles': news_articles,
+        'macro_indicators': macro_indicators,
+        'institutional_data': institutional_data,
+        'chipwar_events': chipwar_events,
+        'correlation_data': None  # TODO: 상관관계 데이터
+    }

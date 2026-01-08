@@ -14,10 +14,11 @@ API Endpoints:
     - GET /api/war-room-mvp/shadow/status - Shadow Trading 상태
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from sqlalchemy.orm import Session
 import sys
 import os
 
@@ -25,6 +26,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from execution.shadow_trading_mvp import ShadowTradingMVP, ShadowTradingStatus
+from backend.data.news_models import get_db
+from backend.ai.mvp.data_helper import prepare_additional_data
 import yfinance as yf
 
 # ============================================================================
@@ -174,7 +177,7 @@ def fetch_market_data(symbol: str) -> Dict[str, Any]:
 # ============================================================================
 
 @router.post("/deliberate")
-async def deliberate(request: DeliberationRequest) -> Dict[str, Any]:
+async def deliberate(request: DeliberationRequest, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     MVP 전쟁실 심의
 
@@ -240,7 +243,24 @@ async def deliberate(request: DeliberationRequest) -> Dict[str, Any]:
                     "current_positions": []
                 }
 
-        # 3. Run deliberation (Dual Mode)
+        # 3. Prepare additional data if not provided (News, Macro, etc.)
+        additional_data = request.additional_data
+        if not additional_data:
+            try:
+                print(f"📰 Fetching news and additional data for {request.symbol}...")
+                additional_data = prepare_additional_data(request.symbol, db)
+                print(f"   → Found {len(additional_data.get('news_articles', []))} news articles")
+            except Exception as e:
+                print(f"⚠️ Failed to prepare additional data: {e}")
+                # Fallback to empty data
+                additional_data = {
+                    'news_articles': [],
+                    'macro_indicators': None,
+                    'institutional_data': None,
+                    'chipwar_events': []
+                }
+
+        # 4. Run deliberation (Dual Mode)
         if USE_SKILL_HANDLERS:
             # Skill Handler Mode
             context = {
