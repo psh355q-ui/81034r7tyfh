@@ -238,12 +238,20 @@ async def lifespan(app: FastAPI):
         )
     # (In a real setup, you would register mock_redis with health_monitor)
 
-    # Start optional stock price scheduler
+    # 📊 Initialize and start Stock Price Scheduler
     try:
         from backend.services.stock_price_scheduler import get_stock_price_scheduler
-        scheduler = get_stock_price_scheduler()
-        scheduler.start()
-        logger.info("Stock Price Scheduler started")
+        stock_scheduler = get_stock_price_scheduler()
+        stock_scheduler.start()
+        if stock_scheduler:
+            logger.info("Stock Price Scheduler started")
+        
+        # 📊 Initialize and start Daily Report Scheduler
+        from backend.services.daily_report_scheduler import get_daily_report_scheduler
+        report_scheduler = get_daily_report_scheduler()
+        report_scheduler.start()
+        if report_scheduler:
+            logger.info("✅ Daily Report Scheduler started (7:10 AM Daily, 7:15 AM Mon, 7:20 AM 1st)")
     except Exception as e:
         logger.warning(f"Failed to start Stock Price Scheduler: {e}")
 
