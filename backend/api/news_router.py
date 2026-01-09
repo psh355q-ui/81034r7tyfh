@@ -33,7 +33,6 @@ from backend.data.news_analyzer import (
     get_ticker_news,
     get_high_impact_news,
     get_warning_news,
-    get_daily_usage,
 )
 from backend.ai.gemini_client import GeminiClient
 from backend.ai.skills.common.logging_decorator import log_endpoint
@@ -326,20 +325,18 @@ async def analyze_unanalyzed_articles(
             analyzed=0,
             skipped=0,
             errors=0,
-            remaining_requests=1500 - get_daily_usage()["request_count"],
+            remaining_requests=999999,  # Ollama는 무제한
             details=[]
         )
     
     analyzer = NewsDeepAnalyzer(db)
     result = analyzer.analyze_batch(unanalyzed, max_count=max_count)
     
-    usage = get_daily_usage()
-    
     return AnalyzeResponse(
         analyzed=result["analyzed"],
         skipped=result["skipped"],
         errors=result["errors"],
-        remaining_requests=1500 - usage["request_count"],
+        remaining_requests=999999,  # Ollama는 무제한
         details=result["details"]
     )
 
@@ -373,7 +370,7 @@ async def analyze_single_article(
         "sentiment": analysis.sentiment_overall,
         "score": analysis.sentiment_score,
         "actionable": analysis.trading_actionable,
-        "remaining_requests": 1500 - get_daily_usage()["request_count"]
+        "remaining_requests": 999999  # Ollama는 무제한
     }
 
 
@@ -565,8 +562,6 @@ async def get_news_statistics(db: Session = Depends(get_db)):
     # 행동 가능한 뉴스
     actionable = db.query(NewsAnalysis).filter(NewsAnalysis.trading_actionable == True).count()
     
-    # Gemini 사용량
-    usage = get_daily_usage()
     
     return {
         "total_articles": total_articles,
@@ -579,12 +574,11 @@ async def get_news_statistics(db: Session = Depends(get_db)):
             "mixed": analyzed_articles - positive - negative - neutral
         },
         "actionable_count": actionable,
-        "gemini_usage": {
-            "date": usage["date"],
-            "requests_used": usage["request_count"],
-            "requests_remaining": 1500 - usage["request_count"],
-            "total_tokens": usage["total_input_tokens"] + usage["total_output_tokens"],
-            "cost": "$0.00 (무료 티어)"
+        "ollama_usage": {
+            "model": "llama3.2:3b",
+            "requests_used": analyzed_articles,
+            "requests_remaining": "unlimited",
+            "cost": "$0.00 (로컬 LLM)"
         }
     }
 

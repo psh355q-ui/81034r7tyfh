@@ -11,9 +11,10 @@ interface WarRoomCardProps {
     session: DebateSession;
     isExpanded: boolean;
     onToggle: () => void;
+    warRoomInfo?: any;
 }
 
-const WarRoomCard: React.FC<WarRoomCardProps> = ({ session, isExpanded, onToggle }) => {
+const WarRoomCard: React.FC<WarRoomCardProps> = ({ session, isExpanded, onToggle, warRoomInfo }) => {
 
     const getStatusBadge = () => {
         switch (session.status) {
@@ -153,6 +154,7 @@ const WarRoomCard: React.FC<WarRoomCardProps> = ({ session, isExpanded, onToggle
                             initialConstitutionalResult={session.constitutionalResult}
                             autoPlay={false}
                             showHeader={false}
+                            warRoomInfo={warRoomInfo}
                         />
                     ) : (
                         <div className="empty-debate">

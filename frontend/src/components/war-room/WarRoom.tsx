@@ -94,6 +94,7 @@ interface WarRoomProps {
     initialConsensus?: number;
     initialConstitutionalResult?: ConstitutionalResult | null;
     showHeader?: boolean;
+    warRoomInfo?: any; // War Room info with dynamic weights
 }
 
 const WarRoom: React.FC<WarRoomProps> = ({
@@ -102,7 +103,8 @@ const WarRoom: React.FC<WarRoomProps> = ({
     initialMessages = [],
     initialConsensus = 0,
     initialConstitutionalResult = null,
-    showHeader = true
+    showHeader = true,
+    warRoomInfo
 }) => {
     const [messages, setMessages] = useState<DebateMessage[]>(initialMessages);
     const [constitutionalResult, setConstitutionalResult] = useState<ConstitutionalResult | null>(initialConstitutionalResult);
@@ -110,6 +112,53 @@ const WarRoom: React.FC<WarRoomProps> = ({
     const [consensus, setConsensus] = useState<number>(initialConsensus);
     const [showConstitution, setShowConstitution] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Create dynamic agent mapping from warRoomInfo if available
+    const dynamicAgents = React.useMemo(() => {
+        if (!warRoomInfo || !warRoomInfo.agents) return null;
+
+        const agentMap: any = {};
+        warRoomInfo.agents.forEach((agent: any) => {
+            const name = agent.name.toLowerCase().replace(/ /g, '_').replace('_mvp', '');
+
+            // Map agent names to their icons and colors
+            const iconMap: { [key: string]: string } = {
+                'trader': '🧑‍💻',
+                'risk': '👮',
+                'analyst': '🕵️',
+                'pm': '🤵',
+                'macro': '🌍',
+                'institutional': '🏛️'
+            };
+
+            const colorMap: { [key: string]: string } = {
+                'trader': '#4CAF50',
+                'risk': '#F44336',
+                'analyst': '#2196F3',
+                'pm': '#607D8B',
+                'macro': '#9C27B0',
+                'institutional': '#795548'
+            };
+
+            const weightDisplay = typeof agent.weight === 'number'
+                ? `${(agent.weight * 100).toFixed(0)}%`
+                : agent.weight;
+
+            agentMap[name] = {
+                name: agent.name,
+                icon: iconMap[name] || '🤖',
+                color: colorMap[name] || '#9E9E9E',
+                role: weightDisplay,
+                weight: agent.weight,
+                focus: agent.focus
+            };
+        });
+
+        return agentMap;
+    }, [warRoomInfo]);
+
+    // Use dynamic agents if available, otherwise fall back to static AGENTS
+    const activeAgents = dynamicAgents || AGENTS;
 
     // 자동 스크롤
     const scrollToBottom = () => {
@@ -259,7 +308,7 @@ const WarRoom: React.FC<WarRoomProps> = ({
                         <>
                             {messages.map((msg) => {
                                 // Fallback to trader if agent not found
-                                const agent = AGENTS[msg.agent] || {
+                                const agent = activeAgents[msg.agent] || {
                                     name: msg.agent,
                                     icon: '🤖',
                                     color: '#9E9E9E',

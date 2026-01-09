@@ -243,15 +243,17 @@ export default function TradingDashboard() {
 
   // Confidence bar
   const ConfidenceBar = ({ confidence }: { confidence: number }) => {
-    const percentage = confidence * 100;
+    // Fix: Handle both percentage (>1) and decimal (0-1) formats
+    // Backend may send either 99.9 or 0.999 depending on the source
+    const percentage = confidence > 1 ? confidence : confidence * 100;
     const color = percentage >= 85 ? 'bg-green-500' : percentage >= 70 ? 'bg-yellow-500' : 'bg-red-500';
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex-1 items-center gap-2">
         <div className="flex-1 bg-gray-200 rounded-full h-2">
-          <div className={`h-2 rounded-full ${color}`} style={{ width: `${percentage}%` }}></div>
+          <div className={`h-2 rounded-full ${color}`} style={{ width: `${Math.min(percentage, 100)}%` }}></div>
         </div>
-        <span className="text-sm font-medium text-gray-700 w-12">{percentage.toFixed(0)}%</span>
+        <span className="text-sm font-medium text-gray-700 w-12">{Math.min(percentage, 100).toFixed(0)}%</span>
       </div>
     );
   };

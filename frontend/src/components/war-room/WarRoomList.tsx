@@ -364,6 +364,7 @@ const WarRoomList: React.FC = () => {
                             session={session}
                             isExpanded={expandedCardId === session.id}
                             onToggle={() => handleCardToggle(session.id)}
+                            warRoomInfo={warRoomInfo}
                         />
                     ))
                 ) : (

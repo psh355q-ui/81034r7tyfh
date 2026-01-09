@@ -1,12 +1,12 @@
 """
 News Deep Analysis Service
 
-Gemini 무료 API를 활용한 뉴스 심층 분석
+Ollama 로컬 LLM을 활용한 뉴스 심층 분석
 - 본문 전체 분석 (제목만이 아님)
 - 감정/톤/긴급도/신뢰성 다각도 분석
 - 시장 영향도 예측
 - 우회 표현 해석
-- 비용: $0 (무료 티어)
+- 비용: $0 (완전 무료, 무제한)
 """
 
 import json
@@ -23,76 +23,17 @@ load_dotenv()
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-# Google Generative AI SDK
-try:
-    import google.generativeai as genai
-    GENAI_AVAILABLE = True
-except ImportError:
-    GENAI_AVAILABLE = False
-    genai = None
-
 from backend.database.models import NewsArticle, NewsAnalysis, NewsTickerRelevance
 from backend.database.repository import get_sync_session
+from backend.ai.llm import get_ollama_client
 
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# Rate Limit Tracking (무료 티어 1,500회/일)
+# Ollama - No Rate Limits!
 # ============================================================================
-
-from pathlib import Path
-
-# Data directory path (Windows/Linux compatible)
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = BASE_DIR / "data"
-USAGE_FILE = DATA_DIR / "gemini_daily_usage.json"
-
-try:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-except Exception:
-    # Fallback for restricted environments
-    import tempfile
-    USAGE_FILE = Path(tempfile.gettempdir()) / "gemini_daily_usage.json"
-
-
-def get_daily_usage() -> dict:
-    """오늘의 사용량 조회"""
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    
-    if USAGE_FILE.exists():
-        with open(USAGE_FILE, "r") as f:
-            data = json.load(f)
-        if data.get("date") == today:
-            return data
-    
-    return {
-        "date": today,
-        "request_count": 0,
-        "total_input_tokens": 0,
-        "total_output_tokens": 0,
-    }
-
-
-def update_daily_usage(input_tokens: int, output_tokens: int) -> dict:
-    """일일 사용량 업데이트"""
-    usage = get_daily_usage()
-    usage["request_count"] += 1
-    usage["total_input_tokens"] += input_tokens
-    usage["total_output_tokens"] += output_tokens
-    usage["last_request_time"] = datetime.utcnow().isoformat()
-    
-    USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(USAGE_FILE, "w") as f:
-        json.dump(usage, f, indent=2)
-    
-    return usage
-
-
-def check_rate_limit() -> bool:
-    """무료 티어 제한 확인"""
-    usage = get_daily_usage()
-    return usage["request_count"] < 1500
+# Ollama는 로컬 실행이므로 레이트 리밋이 없습니다!
 
 
 # ============================================================================
@@ -103,34 +44,26 @@ class NewsDeepAnalyzer:
     """
     뉴스 심층 분석 서비스
     
-    Gemini 1.5 Flash 무료 티어 사용
-    - 1,500회/일 무료
+    Ollama 로컬 LLM 사용
+    - 무제한 요청
     - 본문 전체 분석
-    - 비용: $0
+    - 비용: $0 (완전 무료)
     """
     
     def __init__(self, db: Session = None):
         self.db = db if db else get_sync_session()
         self._owned_session = db is None
         
-        if not GENAI_AVAILABLE:
-            raise ImportError("google-generativeai 패키지를 설치하세요: pip install google-generativeai")
-        
-        # Load API key and model from environment
-        import os
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY not found in environment variables")
-        
-        model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-        # Add 'models/' prefix if not present
-        if not model_name.startswith("models/"):
-            model_name = f"models/{model_name}"
-        
-        # Configure Gemini API
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name)
-        logger.info(f"NewsDeepAnalyzer initialized with model: {model_name}")
+        # Initialize Ollama client
+        try:
+            self.ollama_client = get_ollama_client()
+            if not self.ollama_client.check_health():
+                logger.warning("⚠️ Ollama server not responding. Make sure Ollama is running.")
+            else:
+                logger.info(f"✅ NewsDeepAnalyzer initialized with Ollama ({self.ollama_client.model})")
+        except Exception as e:
+            logger.error(f"Failed to initialize Ollama client: {e}")
+            raise
         
     def __del__(self):
         if hasattr(self, '_owned_session') and self._owned_session:
@@ -164,44 +97,37 @@ class NewsDeepAnalyzer:
         """분석 프롬프트 생성"""
         # 본문 우선, 없으면 요약 사용
         content = article.content or article.summary or ""
-        if len(content) > 8000:  # ~2000 토큰
-            content = content[:8000] + "... [truncated]"
+        if len(content) > 5000:  # 로컬 모델 한계 고려
+            content = content[:5000] + "... [truncated]"
         
         keywords = ", ".join(article.keywords or [])
         
-        prompt = f"""
-다음 뉴스 기사를 심층 분석해주세요:
+        # Ollama는 한국어 프롬프트를 잘 이해하지만, 구조화된 출력을 위해 명확하게
+        return f"""
+다음 금융 뉴스를 분석하세요:
 
-====== 뉴스 정보 ======
 제목: {article.title}
 출처: {article.source}
-발행일: {article.published_date}
+날짜: {article.published_date}
 키워드: {keywords}
 
-====== 본문 내용 ======
+내용:
 {content}
 
-====== 분석 요청 ======
-아래 JSON 형식으로 분석 결과를 반환해주세요:
-
+JSON 형식으로 분석 결과를 제공하세요:
 {{
-  "sentiment": "positive|negative|neutral|mixed",
-  "sentiment_score": -1.0에서 1.0,
-  "urgency": "low|medium|high|critical",
-  "market_impact_short": "bullish|bearish|neutral|uncertain",
-  "market_impact_long": "bullish|bearish|neutral|uncertain",
-  "impact_magnitude": 0.0에서 1.0,
-  "actionable": true|false,
-  "risk_category": "legal|regulatory|operational|financial|strategic|none"
+  "sentiment": "positive/negative/neutral/mixed",
+  "sentiment_score": -1.0~1.0 사이 실수,
+  "urgency": "low/medium/high/critical",
+  "market_impact_short": "bullish/bearish/neutral/uncertain",
+  "market_impact_long": "bullish/bearish/neutral/uncertain",
+  "impact_magnitude": 0.0~1.0 사이 실수,
+  "actionable": true/false,
+  "risk_category": "legal/regulatory/operational/financial/strategic/none"
 }}
 
-CRITICAL: 
-- Output ONLY valid JSON
-- No markdown, no code blocks, no extra text
-- All values must be properly quoted strings or numbers
-- Ensure all quotes are properly closed
+유효한 JSON만 응답하세요. 마크다운, 코드 블록, 추가 텍스트 없이.
 """
-        return prompt
     
     def parse_analysis_response(self, response_text: str) -> Dict[str, Any]:
         """JSON 응답 파싱 (개선된 버전)"""
@@ -245,10 +171,7 @@ CRITICAL:
             }
     
     def analyze_article(self, article: NewsArticle) -> Optional[NewsAnalysis]:
-        """단일 기사 분석"""
-        if not check_rate_limit():
-            raise Exception("일일 무료 한도 초과 (1,500회/일). 내일 다시 시도하세요.")
-        
+        """단일 기사 분석 (Ollama)"""
         # 이미 분석됨?
         if article.analysis:
             return article.analysis
@@ -261,37 +184,46 @@ CRITICAL:
         # 프롬프트 생성
         prompt = self.create_analysis_prompt(article)
         
-        # Gemini API 호출
+        # Ollama API 호출
         import time
+        import httpx
         start_time = time.time()
         
         try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.1,  # Very low for consistent structured output
-                    max_output_tokens=2000,
-                    response_mime_type="application/json",  # Force JSON response
-                )
+            response = httpx.post(
+                f"{self.ollama_client.base_url}/api/generate",
+                json={
+                    "model": self.ollama_client.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                    "options": {
+                        "temperature": 0.2,
+                        "num_predict": 500
+                    }
+                },
+                timeout=60.0
             )
+            
+            if response.status_code != 200:
+                logger.error(f"Ollama API error: {response.status_code}")
+                return None
+            
+            result = response.json()
+            response_text = result.get("response", "")
+            
         except Exception as e:
-            logger.error(f"Gemini API error: {e}")
+            logger.error(f"Ollama API error: {e}")
             return None
         
-        # 토큰 추정 및 사용량
-        input_tokens = len(prompt) // 4
-        output_tokens = len(response.text) // 4
-        if hasattr(response, 'usage_metadata') and response.usage_metadata:
-            input_tokens = response.usage_metadata.prompt_token_count
-            output_tokens = response.usage_metadata.candidates_token_count
-        
-        update_daily_usage(input_tokens, output_tokens)
+        elapsed = time.time() - start_time
+        logger.info(f"Ollama analysis completed in {elapsed:.2f}s")
         
         # 응답 파싱
-        analysis_data = self.parse_analysis_response(response.text)
+        analysis_data = self.parse_analysis_response(response_text)
         
         if "error" in analysis_data:
-            print(f"⚠️ Parse error for {article.title[:50]}: {analysis_data['error']}")
+            logger.warning(f"⚠️ Parse error for {article.title[:50]}: {analysis_data['error']}")
             return None
         
         def _safe_bool(value: Any) -> bool:
@@ -325,8 +257,8 @@ CRITICAL:
             data_backed=_safe_bool(analysis_data.get("data_backed", False)),
             multiple_sources_cited=_safe_bool(analysis_data.get("multiple_sources", False)),
             potential_bias="",
-            model_used=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-            tokens_used=input_tokens + output_tokens,
+            model_used=self.ollama_client.model,  # Ollama 모델
+            tokens_used=0,  # Ollama는 토큰 사용량 추적 안 함
             analysis_cost=0.0
         )
         
@@ -351,7 +283,7 @@ CRITICAL:
         return news_analysis
     
     def analyze_batch(self, articles: List[NewsArticle], max_count: int = 50) -> Dict[str, Any]:
-        """배치 분석 (무료 한도 내에서)"""
+        """배치 분석 (Ollama - 무제한!)"""
         results = {
             "analyzed": 0,
             "skipped": 0,
@@ -360,10 +292,6 @@ CRITICAL:
         }
         
         for i, article in enumerate(articles[:max_count]):
-            if not check_rate_limit():
-                results["errors"] += 1
-                break
-            
             try:
                 analysis = self.analyze_article(article)
                 if analysis:

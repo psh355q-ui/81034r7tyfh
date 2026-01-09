@@ -11,6 +11,7 @@ Features:
 import asyncio
 import logging
 import feedparser
+import hashlib
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -31,6 +32,22 @@ from sqlalchemy.orm import Session
 from backend.data.news_models import NewsArticle, RSSFeed, SessionLocal, init_db
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Utility Functions
+# ============================================================================
+
+def generate_content_hash(title: str, content: str) -> str:
+    """
+    콘텐츠 해시 생성 (중복 감지용)
+    
+    제목 + 본문의 처음 1000자로 SHA256 해시 생성
+    같은 내용의 다른 URL 기사도 중복으로 감지 가능
+    """
+    # 제목과 본문 결합 (본문은 첫 1000자만)
+    text = f"{title.strip()}\n{content.strip()[:1000]}"
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 
 # ============================================================================
@@ -172,29 +189,48 @@ class RSSCrawler:
             }
     
     def save_article(self, article_data: Dict[str, Any]) -> Optional[NewsArticle]:
-        """기사 DB 저장 (중복 체크)"""
+        """기사 DB 저장 (개선된 중복 체크)"""
         url = article_data.get("url", "")
-        if not url:
+        title = article_data.get("title", "")
+        content = article_data.get("content", "")
+        
+        if not url or not title:
             return None
         
-        # 중복 체크
+        # 1. URL 중복 체크 (가장 빠름)
         existing = self.db.query(NewsArticle).filter(NewsArticle.url == url).first()
         if existing:
             self.stats["articles_skipped"] += 1
+            logger.debug(f"Skipped (URL duplicate): {title[:50]}...")
             return existing
         
-        # 새 기사 저장
+        # 2. Content Hash 중복 체크 (내용 기반)
+        content_hash = None
+        if content and len(content) > 50:  # 본문이 충분히 긴 경우만
+            content_hash = generate_content_hash(title, content)
+            
+            existing_by_hash = self.db.query(NewsArticle).filter(
+                NewsArticle.content_hash == content_hash
+            ).first()
+            
+            if existing_by_hash:
+                self.stats["articles_skipped"] += 1
+                logger.info(f"✓ Skipped (Content duplicate): {title[:50]}... (different URL!)")
+                return existing_by_hash
+        
+        # 3. 새 기사 저장
         news_article = NewsArticle(
             url=url,
-            title=article_data.get("title", ""),
+            title=title,
             source=article_data.get("source", ""),
             feed_source=article_data.get("feed_source", "rss"),
             published_date=article_data.get("published_date"),
-            content=article_data.get("content", ""),
+            content=content,
             summary=article_data.get("summary", ""),
             keywords=article_data.get("keywords", []),
             author=article_data.get("author", []),
             top_image=article_data.get("top_image", ""),
+            content_hash=content_hash,  # ✅ 해시 저장
         )
         
         self.db.add(news_article)
@@ -202,6 +238,7 @@ class RSSCrawler:
         self.db.refresh(news_article)
         
         self.stats["articles_new"] += 1
+        logger.info(f"✅ New article saved: {title[:50]}...")
         return news_article
     
     def crawl_feed(self, feed: RSSFeed, extract_content: bool = True) -> List[NewsArticle]:
@@ -258,6 +295,44 @@ class RSSCrawler:
                 saved_articles.append(saved)
         
         return saved_articles
+    
+    def fetch_all_feeds(self, extract_content: bool = True) -> List[Dict[str, Any]]:
+        """
+        모든 RSS 피드 크롤링 (DB 저장 안함)
+        
+        UnifiedNewsProcessor와 함께 사용하기 위한 메서드
+        원시 기사 데이터만 반환하고 DB 저장은 하지 않음
+        
+        Returns:
+            List[Dict]: 크롤링된 원시 기사 목록
+        """
+        feeds = self.db.query(RSSFeed).filter(RSSFeed.enabled == True).all()
+        
+        all_raw_articles = []
+        for feed in feeds:
+            logger.info(f"📡 Fetching: {feed.name}...")
+            
+            # RSS 피드 파싱
+            articles = self.fetch_feed(feed.url, feed.name)
+            
+            # 본문 추출
+            for article_data in articles:
+                if extract_content and article_data.get("url"):
+                    full_content = self.extract_full_content(article_data["url"])
+                    article_data.update(full_content)
+                
+                all_raw_articles.append(article_data)
+            
+            # 피드 통계 업데이트 (마지막 크롤링 시간만)
+            feed.last_fetched = datetime.utcnow()
+            self.db.commit()
+            
+            time.sleep(0.5)  # Rate limiting
+            
+            self.stats["feeds_processed"] += 1
+        
+        logger.info(f"✅ Fetched {len(all_raw_articles)} raw articles from {len(feeds)} feeds")
+        return all_raw_articles
 
 
 # ============================================================================

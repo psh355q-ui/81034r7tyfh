@@ -2,31 +2,30 @@
 News Processing Pipeline for Historical Data Seeding.
 
 Features:
-- Sentiment Analysis (Gemini 2.0 Flash)
+- Sentiment Analysis (Ollama llama3.2:3b - 로컬 LLM)
 - Named Entity Recognition (Ticker extraction)
-- Text Embedding Generation (OpenAI text-embedding-3-small)
+- Text Embedding Generation (sentence-transformers - 로컬)
 - Batch processing with progress tracking
 
 Author: AI Trading System Team
 Date: 2025-12-21
+Updated: 2026-01-09 (Ollama integration)
 """
 
 import asyncio
 import logging
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-
-import google.generativeai as genai
-from openai import AsyncOpenAI
+import os
 
 try:
     from backend.config.settings import settings
     from backend.data.crawlers.multi_source_crawler import NewsArticle
+    from backend.ai.llm import get_ollama_client, get_embedding_service
 except ImportError:
     class MockSettings:
-        google_api_key = ""
-        openai_api_key = ""
+        use_local_llm = True
     settings = MockSettings()
 
     @dataclass
@@ -81,31 +80,37 @@ class NewsProcessor:
     """
 
     def __init__(self):
-        """Initialize processors."""
+        """Initialize processors with local LLM."""
         self.logger = logging.getLogger(__name__)
 
-        # Initialize Gemini
-        # Initialize Gemini
-        # Support both google_api_key and gemini_api_key
-        api_key = getattr(settings, 'google_api_key', None) or getattr(settings, 'gemini_api_key', None)
+        # Check if USE_LOCAL_LLM is enabled
+        use_local = os.getenv('USE_LOCAL_LLM', 'true').lower() == 'true'
         
-        if api_key:
-            genai.configure(api_key=api_key)
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        if use_local:
+            self.logger.info("🔧 Using local LLM (Ollama) and local embeddings")
+            
+            # Initialize Ollama client
+            try:
+                self.ollama_client = get_ollama_client()
+                if not self.ollama_client.check_health():
+                    self.logger.warning("⚠️ Ollama server not responding. Make sure Ollama is running.")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize Ollama: {e}")
+                self.ollama_client = None
+            
+            # Initialize local embedding service
+            try:
+                self.embedding_service = get_embedding_service()
+                self.embedding_dimension = 384  # all-MiniLM-L6-v2
+                self.logger.info(f"✅ Local embedding service ready ({self.embedding_dimension}D)")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize local embeddings: {e}")
+                self.embedding_service = None
         else:
-            self.logger.warning("Google/Gemini API key not configured")
-            self.gemini_model = None
-
-        # Initialize OpenAI
-        if hasattr(settings, 'openai_api_key') and settings.openai_api_key:
-            self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
-        else:
-            self.logger.warning("OpenAI API key not configured")
-            self.openai_client = None
-
-        # Rate limiting
-        self.gemini_rpm = 15  # Gemini: 15 requests/min (free tier)
-        self.openai_rpm = 3000  # OpenAI: 3000 requests/min (tier 1)
+            self.logger.warning("Local LLM disabled. Please set USE_LOCAL_LLM=true")
+            self.ollama_client = None
+            self.embedding_service = None
+            self.embedding_dimension = 384
 
     async def process_batch(
         self,
@@ -184,7 +189,7 @@ class NewsProcessor:
                 sentiment_score=sentiment_score,
                 sentiment_label=sentiment_label,
                 embedding=embedding,
-                embedding_model="text-embedding-3-small",
+                embedding_model="all-MiniLM-L6-v2",  # 로컬 모델
                 processed_at=datetime.now(),
                 processing_errors=errors
             )
@@ -200,7 +205,7 @@ class NewsProcessor:
         content: str
     ) -> Dict[str, Any]:
         """
-        Analyze content using Gemini for Sentiment, Tickers, and Tags.
+        Analyze content using Ollama for Sentiment, Tickers, and Tags.
 
         Args:
             title: Article title
@@ -216,99 +221,67 @@ class NewsProcessor:
             "tags": []
         }
 
-        if not self.gemini_model:
+        if not self.ollama_client:
+            self.logger.warning("Ollama client not available, using default result")
             return default_result
 
         try:
-            prompt = f"""Analyze this financial news article and return ONLY a JSON object with this format:
-{{
-    "score": <float -1.0 to 1.0>,
-    "label": "<positive|negative|neutral>",
-    "tickers": ["EXTRACTED_TICKER_1", "EXTRACTED_TICKER_2"],
-    "tags": ["relevant_tag1", "relevant_tag2"]
-}}
-
-Extract relevant stock tickers (e.g., AAPL, NVDA, TSLA) mentioned or implied.
-Extract key thematic tags (e.g., "Earnings", "Merger", "AI", "Macro").
-
-Title: {title}
-Content: {content[:1000]}
-
-Remember: Return ONLY the JSON, no other text."""
-
-            response = await self.gemini_model.generate_content_async(prompt)
-
-            if response and response.text:
-                # Extract JSON from response
-                text = response.text.strip()
-
-                # Handle markdown code blocks
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0].strip()
-                elif "```" in text:
-                    text = text.split("```")[1].split("```")[0].strip()
-
-                # Parse JSON
-                import json
-                result = json.loads(text)
-
-                score = float(result.get("score", 0.0))
-                label = result.get("label", "neutral")
-                tickers = result.get("tickers", [])
-                tags = result.get("tags", [])
-
-                # Validate
-                score = max(-1.0, min(1.0, score))
-                if label not in ["positive", "negative", "neutral"]:
-                    label = "neutral"
-                
-                return {
-                    "score": score,
-                    "label": label,
-                    "tickers": tickers,
-                    "tags": tags
-                }
+            # Ollama를 사용한 분석
+            analysis = self.ollama_client.analyze_news_sentiment(title, content)
+            
+            # Ollama 응답을 우리 형식으로 변환
+            score = analysis.get('sentiment_score', 0.0)
+            label = analysis.get('sentiment_overall', 'neutral')
+            tickers = analysis.get('affected_tickers', [])
+            tags = self.extract_topics(f"{title} {content}")
+            
+            # 감성 점수/라벨 검증
+            score = max(-1.0, min(1.0, score))
+            if label not in ["positive", "negative", "neutral"]:
+                label = "neutral"
+            
+            return {
+                "score": score,
+                "label": label,
+                "tickers": tickers,
+                "tags": tags
+            }
 
         except Exception as e:
             self.logger.error(f"Content analysis failed: {e}")
-
-        return default_result
+            return default_result
 
     async def generate_embedding(self, text: str) -> Optional[List[float]]:
         """
-        Generate text embedding using OpenAI.
+        Generate text embedding using local sentence-transformers.
 
         Args:
             text: Text to embed (title + content)
 
         Returns:
-            1536-dimensional embedding vector or None if failed
+            384-dimensional embedding vector or None if failed
         """
-        if not self.openai_client:
+        if not self.embedding_service:
+            self.logger.warning("Embedding service not available")
             return None
 
         try:
-            # Truncate text to 8000 chars (safe limit)
-            text = text[:8000]
+            # Truncate text to 5000 chars (로컬 모델 한계 고려)
+            text = text[:5000]
 
-            response = await self.openai_client.embeddings.create(
-                model="text-embedding-3-small",
-                input=text,
-                encoding_format="float"
+            # 동기 함수를 비동기로 실행
+            loop = asyncio.get_event_loop()
+            embedding = await loop.run_in_executor(
+                None,
+                self.embedding_service.get_embedding,
+                text
             )
-
-            if response.data:
-                embedding = response.data[0].embedding
-                return embedding
+            
+            return embedding
 
         except Exception as e:
-            error_msg = str(e)
-            if "429" in error_msg or "insufficient_quota" in error_msg:
-                self.logger.warning(f"OpenAI Rate Limit/Quota exceeded: {error_msg}. Using empty embedding.")
-            else:
-                self.logger.error(f"Embedding generation failed: {error_msg}")
-
-        return None
+            self.logger.error(f"Local embedding generation failed: {e}")
+            return None
 
     def extract_topics(self, text: str) -> List[str]:
         """

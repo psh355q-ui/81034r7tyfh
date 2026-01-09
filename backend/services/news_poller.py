@@ -19,6 +19,7 @@ from backend.data.news_analyzer import NewsDeepAnalyzer
 from backend.ai.reasoning.deep_reasoning_agent import DeepReasoningAgent
 from backend.data.news_models import SessionLocal, NewsArticle, NewsAnalysis
 from backend.database.models import TradingSignal
+from backend.data.processors.unified_news_processor import UnifiedNewsProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -60,46 +61,57 @@ class NewsPoller:
         logger.info("📰 NewsPoller stopped")
 
     async def poll_and_process(self):
-        """Single polling cycle"""
+        """Single polling cycle (with UnifiedNewsProcessor)"""
         db = SessionLocal()
         try:
             crawler = RSSCrawler(db)
-            analyzer = NewsDeepAnalyzer(db)
             
-            # 1. Crawl all enabled feeds
-            logger.info("🕷️ Crawling RSS feeds...")
-            # Running synchronous crawler in a thread to avoid blocking the event loop
-            new_articles = await asyncio.to_thread(crawler.crawl_all_feeds)
+            # 1. Fetch all enabled feeds (DB 저장 안함!)
+            logger.info("🕷️ Fetching RSS feeds...")
+            raw_articles = await asyncio.to_thread(crawler.fetch_all_feeds)
             
-            if not new_articles:
+            if not raw_articles:
                 logger.info("No new articles found.")
                 return
 
-            logger.info(f"✨ Found {len(new_articles)} new articles.")
+            logger.info(f"📥 Fetched {len(raw_articles)} raw articles.")
 
-            # 2. Filter & Analyze
-            for article in new_articles:
-                matched_keywords = self._check_keywords(article)
-                
-                if matched_keywords:
-                    logger.info(f"🔎 Keyword Match [{', '.join(matched_keywords)}]: {article.title}")
+            # 2. UnifiedNewsProcessor로 통합 처리
+            logger.info("⚙️ Processing through UnifiedNewsProcessor...")
+            processor = UnifiedNewsProcessor(
+                db=db,
+                semantic_dedup=False,  # 비활성화 (향후 활성화 가능)
+                analyze_all=False  # 중요한 것만 분석
+            )
+            
+            result = await processor.process_batch(raw_articles)
+            
+            # 3. 통계 로깅
+            stats = processor.get_stats()
+            logger.info(f"""📊 Processing Complete:
+  Total: {stats['total']}
+  Saved: {stats['saved']}
+  Analyzed: {stats['analyzed']}
+  Skipped (URL): {stats['skipped_url']}
+  Skipped (Hash): {stats['skipped_hash']}
+  Errors: {stats['errors']}
+""")
+
+            # 4. 중요 뉴스에 대한 Deep Reasoning 트리거
+            for processed in result.processed:
+                if processed.analysis and processed.analysis.urgency in ["high", "critical"]:
+                    logger.warning(f"🧠 High Urgency Event: {processed.article.title[:60]}...")
                     
-                    # 3. AI Deep Analysis (NewsDeepAnalyzer)
-                    analysis = await asyncio.to_thread(analyzer.analyze_article, article)
+                    # 키워드 추출
+                    matched_keywords = self._check_keywords(processed.article)
                     
-                    # 4. If Urgent/Critical -> Trigger Deep Reasoning (The Brain)
-                    if analysis and analysis.urgency in ["high", "critical"]:
-                        logger.warning(f"🧠 High Urgency Event Detected! Triggering DeepReasoningAgent...")
-                        
+                    if matched_keywords:
                         await self._trigger_deep_reasoning(
-                            db, 
-                            article, 
-                            matched_keywords, 
-                            analysis
+                            db,
+                            processed.article,
+                            matched_keywords,
+                            processed.analysis
                         )
-                else:
-                    pass
-                    # logger.debug(f"Skipping (No keywords): {article.title}")
                     
         finally:
             db.close()

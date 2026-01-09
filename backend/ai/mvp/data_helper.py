@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from backend.data.news_models import NewsArticle, get_db
 from backend.data.rss_crawler import get_recent_articles
 from backend.data.news_analyzer import get_ticker_news
+from backend.ai.mvp.ticker_mappings import get_ticker_keywords
 
 
 def get_news_for_symbol(
@@ -21,6 +22,8 @@ def get_news_for_symbol(
     """
     특정 심볼에 대한 뉴스 기사 가져오기
     
+    영문명 + 한글명 + 티커로 검색하여 한글 뉴스도 정확히 매칭
+    
     Args:
         symbol: 티커 심볼 (예: TSLA, AAPL)
         db: DB 세션
@@ -31,10 +34,11 @@ def get_news_for_symbol(
         뉴스 기사 리스트
     """
     try:
-        # 1. 티커별 뉴스 먼저 시도
+        # 1. 티커별 뉴스 먼저 시도 (NewsTickerRelevance 테이블)
         ticker_news = get_ticker_news(db, symbol.upper(), limit)
         
         if ticker_news:
+            print(f"   → Found {len(ticker_news)} articles from ticker mapping")
             return [
                 {
                     'title': article.get('title', ''),
@@ -47,22 +51,33 @@ def get_news_for_symbol(
                 for article in ticker_news[:limit]
             ]
         
-        # 2. 일반 뉴스에서 심볼 키워드로 검색
+        # 2. 키워드 검색 (영문명 + 한글명 + 티커)
+        keywords = get_ticker_keywords(symbol)
+        print(f"   → Searching with keywords: {keywords}")
+        
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
         query = db.query(NewsArticle).filter(
             NewsArticle.crawled_at >= cutoff_time
         )
         
-        # 제목이나 요약에 심볼이 포함된 기사
-        query = query.filter(
-            (NewsArticle.title.ilike(f'%{symbol}%')) |
-            (NewsArticle.summary.ilike(f'%{symbol}%')) |
-            (NewsArticle.content.ilike(f'%{symbol}%'))
-        )
+        # 모든 키워드에 대해 OR 조건으로 검색
+        from sqlalchemy import or_
+        
+        conditions = []
+        for keyword in keywords:
+            conditions.extend([
+                NewsArticle.title.ilike(f'%{keyword}%'),
+                NewsArticle.summary.ilike(f'%{keyword}%'),
+                NewsArticle.content.ilike(f'%{keyword}%')
+            ])
+        
+        query = query.filter(or_(*conditions))
         
         articles = query.order_by(
             NewsArticle.published_date.desc()
         ).limit(limit).all()
+        
+        print(f"   → Found {len(articles)} articles from keyword search")
         
         return [
             {
@@ -78,6 +93,8 @@ def get_news_for_symbol(
         
     except Exception as e:
         print(f"⚠️ Failed to fetch news for {symbol}: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 

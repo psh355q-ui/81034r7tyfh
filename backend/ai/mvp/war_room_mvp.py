@@ -378,7 +378,7 @@ class WarRoomMVP:
         """Get War Room information"""
         # Get current persona config
         current_mode = self.persona_router.get_current_mode()
-        weights = self.persona_router.get_weights(current_mode)
+        weights = self.persona_router.get_weights(current_mode.value)  # Use .value to convert enum to string
         
         return {
             'name': 'WarRoomMVP',

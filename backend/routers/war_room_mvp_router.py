@@ -108,7 +108,7 @@ def fetch_market_data(symbol: str) -> Dict[str, Any]:
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
-        hist = ticker.history(period="5d")
+        hist = ticker.history(period="60d")  # 60 days for technical indicators
 
         if hist.empty:
             # Fallback to minimal data
@@ -119,20 +119,63 @@ def fetch_market_data(symbol: str) -> Dict[str, Any]:
                     "high": 0,
                     "low": 0,
                     "volume": 0,
-                    "week_52_high": 0,
-                    "week_52_low": 0
+                    "high_52w": 0,
+                    "low_52w": 0
+                },
+                "technical_data": {
+                    "rsi": 50,
+                    "macd": {"value": 0, "signal": 0},
+                    "moving_averages": {"ma50": 0, "ma200": 0}
                 },
                 "market_conditions": {
                     "is_market_open": False,
-                    "volatility": 0
+                    "volatility": 0,
+                    "vix": 15,
+                    "market_sentiment": 0.5
                 }
             }
 
         latest = hist.iloc[-1]
         current_price = float(latest['Close'])
 
-        # Calculate volatility from 5-day history
+        # Calculate volatility
         volatility = float(hist['Close'].pct_change().std() * 100) if len(hist) > 1 else 0
+
+        # Calculate RSI (14-day)
+        def calculate_rsi(prices, period=14):
+            if len(prices) < period:
+                return 50
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            return float(rsi.iloc[-1]) if not rsi.empty else 50
+
+        rsi = calculate_rsi(hist['Close'])
+
+        # Calculate MACD
+        exp12 = hist['Close'].ewm(span=12, adjust=False).mean()
+        exp26 = hist['Close'].ewm(span=26, adjust=False).mean()
+        macd = exp12 - exp26
+        signal = macd.ewm(span=9, adjust=False).mean()
+        
+        # Moving Averages
+        ma50 = float(hist['Close'].rolling(window=50).mean().iloc[-1]) if len(hist) >= 50 else current_price
+        ma200 = float(hist['Close'].rolling(window=200).mean().iloc[-1]) if len(hist) >= 200 else current_price
+
+        # Fetch VIX (market volatility index)
+        vix_value = 15  # Default
+        try:
+            vix_ticker = yf.Ticker("^VIX")
+            vix_hist = vix_ticker.history(period="1d")
+            if not vix_hist.empty:
+                vix_value = float(vix_hist['Close'].iloc[-1])
+        except:
+            pass
+
+        # Market sentiment based on price vs MA50
+        market_sentiment = 0.6 if current_price > ma50 else 0.4
 
         return {
             "price_data": {
@@ -141,12 +184,25 @@ def fetch_market_data(symbol: str) -> Dict[str, Any]:
                 "high": float(latest['High']),
                 "low": float(latest['Low']),
                 "volume": int(latest['Volume']),
-                "week_52_high": float(info.get('fiftyTwoWeekHigh', current_price * 1.2)),
-                "week_52_low": float(info.get('fiftyTwoWeekLow', current_price * 0.8))
+                "high_52w": float(info.get('fiftyTwoWeekHigh', current_price * 1.2)),
+                "low_52w": float(info.get('fiftyTwoWeekLow', current_price * 0.8))
+            },
+            "technical_data": {
+                "rsi": round(rsi, 2),
+                "macd": {
+                    "value": round(float(macd.iloc[-1]), 2),
+                    "signal": round(float(signal.iloc[-1]), 2)
+                },
+                "moving_averages": {
+                    "ma50": round(ma50, 2),
+                    "ma200": round(ma200, 2)
+                }
             },
             "market_conditions": {
                 "is_market_open": True,
                 "volatility": round(volatility, 2),
+                "vix": round(vix_value, 2),
+                "market_sentiment": market_sentiment,
                 "market_cap": info.get('marketCap', 0),
                 "sector": info.get('sector', 'Unknown'),
                 "industry": info.get('industry', 'Unknown')
@@ -162,12 +218,19 @@ def fetch_market_data(symbol: str) -> Dict[str, Any]:
                 "high": 0,
                 "low": 0,
                 "volume": 0,
-                "week_52_high": 0,
-                "week_52_low": 0
+                "high_52w": 0,
+                "low_52w": 0
+            },
+            "technical_data": {
+                "rsi": 50,
+                "macd": {"value": 0, "signal": 0},
+                "moving_averages": {"ma50": 0, "ma200": 0}
             },
             "market_conditions": {
                 "is_market_open": False,
-                "volatility": 0
+                "volatility": 0,
+                "vix": 15,
+                "market_sentiment": 0.5
             }
         }
 
@@ -268,7 +331,7 @@ async def deliberate(request: DeliberationRequest, db: Session = Depends(get_db)
                 'action_context': request.action_context,
                 'market_data': market_data,
                 'portfolio_state': portfolio_state,
-                'additional_data': request.additional_data
+                'additional_data': additional_data  # Use prepared data
             }
             result = await war_room_handler.execute(context)
         else:
@@ -278,7 +341,7 @@ async def deliberate(request: DeliberationRequest, db: Session = Depends(get_db)
                 action_context=request.action_context,
                 market_data=market_data,
                 portfolio_state=portfolio_state,
-                additional_data=request.additional_data,
+                additional_data=additional_data,  # Use prepared data instead of request.additional_data
                 persona_mode=request.persona_mode  # NEW: Pass persona mode
             )
         
