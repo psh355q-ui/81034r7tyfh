@@ -33,6 +33,7 @@ from backend.database.repository_multi_strategy import (
     PositionOwnershipRepository,
     ConflictLogRepository
 )
+from backend.database.models import PositionOwnership
 from backend.api.schemas.strategy_schemas import (
     StrategyCreate,
     StrategyUpdate,
@@ -340,30 +341,110 @@ def bulk_activate_strategies(
 ownership_router = APIRouter()
 
 
-@ownership_router.get("/", response_model=List[PositionOwnershipWithStrategy])
+@ownership_router.get("/")
 def list_ownerships(
     ticker: Optional[str] = Query(None, description="종목 코드 필터"),
     strategy_id: Optional[str] = Query(None, description="전략 ID 필터"),
+    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
+    page_size: int = Query(20, ge=1, le=100, description="페이지 크기 (1-100)"),
     db: Session = Depends(get_db)
 ):
     """
-    포지션 소유권 목록 조회
+    포지션 소유권 목록 조회 (Phase 5, T5.2)
 
-    - **ticker**: 종목 필터 (optional)
-    - **strategy_id**: 전략 필터 (optional)
-    - Returns: 소유권 목록 (strategy 정보 포함)
+    **페이지네이션 파라미터**:
+    - **page**: 페이지 번호 (1부터 시작, default=1)
+    - **page_size**: 페이지당 항목 수 (1-100, default=20)
+
+    **필터 파라미터**:
+    - **ticker**: 종목 코드 필터 (optional)
+    - **strategy_id**: 전략 ID 필터 (optional)
+
+    **Returns**:
+    - **total**: 전체 항목 수
+    - **page**: 현재 페이지
+    - **page_size**: 페이지 크기
+    - **total_pages**: 전체 페이지 수
+    - **items**: 소유권 목록 (strategy 정보 포함)
     """
     repo = PositionOwnershipRepository(db)
 
+    # Build base query
     if ticker:
-        ownerships = repo.get_by_ticker(ticker.upper())
+        # Filter by ticker
+        query = db.query(PositionOwnership).filter(
+            PositionOwnership.ticker == ticker.upper()
+        )
     elif strategy_id:
-        ownerships = repo.get_by_strategy(strategy_id)
+        # Filter by strategy
+        query = db.query(PositionOwnership).filter(
+            PositionOwnership.strategy_id == strategy_id
+        )
     else:
-        # Get all (limit to avoid performance issue)
-        ownerships = db.query(PositionOwnership).limit(100).all()
+        # Get all
+        query = db.query(PositionOwnership)
 
-    return ownerships
+    # Get total count
+    total = query.count()
+
+    # Apply pagination
+    offset = (page - 1) * page_size
+    ownerships = query.order_by(
+        PositionOwnership.created_at.desc()
+    ).offset(offset).limit(page_size).all()
+
+    # Calculate total pages
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
+    # Convert to response models
+    import json
+    items = []
+    for o in ownerships:
+        # Handle strategy with JSON config_metadata
+        strategy_dict = None
+        if o.strategy:
+            config_meta = o.strategy.config_metadata
+            # Parse JSON string if needed
+            if isinstance(config_meta, str):
+                try:
+                    config_meta = json.loads(config_meta)
+                except:
+                    config_meta = None
+
+            strategy_dict = {
+                "id": o.strategy.id,
+                "name": o.strategy.name,
+                "display_name": o.strategy.display_name,
+                "persona_type": o.strategy.persona_type,
+                "priority": o.strategy.priority,
+                "time_horizon": o.strategy.time_horizon,
+                "is_active": o.strategy.is_active,
+                "config_metadata": config_meta,
+                "created_at": o.strategy.created_at,
+                "updated_at": o.strategy.updated_at
+            }
+
+        # Manually construct response to handle JSON fields
+        item_dict = {
+            "id": o.id,
+            "ticker": o.ticker,
+            "strategy_id": o.strategy_id,
+            "position_id": o.position_id,
+            "ownership_type": o.ownership_type,
+            "locked_until": o.locked_until,
+            "reasoning": o.reasoning,
+            "created_at": o.created_at,
+            "strategy": strategy_dict
+        }
+        items.append(item_dict)
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "items": items
+    }
 
 
 @ownership_router.get("/{ticker}/primary", response_model=PositionOwnershipResponse)
