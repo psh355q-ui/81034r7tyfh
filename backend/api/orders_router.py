@@ -4,9 +4,13 @@ Orders API Router
 Phase 27: Frontend UI Integration
 Date: 2025-12-23
 
+Phase 5, T5.1: Multi-Strategy Conflict Checking
+Date: 2026-01-12
+
 API Endpoints:
 - GET /api/orders - 주문 히스토리 조회
 - GET /api/orders/{order_id} - 특정 주문 상세
+- POST /api/orders/check-conflict - 주문 충돌 검사 (Dry Run, Phase 5 T5.1)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -18,6 +22,14 @@ import logging
 from backend.database.models import Order
 from backend.database.repository import get_sync_session
 from backend.ai.skills.common.logging_decorator import log_endpoint
+
+# Phase 5, T5.1: Conflict Detection
+from backend.ai.skills.system.conflict_detector import ConflictDetector
+from backend.database.repository_multi_strategy import StrategyRepository
+from backend.api.schemas.strategy_schemas import (
+    ConflictCheckRequest,
+    ConflictCheckResponse
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +190,105 @@ async def get_order(order_id: int):
     except Exception as e:
         logger.error(f"❌ Failed to fetch order {order_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch order: {str(e)}")
+
+    finally:
+        db.close()
+
+
+# ============================================================================
+# Phase 5, T5.1: Multi-Strategy Conflict Checking
+# ============================================================================
+
+@router.post("/check-conflict", response_model=ConflictCheckResponse)
+@log_endpoint("orders", "system")
+async def check_order_conflict(request: ConflictCheckRequest):
+    """
+    주문 충돌 검사 (Dry Run)
+
+    **Phase 5, T5.1: Multi-Strategy Orchestration**
+
+    실제 주문을 생성하지 않고 충돌 여부만 확인합니다.
+    ConflictDetector를 직접 호출하여 OrderManager와 동일한 비즈니스 로직을 사용합니다.
+
+    **Request Body:**
+    ```json
+    {
+        "strategy_id": "uuid-of-strategy",
+        "ticker": "AAPL",
+        "action": "BUY",
+        "quantity": 100
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+        "has_conflict": false,
+        "resolution": "allowed",
+        "can_proceed": true,
+        "reasoning": "No current owner. Free to trade.",
+        "conflict_detail": null
+    }
+    ```
+
+    **Resolution Types:**
+    - `allowed`: 충돌 없음, 주문 가능
+    - `blocked`: 충돌 발생, 우선순위 부족으로 차단
+    - `priority_override`: 충돌 발생하지만 우선순위가 높아 소유권 이전 후 주문 가능
+
+    **Use Cases:**
+    1. 프론트엔드에서 주문 버튼 활성화/비활성화 결정
+    2. 사용자에게 충돌 경고 메시지 표시
+    3. 자동 트레이딩 시스템에서 주문 전 검증
+
+    **Raises:**
+    - 404: Strategy not found
+    - 400: Strategy is inactive
+    - 422: Invalid request (missing fields, invalid action type)
+    """
+    db = get_sync_session()
+
+    try:
+        # 1. Validate Strategy Exists and is Active
+        strategy_repo = StrategyRepository(db)
+        strategy = strategy_repo.get_by_id(request.strategy_id)
+
+        if not strategy:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Strategy {request.strategy_id} not found"
+            )
+
+        if not strategy.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Strategy '{strategy.name}' is inactive. Activate it first."
+            )
+
+        # 2. Call ConflictDetector (same logic as OrderManager.create_order)
+        detector = ConflictDetector(db)
+
+        conflict_response = detector.check_conflict(
+            strategy_id=request.strategy_id,
+            ticker=request.ticker.upper(),
+            action=request.action,
+            quantity=request.quantity
+        )
+
+        logger.info(
+            f"🔍 Conflict check: {request.ticker} | Strategy: {strategy.name} | "
+            f"Resolution: {conflict_response.resolution.value} | Can proceed: {conflict_response.can_proceed}"
+        )
+
+        # 3. Return ConflictCheckResponse
+        # ConflictDetector already returns the correct Pydantic model
+        return conflict_response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Conflict check failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Conflict check failed: {str(e)}")
 
     finally:
         db.close()
