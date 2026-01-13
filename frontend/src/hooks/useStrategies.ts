@@ -7,7 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Strategy } from '../types/strategy';
 
-const API_BASE = 'http://localhost:8001/api/v1';
+const API_BASE = 'http://localhost:8001/api';
 
 /**
  * Fetch all strategies
