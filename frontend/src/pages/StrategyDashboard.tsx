@@ -12,6 +12,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StrategyCardGrid } from '../components/strategy/StrategyCardGrid';
+import { PositionOwnershipTable } from '../components/ownership/PositionOwnershipTable';
 import { useStrategies } from '../hooks/useStrategies';
 import type { Strategy } from '../types/strategy';
 
@@ -137,21 +138,15 @@ export default function StrategyDashboard() {
           )}
         </section>
 
-        {/* Position Ownership Table - To be implemented in T5.4 */}
+        {/* Position Ownership Table */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-800">
               포지션 소유권
             </h2>
-            <button className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:border-gray-400 transition-colors">
-              전체 보기
-            </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
-            <p className="text-sm">포지션 소유권 테이블 (T5.4 예정)</p>
-            <p className="text-xs text-gray-400 mt-1">API 엔드포인트: GET /api/ownership</p>
-          </div>
+          <PositionOwnershipTable maxRows={10} showPagination={true} />
         </section>
       </main>
     </div>
