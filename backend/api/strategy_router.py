@@ -272,6 +272,8 @@ def activate_strategy(
     - Returns: 활성화된 전략
     - Raises: 404 Not Found
     """
+    import json
+
     repo = StrategyRepository(db)
 
     success = repo.activate(strategy_id)
@@ -284,8 +286,29 @@ def activate_strategy(
 
     db.commit()
 
-    # Return updated strategy
-    return repo.get_by_id(strategy_id)
+    # Return updated strategy with parsed config_metadata
+    strategy = repo.get_by_id(strategy_id)
+
+    # Parse config_metadata if it's a JSON string
+    config_meta = strategy.config_metadata
+    if isinstance(config_meta, str):
+        try:
+            config_meta = json.loads(config_meta)
+        except Exception:
+            config_meta = None
+
+    return StrategyResponse(
+        id=strategy.id,
+        name=strategy.name,
+        display_name=strategy.display_name,
+        persona_type=strategy.persona_type,
+        priority=strategy.priority,
+        time_horizon=strategy.time_horizon,
+        is_active=strategy.is_active,
+        config_metadata=config_meta,
+        created_at=strategy.created_at,
+        updated_at=strategy.updated_at
+    )
 
 
 @strategy_router.post("/{strategy_id}/deactivate", response_model=StrategyResponse)
@@ -302,6 +325,8 @@ def deactivate_strategy(
 
     Side Effect: 기존 소유권은 유지됨 (locked_until 만료 시 자동 해제)
     """
+    import json
+
     repo = StrategyRepository(db)
 
     success = repo.deactivate(strategy_id)
@@ -314,8 +339,29 @@ def deactivate_strategy(
 
     db.commit()
 
-    # Return updated strategy
-    return repo.get_by_id(strategy_id)
+    # Return updated strategy with parsed config_metadata
+    strategy = repo.get_by_id(strategy_id)
+
+    # Parse config_metadata if it's a JSON string
+    config_meta = strategy.config_metadata
+    if isinstance(config_meta, str):
+        try:
+            config_meta = json.loads(config_meta)
+        except Exception:
+            config_meta = None
+
+    return StrategyResponse(
+        id=strategy.id,
+        name=strategy.name,
+        display_name=strategy.display_name,
+        persona_type=strategy.persona_type,
+        priority=strategy.priority,
+        time_horizon=strategy.time_horizon,
+        is_active=strategy.is_active,
+        config_metadata=config_meta,
+        created_at=strategy.created_at,
+        updated_at=strategy.updated_at
+    )
 
 
 @strategy_router.post("/bulk/activate", response_model=BulkOperationResponse)
