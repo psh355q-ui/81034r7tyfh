@@ -13,6 +13,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StrategyCardGrid } from '../components/strategy/StrategyCardGrid';
 import { PositionOwnershipTable } from '../components/ownership/PositionOwnershipTable';
+import { ConflictAlertBanner } from '../components/conflict/ConflictAlertBanner';
 import { useStrategies } from '../hooks/useStrategies';
 import type { Strategy } from '../types/strategy';
 
@@ -94,8 +95,8 @@ export default function StrategyDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Conflict Alert Banner - To be implemented in T5.5 */}
-        {/* <ConflictAlertBanner conflicts={conflicts} /> */}
+        {/* Conflict Alert Banner */}
+        <ConflictAlertBanner maxConflicts={3} autoDismissMs={10000} />
 
         {/* Strategy Cards Section */}
         <section className="mb-12">

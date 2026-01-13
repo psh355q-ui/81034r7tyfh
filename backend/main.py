@@ -43,6 +43,9 @@ from backend.auth import APIKeyConfig
 logger = logging.getLogger(__name__)
 api_key_config = APIKeyConfig()
 
+# Import Event Subscribers
+from backend.events.subscribers import register_subscribers, set_conflict_ws_manager
+
 # =============================================================================
 # Router imports (absolute paths) with availability flags
 # =============================================================================
@@ -237,6 +240,10 @@ async def lifespan(app: FastAPI):
             message="Redis is operational",
         )
     # (In a real setup, you would register mock_redis with health_monitor)
+
+    # 🔄 Register Event Subscribers (Phase 4, T4.2)
+    register_subscribers()
+    logger.info("Event Subscribers initialized.")
 
     # 🔄 Order Recovery on Startup (State Machine Phase 2)
     try:
@@ -673,11 +680,31 @@ except Exception as e:
 
 # Multi-Strategy Orchestration - Strategy Management API
 try:
-    from backend.api.strategy_router import strategy_router, ownership_router, conflict_router
+    from backend.api.strategy_router import strategy_router, ownership_router, conflict_router, conflict_ws_manager
     app.include_router(strategy_router, prefix="/api/strategies", tags=["Multi-Strategy"])
     app.include_router(ownership_router, prefix="/api/ownership", tags=["Multi-Strategy"])
     app.include_router(conflict_router, prefix="/api/conflicts", tags=["Multi-Strategy"])
+
+    # WebSocket endpoint for real-time conflict alerts
+    @app.websocket("/api/conflicts/ws")
+    async def websocket_conflict_endpoint(websocket: WebSocket):
+        """
+        Real-time conflict alerts WebSocket endpoint.
+        Broadcasts CONFLICT_DETECTED events to all connected clients.
+        """
+        await conflict_ws_manager.connect(websocket)
+        try:
+            while True:
+                # Keep connection alive
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            conflict_ws_manager.disconnect(websocket)
+
+    # Connect WebSocket manager to event subscribers
+    set_conflict_ws_manager(conflict_ws_manager)
+
     logger.info("✅ Multi-Strategy Orchestration routers registered (Strategy/Ownership/Conflict)")
+    logger.info("✅ Conflict WebSocket endpoint mounted at /api/conflicts/ws")
 except Exception as e:
     logger.warning(f"Multi-Strategy Orchestration routers not available: {e}")
 

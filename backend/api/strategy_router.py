@@ -22,10 +22,12 @@ Usage:
     app.include_router(conflict_router, prefix="/api/v1/conflicts", tags=["conflicts"])
 """
 
-from fastapi import APIRouter, HTTPException, Query, Depends, status
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, Depends, status, WebSocket, WebSocketDisconnect
+from typing import List, Optional, Set
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
+import json
+import logging
 
 from backend.database.repository import get_sync_session
 from backend.database.repository_multi_strategy import (
@@ -52,6 +54,47 @@ from backend.api.schemas.strategy_schemas import (
 from backend.core.cache import get_cache
 import hashlib
 import json
+
+logger = logging.getLogger(__name__)
+
+
+# ====================================
+# WebSocket Connection Manager
+# ====================================
+
+class ConflictWebSocketManager:
+    """Manages WebSocket connections for real-time conflict alerts"""
+
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket):
+        """Accept new WebSocket connection"""
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        logger.info(f"[ConflictWS] New connection. Total: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        """Remove WebSocket connection"""
+        self.active_connections.discard(websocket)
+        logger.info(f"[ConflictWS] Connection closed. Total: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        """Broadcast message to all connected clients"""
+        disconnected = set()
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                logger.error(f"[ConflictWS] Broadcast error: {e}")
+                disconnected.add(connection)
+
+        # Remove disconnected clients
+        for conn in disconnected:
+            self.disconnect(conn)
+
+# Global WebSocket manager instance
+conflict_ws_manager = ConflictWebSocketManager()
 
 
 # ====================================
@@ -806,3 +849,8 @@ def list_conflict_logs(
         logs = repo.get_recent_conflicts(days=days)
 
     return logs
+
+
+# WebSocket endpoint needs to be mounted in main.py, not in router
+# Export the manager for use in main.py
+__all__ = ['strategy_router', 'ownership_router', 'conflict_router', 'conflict_ws_manager']

@@ -82,3 +82,17 @@ export const STRATEGY_COLORS: Record<PersonaType, string> = {
   trading: 'bg-amber-100 text-amber-800',
   aggressive: 'bg-red-100 text-red-800'
 };
+
+// Conflict Types (Phase 5, T5.5)
+export interface OrderConflict {
+  id: string;
+  ticker: string;
+  strategy_id: string;
+  conflicting_strategy_id: string;
+  conflict_type: 'position_conflict' | 'priority_conflict' | 'ownership_locked';
+  resolution: 'blocked' | 'override' | 'pending';
+  reason: string;
+  created_at: string;
+  strategy?: Strategy;
+  conflicting_strategy?: Strategy;
+}
