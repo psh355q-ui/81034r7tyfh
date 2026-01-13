@@ -492,20 +492,55 @@ async def list_ownerships(
     # Calculate total pages
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
-    # Convert to response models using Pydantic
-    items = [PositionOwnershipWithStrategy.from_orm(o) for o in ownerships]
+    # Convert to response models with parsed config_metadata
+    items = []
+    for o in ownerships:
+        # Parse config_metadata if it's a JSON string
+        strategy_data = None
+        if o.strategy:
+            config_meta = o.strategy.config_metadata
+            if isinstance(config_meta, str):
+                try:
+                    config_meta = json.loads(config_meta)
+                except Exception:
+                    config_meta = None
+
+            strategy_data = StrategyResponse(
+                id=o.strategy.id,
+                name=o.strategy.name,
+                display_name=o.strategy.display_name,
+                persona_type=o.strategy.persona_type,
+                priority=o.strategy.priority,
+                time_horizon=o.strategy.time_horizon,
+                is_active=o.strategy.is_active,
+                config_metadata=config_meta,
+                created_at=o.strategy.created_at,
+                updated_at=o.strategy.updated_at
+            )
+
+        items.append(PositionOwnershipWithStrategy(
+            id=o.id,
+            ticker=o.ticker,
+            strategy_id=o.strategy_id,
+            position_id=o.position_id,
+            ownership_type=o.ownership_type,
+            locked_until=o.locked_until,
+            reasoning=o.reasoning,
+            created_at=o.created_at,
+            strategy=strategy_data
+        ))
 
     response_data = {
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,
-        "items": items
+        "items": [item.dict() for item in items]
     }
-    
+
     # Cache for 3 seconds
     await cache.set(cache_key, response_data, ttl=3)
-    
+
     return response_data
 
 
