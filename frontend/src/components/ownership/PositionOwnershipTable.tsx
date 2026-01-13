@@ -10,7 +10,7 @@
  * - Filtering by ticker/strategy
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOwnerships } from '../../hooks/useOwnerships';
 import type { PositionOwnership } from '../../types/strategy';
 import { PERSONA_NAMES, STRATEGY_COLORS } from '../../types/strategy';
@@ -26,7 +26,18 @@ export function PositionOwnershipTable({
 }: PositionOwnershipTableProps) {
   const [page, setPage] = useState(1);
   const [tickerFilter, setTickerFilter] = useState('');
+  const [tickerInput, setTickerInput] = useState(''); // Input field value
   const [strategyFilter, setStrategyFilter] = useState('');
+
+  // Debounce ticker input (500ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTickerFilter(tickerInput);
+      setPage(1); // Reset to first page when filter changes
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [tickerInput]);
 
   const { data, isLoading, error } = useOwnerships({
     page,
@@ -97,16 +108,14 @@ export function PositionOwnershipTable({
             <input
               type="text"
               placeholder="티커 검색 (예: AAPL)"
-              value={tickerFilter}
-              onChange={(e) => {
-                setTickerFilter(e.target.value.toUpperCase());
-                setPage(1); // Reset to first page
-              }}
+              value={tickerInput}
+              onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <button
             onClick={() => {
+              setTickerInput('');
               setTickerFilter('');
               setStrategyFilter('');
               setPage(1);
