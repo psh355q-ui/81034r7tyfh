@@ -75,19 +75,21 @@ const RISK_DATA = [
 
 // --- Components ---
 
+// --- Components ---
+
 export const PortfolioPerformanceChart: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 실제 포트폴리오 데이터 가져오기
+    // 실제 포트폴리오 데이터 가져오기 (기존 유지)
     const fetchPortfolioHistory = async () => {
       try {
         // 현재 포트폴리오 값 가져오기
         const response = await fetch('/api/portfolio');
         const portfolio = await response.json();
 
-        // 히스토리 데이터 생성 (30일)
+        // 히스토리 데이터 생성 (30일 - 백엔드 히스토리 API 미구현으로 인한 클라이언트 사이드 추정)
         const historyData = [];
         const currentValue = portfolio.total_value || 100;
         const days = 30;
@@ -95,7 +97,6 @@ export const PortfolioPerformanceChart: React.FC = () => {
         for (let i = days; i >= 0; i--) {
           const date = new Date();
           date.setDate(date.getDate() - i);
-          // 현재 값 기준으로 역산 (실제로는 DB에서 가져와야 함)
           const randomFactor = 0.98 + Math.random() * 0.04; // ±2% 변동
           const value = currentValue * Math.pow(randomFactor, i / 10);
 
@@ -105,7 +106,6 @@ export const PortfolioPerformanceChart: React.FC = () => {
           });
         }
 
-        // 마지막 날을 실제 현재 값으로 설정
         historyData[historyData.length - 1].value = currentValue;
 
         setData(historyData);
@@ -169,45 +169,71 @@ export const PortfolioPerformanceChart: React.FC = () => {
 };
 
 interface RealTimePriceChartProps {
-  ticker: string;
+  ticker?: string;
 }
 
-export const RealTimePriceChart: React.FC<RealTimePriceChartProps> = ({ ticker: _ticker }) => {
-  const [data, setData] = useState(generateIntradayData());
+// Import API functions
+import { getRealTimeQuotes, getSectorPerformance } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
 
-  // Simulate real-time updates
+export const RealTimePriceChart: React.FC<RealTimePriceChartProps> = ({ ticker = 'AAPL' }) => {
+  // Use React Query to poll for real-time data
+  const { data: quoteData } = useQuery({
+    queryKey: ['realtimeQuote', ticker],
+    queryFn: () => getRealTimeQuotes(ticker),
+    refetchInterval: 5000, // Poll every 5 seconds
+    refetchIntervalInBackground: true,
+  });
+
+  // Local state for chart history (accumulating polled data)
+  const [chartData, setChartData] = useState<any[]>([]);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setData(prevData => {
-        const lastItem = prevData[prevData.length - 1];
-        const newTime = new Date();
-        const change = (Math.random() - 0.5) * 1;
-        const newPrice = lastItem.price + change;
-        const newVolume = Math.floor(Math.random() * 5000) + 500;
+    if (quoteData?.success && quoteData.data.length > 0) {
+      const quote = quoteData.data[0];
+      const newPoint = {
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        price: quote.price,
+        volume: quote.volume
+      };
 
-        const newItem = {
-          time: newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          price: newPrice,
-          volume: newVolume
-        };
-
-        return [...prevData.slice(1), newItem]; // Keep window size constant
+      setChartData(prev => {
+        // Keep last 60 points
+        const newData = [...prev, newPoint];
+        if (newData.length > 60) return newData.slice(newData.length - 60);
+        return newData;
       });
-    }, 2000); // Update every 2 seconds
+    }
+  }, [quoteData]);
 
-    return () => clearInterval(interval);
-  }, []);
+  // Initial Seed for Chart (Optional: prevents empty chart on load)
+  useEffect(() => {
+    // Clear previous data when ticker changes
+    setChartData([]);
+  }, [ticker]);
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[300px] w-full relative">
+      {/* Price Display Overlay */}
+      {quoteData?.success && quoteData.data[0] && (
+        <div className="absolute top-2 left-2 bg-white/80 p-2 rounded shadow-sm z-10 backdrop-blur-sm border border-gray-100">
+          <div className="text-sm font-bold text-gray-500">{quoteData.data[0].ticker}</div>
+          <div className="text-2xl font-bold text-gray-900">${quoteData.data[0].price.toFixed(2)}</div>
+          <div className={`text-sm font-medium ${quoteData.data[0].change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {quoteData.data[0].change >= 0 ? '+' : ''}{quoteData.data[0].change.toFixed(2)} ({quoteData.data[0].change_pct.toFixed(2)}%)
+          </div>
+        </div>
+      )}
+
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data}>
+        <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
           <XAxis
             dataKey="time"
             tick={{ fontSize: 10, fill: '#6B7280' }}
             tickLine={false}
             axisLine={false}
+            minTickGap={30}
           />
           <YAxis
             yAxisId="left"
@@ -217,19 +243,18 @@ export const RealTimePriceChart: React.FC<RealTimePriceChartProps> = ({ ticker: 
             axisLine={false}
             tickFormatter={(value) => `$${value.toFixed(2)}`}
           />
+          {/* Volume Axis (hidden or subtle) */}
           <YAxis
             yAxisId="right"
             orientation="right"
-            tick={{ fontSize: 10, fill: '#9CA3AF' }}
-            tickLine={false}
+            tick={false}
             axisLine={false}
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
           />
           <Tooltip
             contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB' }}
             labelStyle={{ fontWeight: 'bold', color: '#374151' }}
           />
-          <Bar yAxisId="right" dataKey="volume" fill="#E5E7EB" barSize={20} radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="right" dataKey="volume" fill="#E5E7EB" barSize={20} radius={[4, 4, 0, 0]} opacity={0.5} />
           <Line
             yAxisId="left"
             type="monotone"
@@ -239,6 +264,7 @@ export const RealTimePriceChart: React.FC<RealTimePriceChartProps> = ({ ticker: 
             dot={false}
             activeDot={{ r: 6 }}
             animationDuration={500}
+            isAnimationActive={false} // Disable animation for smoother updates
           />
         </ComposedChart>
       </ResponsiveContainer>
@@ -247,7 +273,15 @@ export const RealTimePriceChart: React.FC<RealTimePriceChartProps> = ({ ticker: 
 };
 
 const CustomTreemapContent = (props: any) => {
-  const { depth, x, y, width, height, name, fill } = props;
+  const { depth, x, y, width, height, name, change_pct, fill } = props;
+
+  // Dynamic Fill Color based on change_pct (Red to Green)
+  let cellFill = fill;
+  if (change_pct !== undefined) {
+    if (change_pct > 0) cellFill = '#10B981'; // Green
+    else if (change_pct < 0) cellFill = '#EF4444'; // Red
+    else cellFill = '#6B7280'; // Gray
+  }
 
   return (
     <g>
@@ -257,13 +291,13 @@ const CustomTreemapContent = (props: any) => {
         width={width}
         height={height}
         style={{
-          fill: fill,
+          fill: cellFill,
           stroke: '#fff',
           strokeWidth: 2 / (depth + 1e-10),
           strokeOpacity: 1 / (depth + 1e-10),
         }}
       />
-      {width > 50 && height > 30 && (
+      {width > 60 && height > 40 && (
         <text
           x={x + width / 2}
           y={y + height / 2}
@@ -273,6 +307,9 @@ const CustomTreemapContent = (props: any) => {
           fontWeight="bold"
         >
           {name}
+          <tspan x={x + width / 2} dy="1.2em" fontSize={12} fontWeight="normal">
+            {change_pct ? `${change_pct > 0 ? '+' : ''}${change_pct}%` : ''}
+          </tspan>
         </text>
       )}
     </g>
@@ -280,95 +317,46 @@ const CustomTreemapContent = (props: any) => {
 };
 
 export const SectorHeatmap: React.FC = () => {
-  const [sectorData, setSectorData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: sectorData } = useQuery({
+    queryKey: ['sectorPerformance'],
+    queryFn: getSectorPerformance,
+    refetchInterval: 60000, // Refresh every minute
+  });
 
-  useEffect(() => {
-    const fetchSectorAllocation = async () => {
-      try {
-        const response = await fetch('/api/portfolio');
-        const portfolio = await response.json();
-
-        // 간단한 섹터 매핑 (실제로는 ticker별 섹터 정보 필요)
-        const sectorMap: Record<string, { size: number, fill: string }> = {
-          'Technology': { size: 0, fill: '#3B82F6' },
-          'Finance': { size: 0, fill: '#10B981' },
-          'Healthcare': { size: 0, fill: '#EF4444' },
-          'Consumer': { size: 0, fill: '#F59E0B' },
-          'Energy': { size: 0, fill: '#8B5CF6' },
-          'Other': { size: 0, fill: '#6B7280' },
-        };
-
-        // 포지션별 섹터 분류 (간단한 ticker 기반 추정)
-        if (portfolio.positions && portfolio.positions.length > 0) {
-          portfolio.positions.forEach((pos: any) => {
-            // symbol 필드 사용 (ticker 대신) 및 null 체크
-            const symbol = pos.symbol || pos.ticker;
-            if (!symbol) {
-              console.warn('Position without symbol:', pos);
-              return;
-            }
-
-            const ticker = symbol.toUpperCase();
-            const value = pos.market_value || 0;
-
-            // 디버깅: ticker 값 확인
-            console.log(`Ticker: ${ticker}, Value: ${value}`);
-
-            // 간단한 섹터 분류 (실제로는 API에서 가져와야 함)
-            if (['AAPL', 'GOOGL', 'MSFT', 'NVDA', 'META', 'TSLA', 'INTC', 'AMD', 'ORCL', 'CSCO', 'IBM', 'QCOM'].includes(ticker)) {
-              sectorMap['Technology'].size += value;
-              console.log(`  → Technology (${ticker})`);
-            } else if (['JPM', 'BAC', 'GS', 'WFC'].includes(ticker)) {
-              sectorMap['Finance'].size += value;
-              console.log(`  → Finance (${ticker})`);
-            } else if (['JNJ', 'PFE', 'UNH', 'ABBV'].includes(ticker)) {
-              sectorMap['Healthcare'].size += value;
-              console.log(`  → Healthcare (${ticker})`);
-            } else if (['AMZN', 'WMT', 'HD', 'NKE'].includes(ticker)) {
-              sectorMap['Consumer'].size += value;
-              console.log(`  → Consumer (${ticker})`);
-            } else if (['XOM', 'CVX', 'COP'].includes(ticker)) {
-              sectorMap['Energy'].size += value;
-              console.log(`  → Energy (${ticker})`);
-            } else {
-              sectorMap['Other'].size += value;
-              console.log(`  → Other (${ticker}) ⚠️`);
-            }
-          });
-
-          // 0이 아닌 섹터만 필터링
-          const filteredData = Object.entries(sectorMap)
-            .filter(([_, data]) => data.size > 0)
-            .map(([name, data]) => ({
-              name,
-              size: data.size,
-              fill: data.fill
-            }));
-
-          if (filteredData.length > 0) {
-            setSectorData(filteredData);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch sector allocation:', error);
-      }
-    };
-
-    fetchSectorAllocation();
-  }, []);
+  const formattedData = sectorData?.success ? sectorData.data.map((item: any) => ({
+    name: item.name,
+    size: Math.abs(item.change_pct) + 1, // Size by magnitude of change (+1 to avoid 0)
+    change_pct: item.change_pct,
+    ticker: item.ticker,
+    fill: '#ccc' // Will be overridden by CustomTreemapContent
+  })) : [];
 
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <Treemap
-          data={sectorData}
+          data={formattedData}
           dataKey="size"
           aspectRatio={4 / 3}
           stroke="#fff"
           content={<CustomTreemapContent />}
         >
-          <Tooltip />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0].payload;
+                return (
+                  <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                    <p className="font-bold text-gray-900">{data.name} ({data.ticker})</p>
+                    <p className={`text-sm font-bold ${data.change_pct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {data.change_pct >= 0 ? '+' : ''}{data.change_pct}%
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
         </Treemap>
       </ResponsiveContainer>
     </div>

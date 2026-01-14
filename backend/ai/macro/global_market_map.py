@@ -448,6 +448,69 @@ class GlobalMarketMap:
         """상관관계 수 카운트"""
         return sum(len(corrs) for corrs in self.correlations.values())
     
+    async def update_market_data(self):
+        """
+        실제 시장 데이터 업데이트 (Yahoo Finance)
+        """
+        try:
+            import yfinance as yf
+            
+            # Key Market Indicators Mapping
+            # Node ID: YFinance Ticker
+            ticker_map = {
+                "SPX": "^GSPC",
+                "NDX": "^NDX",
+                "VIX": "^VIX",
+                "KOSPI": "^KS11",
+                "NIKKEI": "^N225",
+                "CSI300": "000300.SS",
+                "USD_INDEX": "DX-Y.NYB",
+                "US_10Y": "^TNX",
+                "CRUDE_OIL": "CL=F",
+                "GOLD": "GC=F",
+                "COPPER": "HG=F",
+                "NATURAL_GAS": "NG=F",
+                "EUR_INDEX": "EURUSD=X",
+                "KRW_INDEX": "KRW=X",
+                "JPY_STRENGTH": "JPY=X" # Higher means weaker JPY vs USD usually, need to inverse for strength logic if needed
+            }
+            
+            tickers = list(ticker_map.values())
+            data = yf.Tickers(" ".join(tickers))
+            
+            updated_count = 0
+            
+            for node_id, ticker in ticker_map.items():
+                try:
+                    info = data.tickers[ticker].fast_info
+                    price = info.last_price
+                    prev_close = info.previous_close
+                    
+                    if price and prev_close:
+                        change_pct = ((price - prev_close) / prev_close) # decimal format
+                        
+                        # Special handling for VIX (absolute change might be more relevant, but sticking to pct for consistency)
+                        
+                        # Update Node
+                        if node_id in self.nodes:
+                            self.nodes[node_id].current_value = price
+                            self.nodes[node_id].change_pct = change_pct
+                            self.nodes[node_id].metadata["last_updated"] = datetime.now().isoformat()
+                            updated_count += 1
+                            
+                except Exception as e:
+                    logger.debug(f"Failed to fetch {node_id} ({ticker}): {e}")
+            
+            logger.info(f"Updated {updated_count} market nodes with real data")
+            return updated_count
+            
+        except ImportError:
+            logger.warning("yfinance not installed, skipping real data update")
+            return 0
+        except Exception as e:
+            logger.error(f"Market data update error: {e}")
+            return 0
+
     def get_summary(self) -> Dict[str, Any]:
         """맵 요약"""
         return {

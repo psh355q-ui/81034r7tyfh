@@ -36,12 +36,15 @@ class RateLimiter:
         self.call_times: deque = deque()
         self._lock = asyncio.Lock()
     
-    async def acquire(self) -> bool:
+    async def acquire(self, timeout: float = 10.0) -> bool:
         """
         API 호출 허용 여부 확인 및 대기
         
+        Args:
+            timeout: 최대 대기 시간 (초)
+            
         Returns:
-            bool: 호출 가능 여부
+            bool: 호출 가능 여부 (True: 가능, False: 타임아웃/취소)
         """
         async with self._lock:
             now = datetime.now()
@@ -56,6 +59,10 @@ class RateLimiter:
                 # 가장 오래된 호출 이후 윈도우 시간만큼 대기
                 wait_until = self.call_times[0] + timedelta(seconds=self.config.window_seconds)
                 wait_seconds = (wait_until - now).total_seconds()
+                
+                if wait_seconds > timeout:
+                    logger.warning(f"레이트 리밋 대기 시간 초과 ({wait_seconds:.1f}s > {timeout}s) - 호출 스킵")
+                    return False
                 
                 if wait_seconds > 0:
                     logger.info(f"레이트 리밋 대기: {wait_seconds:.1f}초")
@@ -138,8 +145,9 @@ class MassiveAPIClient:
             logger.warning("Massive/Polygon API 키가 설정되지 않음")
             return None
         
-        # 레이트 리밋 확인
-        await self.rate_limiter.acquire()
+        # 레이트 리밋 확인 (최대 5초 대기, 그 이상이면 스킵)
+        if not await self.rate_limiter.acquire(timeout=5.0):
+            return None
         
         session = await self._get_session()
         

@@ -86,8 +86,8 @@ def parse_args():
     parser.add_argument(
         "--max-position-size",
         type=float,
-        default=10000.0,
-        help="Maximum position size in USD (default: 10000)",
+        default=1000.0,
+        help="Maximum position size in USD (default: 1000.0 - increased safety for initial run)",
     )
 
     parser.add_argument(

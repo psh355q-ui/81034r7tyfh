@@ -26,66 +26,47 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
   const location = useLocation();
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Overview', 'Trading & Strategy', 'Portfolio & Risk']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Overview', 'Trading', 'Intelligence', 'System']);
 
   const navCategories: NavCategory[] = [
     {
       title: 'Overview',
       items: [
         { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/partitions', icon: PieChart, label: 'AI Partitions' }, // 🆕 Phase 6.2
-        { path: '/portfolio', icon: BarChart3, label: 'Total Portfolio' },
-        { path: '/dividend', icon: DollarSign, label: 'Dividend Intelligence' },
+        { path: '/portfolio', icon: BarChart3, label: 'Portfolio' },
+        { path: '/dividend', icon: DollarSign, label: 'Dividend' },
       ]
     },
     {
-      title: 'Trading & Strategy',
+      title: 'Trading',
       items: [
-        { path: '/war-room', icon: MessageSquare, label: 'AI War Room' },
-        { path: '/strategies', icon: Users, label: 'Multi-Strategy' }, // 🆕 Phase 5
-        { path: '/trading', icon: Zap, label: 'Trading Signals' },
+        { path: '/trading', icon: Zap, label: 'Live Trading' },
+        { path: '/orders', icon: FileText, label: 'Orders' },
+        { path: '/strategies', icon: Users, label: 'Strategies' },
+        { path: '/war-room', icon: MessageSquare, label: 'War Room' },
         { path: '/backtest', icon: TestTube2, label: 'Backtest' },
-        { path: '/deep-reasoning', icon: Brain, label: 'Deep Reasoning' },
       ]
     },
     {
-      title: 'Analysis',
+      title: 'Intelligence',
       items: [
-
-        { path: '/ceo-analysis', icon: MessageSquare, label: 'CEO Analysis' },
         { path: '/analysis', icon: TrendingUp, label: 'Analysis' },
-        { path: '/cost-report', icon: DollarSign, label: 'Emergency Cost' },
-        { path: '/advanced-analytics', icon: LineChart, label: 'Advanced Analytics' },
-        { path: '/ai-review', icon: FileText, label: 'AI Review' },
+        { path: '/deep-reasoning', icon: Brain, label: 'Deep Reasoning' },
+        { path: '/advanced-analytics', icon: LineChart, label: 'Analytics' },
+        { path: '/news', icon: Newspaper, label: 'News & Market' },
+        { path: '/partitions', icon: PieChart, label: 'AI Partitions' },
+        { path: '/ceo-analysis', icon: Users, label: 'CEO Analysis' },
       ]
     },
     {
-      title: 'Data & News',
-      items: [
-        { path: '/data-backfill', icon: Database, label: 'Data Backfill' },
-        { path: '/news', icon: Newspaper, label: 'News' },
-        { path: '/rss-management', icon: Rss, label: 'RSS Management' },
-      ]
-    },
-    {
-      title: 'System & Operations',
+      title: 'System',
       items: [
         { path: '/monitor', icon: Activity, label: 'Monitor' },
+        { path: '/reports', icon: FileText, label: 'Reports' },
         { path: '/accountability', icon: Target, label: 'Accountability' },
-        { path: '/learning', icon: GraduationCap, label: 'Auto-Learning' },
-        { path: '/reports', icon: BarChart3, label: 'Reports' },
-        { path: '/incremental', icon: TrendingDown, label: 'Cost Savings' },
+        { path: '/rss-management', icon: Rss, label: 'Data Sources' },
         { path: '/logs', icon: FileSearch, label: 'Logs' },
         { path: '/settings', icon: Settings, label: 'Settings' },
-      ]
-    },
-    {
-      title: 'Under Development',
-      items: [
-        { path: '/signal-consolidation', icon: BarChart3, label: 'Signal Consolidation' },
-        { path: '/multi-asset', icon: Coins, label: 'Multi-Asset' },
-        { path: '/portfolio-optimization', icon: Target, label: 'Portfolio Optimization' },
-        { path: '/correlation', icon: Network, label: 'Asset Correlation' },
       ]
     }
   ];

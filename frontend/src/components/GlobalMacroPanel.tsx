@@ -10,6 +10,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getGlobalMarketMap, getCountryRisks } from '../services/api';
 
 // 타입 정의
 interface CountryRisk {
@@ -144,46 +146,71 @@ const ImpactPathView: React.FC<{ paths: ImpactPath[] }> = ({ paths }) => {
 
 // 메인 컴포넌트
 const GlobalMacroPanel: React.FC = () => {
-  const [countryRisks, setCountryRisks] = useState<CountryRisk[]>([]);
-  const [recentEvents, setRecentEvents] = useState<MacroEvent[]>([]);
-  const [impactPaths, setImpactPaths] = useState<ImpactPath[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 샘플 데이터 로드
-  useEffect(() => {
-    // 실제로는 API에서 가져옴
-    const sampleRisks: CountryRisk[] = [
-      { country: 'US', countryName: '미국', score: 55, level: 'moderate', trend: 'stable', factors: ['고금리 지속 (5.25%)', '장단기 금리차 역전'] },
-      { country: 'JP', countryName: '일본', score: 62, level: 'elevated', trend: 'declining', factors: ['엔화 약세 지속 (85)', 'BOJ 정책 전환 불확실성'] },
-      { country: 'CN', countryName: '중국', score: 68, level: 'elevated', trend: 'declining', factors: ['디플레이션 위험 (0.1%)', '부동산 위기 심화'] },
-      { country: 'EU', countryName: '유럽', score: 48, level: 'moderate', trend: 'stable', factors: ['제조업 지표 부진', '에너지 전환 비용'] },
-      { country: 'KR', countryName: '한국', score: 42, level: 'moderate', trend: 'improving', factors: ['반도체 업황 회복', '환율 안정세'] },
-    ];
+  // Fetch Real Data
+  const { data: marketMapData, isLoading: mapLoading } = useQuery({
+    queryKey: ['globalMarketMap'],
+    queryFn: getGlobalMarketMap,
+    refetchInterval: 30000,
+  });
 
-    const sampleEvents: MacroEvent[] = [
-      { id: '1', source: 'BOJ_RATE', description: 'BOJ, 예상 밖 금리 25bp 인상 단행', shock: -0.3, timestamp: new Date().toISOString(), affectedAssets: ['NDX', 'KOSPI', 'NIKKEI'] },
-      { id: '2', source: 'CRUDE_OIL', description: 'OPEC+ 감산 연장으로 유가 급등', shock: 0.15, timestamp: new Date(Date.now() - 3600000).toISOString(), affectedAssets: ['XLE', 'XOM', '항공주'] },
-    ];
+  const { data: riskData, isLoading: riskLoading } = useQuery({
+    queryKey: ['countryRisks'],
+    queryFn: getCountryRisks,
+    refetchInterval: 60000,
+  });
 
-    const samplePaths: ImpactPath[] = [
-      { path: ['JPY_STRENGTH', 'US_TECH_LIQUIDITY', 'NDX'], impact: -0.24, reason: '엔 캐리 트레이드 청산 우려' },
-      { path: ['JPY_STRENGTH', 'GLOBAL_RISK_APPETITE', 'KOSPI'], impact: -0.15, reason: '위험 자산 회피 심리' },
-      { path: ['CRUDE_OIL', 'ENERGY_SECTOR'], impact: 0.27, reason: '에너지 기업 매출 증대 기대' },
-      { path: ['CRUDE_OIL', 'AIRLINE_SECTOR'], impact: -0.24, reason: '연료비 급등에 따른 마진 감소' },
-    ];
+  const isLoading = mapLoading || riskLoading;
 
-    setCountryRisks(sampleRisks);
-    setRecentEvents(sampleEvents);
-    setImpactPaths(samplePaths);
-    setLoading(false);
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
   }
 
+  // Transform Backend Data to Frontend Interfaces
+  const countryRisks: CountryRisk[] = riskData?.risks?.map((r: any) => ({
+    country: r.country,
+    countryName: COUNTRIES[r.country]?.name || r.country,
+    score: r.score,
+    level: r.score > 75 ? 'high' : r.score > 60 ? 'elevated' : r.score > 40 ? 'moderate' : 'low',
+    trend: r.trend || 'stable',
+    factors: Object.keys(r.components || {}).slice(0, 3) // Use component keys as factors
+  })) || [];
+
+  // Transform Graph Data to Events & Paths (Approximation for MVP)
+  // Since backend does not return distinct "Events" list yet, we synthesize from high-change nodes
+  const nodes = marketMapData?.nodes || [];
+  const significantMoves = nodes.filter((n: any) => Math.abs(n.change_pct || 0) > 0.01); // > 1% change
+
+  const recentEvents: MacroEvent[] = significantMoves.map((n: any, idx: number) => ({
+    id: `evt-${idx}`,
+    source: n.id,
+    description: `${n.label} ${n.change_pct > 0 ? 'Surge' : 'Drop'} detected`,
+    shock: n.change_pct || 0,
+    timestamp: new Date().toISOString(),
+    affectedAssets: [] // Would need impact trace from backend
+  })).slice(0, 5) || [];
+
+  // Fallback if no significant moves (Display placeholder or static top nodes)
+  if (recentEvents.length === 0 && nodes.length > 0) {
+    // Just show top nodes by absolute chg
+    const sorted = [...nodes].sort((a: any, b: any) => Math.abs(b.change_pct || 0) - Math.abs(a.change_pct || 0));
+    sorted.slice(0, 3).forEach((n: any, idx: number) => {
+      recentEvents.push({
+        id: `evt-static-${idx}`,
+        source: n.id,
+        description: `${n.label} Market Update`,
+        shock: n.change_pct || 0,
+        timestamp: new Date().toISOString(),
+        affectedAssets: []
+      });
+    });
+  }
+
+  const impactPaths: ImpactPath[] = []; // Graph API doesn't return paths directly unless analyze-event is called
+
   // 평균 글로벌 리스크
-  const avgRisk = countryRisks.reduce((sum, r) => sum + r.score, 0) / countryRisks.length;
+  const avgRisk = riskData?.average_score || 50;
 
   return (
     <div className="space-y-6">
@@ -191,7 +218,7 @@ const GlobalMacroPanel: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold text-gray-900">🌍 글로벌 매크로 대시보드</h2>
           <p className="text-xs text-gray-500 mt-1">
-            업데이트: {new Date().toLocaleString('ko-KR')} (실시간 데이터 연동 예정)
+            업데이트: {new Date().toLocaleString('ko-KR')} (실시간 데이터 연동)
           </p>
         </div>
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-sm">
@@ -206,9 +233,11 @@ const GlobalMacroPanel: React.FC = () => {
             🏳️ 국가별 리스크 모니터
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {countryRisks.map(risk => (
+            {countryRisks.length > 0 ? countryRisks.map(risk => (
               <CountryCard key={risk.country} risk={risk} />
-            ))}
+            )) : (
+              <div className="col-span-2 text-center text-gray-400 py-4">No Data Available</div>
+            )}
           </div>
         </div>
 
@@ -216,21 +245,24 @@ const GlobalMacroPanel: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow p-6 border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              ⚡ 최근 매크로 이벤트
+              ⚡ 최근 시장 변동 (Top Movers)
             </h3>
             <div className="space-y-3">
-              {recentEvents.map(event => (
+              {recentEvents.length > 0 ? recentEvents.map(event => (
                 <EventCard key={event.id} event={event} />
-              ))}
+              )) : (<div className="text-center text-gray-400">No Significant Events</div>)}
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              📊 충격 전파 경로 (나비효과)
-            </h3>
-            <ImpactPathView paths={impactPaths} />
-          </div>
+          {/* Impact Path View - Optional/Placeholder for now as direct trace not implemented in GET /market-map */}
+          {impactPaths.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                📊 충격 전파 경로 (나비효과)
+              </h3>
+              <ImpactPathView paths={impactPaths} />
+            </div>
+          )}
         </div>
       </div>
     </div>

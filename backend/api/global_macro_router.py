@@ -69,25 +69,31 @@ class ThemeRisk(BaseModel):
 async def get_market_map() -> Dict:
     """글로벌 시장 상관관계 그래프 데이터 반환"""
     try:
-        from ai.macro.global_market_map import GlobalMarketMap
-        market_map = GlobalMarketMap()
+        from backend.ai.macro.global_market_map import get_global_market_map
+        market_map = get_global_market_map()
+        
+        # Trigger real data update (non-blocking if possible, but here we wait for MVP)
+        await market_map.update_market_data()
         
         nodes = []
-        for node_id, data in market_map.graph.nodes(data=True):
+        for node_id, node in market_map.nodes.items():
             nodes.append({
-                "id": node_id,
-                "label": data.get("label", node_id),
-                "type": data.get("type", "unknown")
+                "id": node.id,
+                "label": node.name,
+                "type": node.asset_type.value,
+                "change_pct": node.change_pct,
+                "current_value": node.current_value
             })
         
         correlations = []
-        for source, target, data in market_map.graph.edges(data=True):
-            correlations.append({
-                "source": source,
-                "target": target,
-                "weight": data.get("weight", 0.5),
-                "relationship": "positive" if data.get("weight", 0.5) > 0 else "negative"
-            })
+        for source, targets in market_map.correlations.items():
+            for corr in targets:
+                correlations.append({
+                    "source": corr.source,
+                    "target": corr.target,
+                    "weight": corr.coefficient,
+                    "relationship": "positive" if corr.coefficient > 0 else "negative"
+                })
         
         return {
             "nodes": nodes,
@@ -96,28 +102,18 @@ async def get_market_map() -> Dict:
             "total_correlations": len(correlations),
             "timestamp": datetime.now().isoformat()
         }
-    except ImportError:
-        # Fallback with mock data
+    except Exception as e:
+        logger.error(f"Global macro map error: {e}")
+        # Fallback with mock data if everything fails
         return {
             "nodes": [
                 {"id": "US_SPX", "label": "S&P 500", "type": "index"},
                 {"id": "US_NDX", "label": "Nasdaq 100", "type": "index"},
                 {"id": "KR_KOSPI", "label": "KOSPI", "type": "index"},
-                {"id": "JP_NKY", "label": "Nikkei 225", "type": "index"},
-                {"id": "GOLD", "label": "Gold", "type": "commodity"},
-                {"id": "OIL_WTI", "label": "WTI Oil", "type": "commodity"},
-                {"id": "USD_INDEX", "label": "USD Index", "type": "currency"},
-                {"id": "BTC", "label": "Bitcoin", "type": "crypto"}
             ],
-            "correlations": [
-                {"source": "US_SPX", "target": "US_NDX", "weight": 0.95, "relationship": "positive"},
-                {"source": "US_SPX", "target": "KR_KOSPI", "weight": 0.75, "relationship": "positive"},
-                {"source": "US_SPX", "target": "GOLD", "weight": -0.3, "relationship": "negative"},
-                {"source": "USD_INDEX", "target": "GOLD", "weight": -0.6, "relationship": "negative"},
-                {"source": "OIL_WTI", "target": "USD_INDEX", "weight": -0.4, "relationship": "negative"}
-            ],
-            "total_nodes": 8,
-            "total_correlations": 5,
+            "correlations": [],
+            "total_nodes": 3,
+            "total_correlations": 0,
             "timestamp": datetime.now().isoformat()
         }
 
@@ -127,20 +123,35 @@ async def get_market_map() -> Dict:
 async def get_country_risks() -> Dict:
     """국가별 리스크 점수 반환"""
     try:
-        from ai.macro.country_risk_engine import CountryRiskEngine
+        from backend.ai.macro.country_risk_engine import CountryRiskEngine, Country
         engine = CountryRiskEngine()
         
-        countries = ["US", "JP", "CN", "EU", "KR"]
+        country_codes = ["US", "JP", "CN", "EU", "KR"]
         risks = []
         
-        for country in countries:
-            score = engine.calculate_risk(country)
-            risks.append({
-                "country": country,
-                "score": round(score.get("total_score", 50), 2),
-                "components": score.get("components", {}),
-                "trend": "stable"
-            })
+        for code in country_codes:
+            try:
+                c_enum = Country(code)
+                score_obj = engine.calculate_risk_score(c_enum)
+                
+                # components dictionary construction
+                components = {
+                    "interest": score_obj.interest_rate_risk,
+                    "inflation": score_obj.inflation_risk,
+                    "currency": score_obj.currency_risk,
+                    "growth": score_obj.growth_risk,
+                    "stock": score_obj.equity_risk
+                }
+                
+                risks.append({
+                    "country": code,
+                    "score": round(score_obj.composite_score, 2),
+                    "components": components,
+                    "trend": "stable" # Trend logic to be implemented later
+                })
+            except Exception as e:
+                logger.error(f"Error calculating risk for {code}: {e}")
+                continue
         
         return {
             "risks": risks,

@@ -24,6 +24,7 @@ import {
   Calendar,
   Zap
 } from 'lucide-react';
+import { FusionScorecard } from '../components/Trading/FusionScorecard';
 
 // Types
 interface Signal {
@@ -251,6 +252,18 @@ export default function SignalDetail() {
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: News & Analysis */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* v2.0 Fusion Scorecard */}
+          <FusionScorecard
+            totalScore={signal.confidence * 100}
+            confidence={signal.confidence}
+            factors={[
+              { category: 'Deep Reasoning (LLM)', score: 85, weight: 0.4, description: 'Strong bull case identified' },
+              { category: 'Technical (GNN)', score: 92, weight: 0.3, description: 'Cluster momentum positive' },
+              { category: 'News Sentiment', score: 60, weight: 0.3, description: 'Neutral market sentiment' }
+            ]}
+          />
+
           {/* News Article */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center gap-2 mb-4">

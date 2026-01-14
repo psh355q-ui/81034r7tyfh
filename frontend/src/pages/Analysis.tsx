@@ -16,6 +16,7 @@ import { Alert } from '../components/common/Alert';
 import { TickerAutocompleteInput } from '../components/common/TickerAutocompleteInput';
 import { useEmergencyStatus, useGroundingUsage } from '../hooks/useEmergencyStatus';
 import axios from 'axios';
+import { GNNGraph } from '../components/Analysis/GNNGraph';
 
 export const Analysis: React.FC = () => {
   const [ticker, setTicker] = useState('');
@@ -213,6 +214,13 @@ export const Analysis: React.FC = () => {
           )}
         </div>
       </Card>
+
+      {/* GNN Graph Visualization (v2.0 Injection) */}
+      {(ticker || analysisResult) && (
+        <div className="animate-fade-in-up">
+          <GNNGraph ticker={analysisResult?.ticker || ticker} />
+        </div>
+      )}
 
       {/* Analysis Result */}
       {analysisResult && (

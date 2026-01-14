@@ -115,7 +115,7 @@ class RedisCache(CacheLayer):
         return self._client
 
     async def get(self, key: str) -> Optional[str]:
-        """Retrieve value from Redis."""
+        """Retrieve value from Redis. Soft fail on error."""
         try:
             client = await self._get_client()
             value = await client.get(key)
@@ -125,35 +125,35 @@ class RedisCache(CacheLayer):
                 logger.debug(f"Redis cache MISS: {key}")
             return value
         except Exception as e:
-            logger.error(f"Redis get error for key {key}: {e}")
+            logger.warning(f"Redis get error for key {key} (Soft Fail): {e}")
             return None
 
     async def set(self, key: str, value: str, ttl: int) -> None:
-        """Store key-value in Redis with TTL."""
+        """Store key-value in Redis with TTL. Soft fail on error."""
         try:
             client = await self._get_client()
             await client.setex(key, ttl, value)
             logger.debug(f"Redis set: {key} (TTL={ttl}s)")
         except Exception as e:
-            logger.error(f"Redis set error for key {key}: {e}")
+            logger.warning(f"Redis set error for key {key} (Soft Fail): {e}")
 
     async def exists(self, key: str) -> bool:
-        """Check if key exists in Redis."""
+        """Check if key exists in Redis. Soft fail on error."""
         try:
             client = await self._get_client()
             return bool(await client.exists(key))
         except Exception as e:
-            logger.error(f"Redis exists error for key {key}: {e}")
+            logger.warning(f"Redis exists error for key {key} (Soft Fail): {e}")
             return False
 
     async def delete(self, key: str) -> None:
-        """Delete key from Redis."""
+        """Delete key from Redis. Soft fail on error."""
         try:
             client = await self._get_client()
             await client.delete(key)
             logger.debug(f"Redis delete: {key}")
         except Exception as e:
-            logger.error(f"Redis delete error for key {key}: {e}")
+            logger.warning(f"Redis delete error for key {key} (Soft Fail): {e}")
 
     async def close(self) -> None:
         """Close Redis connection pool."""
@@ -320,8 +320,10 @@ class TimescaleCache(CacheLayer):
             else:
                 logger.debug(f"TimescaleDB cache MISS: {key}")
                 return None
+
         except Exception as e:
-            logger.error(f"TimescaleDB get error for key {key}: {e}")
+            # Downgrade to warning for connection issues
+            logger.warning(f"TimescaleDB get error for key {key} (Soft Fail): {e}")
             return None
 
     async def set(self, key: str, value: str, ttl: int) -> None:
@@ -367,8 +369,9 @@ class TimescaleCache(CacheLayer):
                 metadata,
             )
             logger.debug(f"TimescaleDB set: {key}")
+
         except Exception as e:
-            logger.error(f"TimescaleDB set error for key {key}: {e}")
+            logger.warning(f"TimescaleDB set error for key {key} (Soft Fail): {e}")
 
     async def exists(self, key: str) -> bool:
         """Check if feature exists in TimescaleDB."""
@@ -390,8 +393,9 @@ class TimescaleCache(CacheLayer):
             """
             row = await pool.fetchrow(query, ticker, feature_name, as_of_date)
             return row is not None
+
         except Exception as e:
-            logger.error(f"TimescaleDB exists error for key {key}: {e}")
+            logger.warning(f"TimescaleDB exists error for key {key} (Soft Fail): {e}")
             return False
 
     async def delete(self, key: str) -> None:
@@ -413,8 +417,9 @@ class TimescaleCache(CacheLayer):
             """
             await pool.execute(query, ticker, feature_name, as_of_date)
             logger.debug(f"TimescaleDB delete: {key}")
+
         except Exception as e:
-            logger.error(f"TimescaleDB delete error for key {key}: {e}")
+            logger.warning(f"TimescaleDB delete error for key {key} (Soft Fail): {e}")
 
     async def close(self) -> None:
         """Close TimescaleDB connection pool."""

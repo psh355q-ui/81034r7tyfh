@@ -14,14 +14,12 @@ import { AIReviewPage } from './pages/AIReviewPage';
 import { Logs } from './pages/Logs';
 import { RssFeedManagement } from './pages/RssFeedManagement';
 import { CEOAnalysis } from './pages/CEOAnalysis';
-import { IncrementalDashboard } from './pages/IncrementalDashboard';
 import { NewsAnalysisLab } from './pages/NewsAnalysisLab';
 import Reports from './pages/Reports';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import DeepReasoning from './pages/DeepReasoning';
 import TradingDashboard from './pages/TradingDashboard';
 import SignalDetail from './pages/SignalDetail';
-import PortfolioManagement from './pages/PortfolioManagement';
 import BacktestDashboard from './pages/BacktestDashboard';
 
 import WarRoomPage from './pages/WarRoomPage';
@@ -61,7 +59,6 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/ceo-analysis" element={<CEOAnalysis />} />
-              <Route path="/incremental" element={<IncrementalDashboard />} />
               <Route path="/monitor" element={<Monitor />} />
               <Route path="/news" element={<NewsAggregation />} />
               <Route path="/news-analysis-lab" element={<NewsAnalysisLab />} />
@@ -73,10 +70,9 @@ const App: React.FC = () => {
               <Route path="/trading" element={<TradingDashboard />} />
               <Route path="/trading/signal/:id" element={<SignalDetail />} />
               <Route path="/backtest" element={<BacktestDashboard />} />
-              <Route path="/portfolio-management" element={<PortfolioManagement />} />  {/* Renamed */}
 
               <Route path="/partitions" element={<PartitionDashboard />} /> {/* 🆕 Phase 6.2 AI Partitions */}
-              <Route path="/portfolio" element={<Portfolio />} />  {/* 🆕 Phase 27 New Portfolio Dashboard */}
+              <Route path="/portfolio" element={<Portfolio />} />  {/* 🆕 Phase 6 Integrated Portfolio */}
               <Route path="/orders" element={<Orders />} />  {/* 🆕 Phase 27 Orders Page */}
               <Route path="/performance" element={<Performance />} />  {/* 🆕 Phase 25.2 Performance Dashboard */}
               <Route path="/dividend" element={<DividendDashboard />} />  {/* 🆕 Phase 21 Dividend Intelligence */}

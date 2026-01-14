@@ -263,6 +263,129 @@ async def sync_stock_prices(
     return results
 
 
+@router.get("/quotes")
+@log_endpoint("stock_prices", "system")
+async def get_realtime_quotes(
+    tickers: str = Query(..., description="Comma separated list of tickers, e.g. AAPL,MSFT,TSLA"),
+):
+    """
+    실시간(지연) 시세 조회 (Yahoo Finance)
+    """
+    try:
+        import yfinance as yf
+        ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+        
+        if not ticker_list:
+            return {"success": False, "data": []}
+            
+        # yfinance allows fetching multiple tickers at once
+        data = yf.Tickers(" ".join(ticker_list))
+        
+        results = []
+        for ticker in ticker_list:
+            try:
+                info = data.tickers[ticker].fast_info
+                # fast_info provides faster access to latest price
+                price = info.last_price
+                prev_close = info.previous_close
+                change = price - prev_close
+                change_pct = (change / prev_close * 100) if prev_close else 0.0
+                volume = info.last_volume
+
+                results.append({
+                    "ticker": ticker,
+                    "price": round(price, 2),
+                    "change": round(change, 2),
+                    "change_pct": round(change_pct, 2),
+                    "volume": volume,
+                    "timestamp": datetime.now().isoformat()
+                })
+            except Exception as e:
+                logger.warning(f"Failed to fetch quote for {ticker}: {e}")
+                # Fallback to simple None or error indication
+                results.append({
+                    "ticker": ticker,
+                    "error": "Data unavailable"
+                })
+                
+        return {
+            "success": True,
+            "count": len(results),
+            "data": results
+        }
+    except Exception as e:
+        logger.error(f"Quote fetch error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sectors/performance")
+@log_endpoint("stock_prices", "system")
+async def get_sector_performance_realtime():
+    """
+    실시간 섹터 ETF 성과 조회 (Yahoo Finance)
+    Uses Sector ETFs as proxies:
+    - XLK: Technology
+    - XLF: Financials
+    - XLV: Healthcare
+    - XLY: Consumer Disc
+    - XLP: Consumer Staples
+    - XLE: Energy
+    - XLI: Industrials
+    - XLB: Materials
+    - XLU: Utilities
+    - XLRE: Real Estate
+    - XLC: Communication
+    """
+    SECTOR_ETFS = {
+        "Technology": "XLK",
+        "Financials": "XLF",
+        "Healthcare": "XLV",
+        "Consumer Discretionary": "XLY",
+        "Consumer Staples": "XLP",
+        "Energy": "XLE",
+        "Industrials": "XLI",
+        "Materials": "XLB",
+        "Utilities": "XLU",
+        "Real Estate": "XLRE",
+        "Communication": "XLC"
+    }
+    
+    try:
+        import yfinance as yf
+        tickers = list(SECTOR_ETFS.values())
+        data = yf.Tickers(" ".join(tickers))
+        
+        performance = []
+        
+        for sector, ticker in SECTOR_ETFS.items():
+            try:
+                info = data.tickers[ticker].fast_info
+                price = info.last_price
+                prev_close = info.previous_close
+                change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
+                
+                performance.append({
+                    "name": sector,
+                    "ticker": ticker,
+                    "change_pct": round(change_pct, 2),
+                    "price": round(price, 2)
+                })
+            except Exception as e:
+                logger.warning(f"Failed to fetch sector {sector} ({ticker}): {e}")
+        
+        # Sort by performance
+        performance.sort(key=lambda x: x["change_pct"], reverse=True)
+        
+        return {
+            "success": True,
+            "data": performance,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Sector performance error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/universe/info")
 @log_endpoint("stock_prices", "system")
 async def get_universe_info():

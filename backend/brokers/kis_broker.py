@@ -234,13 +234,9 @@ class KISBroker:
                                 current_price = float(row.get('now_pric2', 0))
                                 eval_amt = float(row.get('ovrs_stck_evlu_amt', row.get('frcr_evlu_amt2', 0)))
                                 
-                                # DEBUG: Log actual values from KIS API
-                                logger.info(f"{symbol} KIS 원본 데이터: ovrs_stck_evlu_amt={row.get('ovrs_stck_evlu_amt')}, now_pric2={row.get('now_pric2')}, eval_amt={eval_amt}, current_price={current_price}, qty={qty}")
-                                
                                 # Fallback: Calculate market_value if KIS returns 0
                                 if eval_amt == 0 and current_price > 0:
                                     eval_amt = current_price * qty
-                                    logger.info(f"{symbol} 시장가 계산: ${eval_amt:.2f} = {current_price} x {qty}")
                                 
                                 profit_loss = float(row.get('frcr_evlu_pfls_amt', 0))
                                 
@@ -293,37 +289,33 @@ class KISBroker:
                                 total_value += eval_amt
                                 total_daily_pnl += daily_pnl
 
-                # Get Cash Balance (Present Balance)
-                cash_usd = 0.0
-                try:
-                    cash_res = osf.get_present_balance(
-                        cano=self.cano,
-                        acnt_prdt_cd=self.prdt_cd
-                    )
-                    cash_out2 = cash_res.get('output2', [])
-                    if cash_out2:
-                        if isinstance(cash_out2, list) and len(cash_out2) > 0:
-                            cash_item = cash_out2[0]
-                        elif isinstance(cash_out2, dict):
-                            cash_item = cash_out2
-                        else:
-                            cash_item = {}
-                        
-                        # frcr_dncl_amt_2: Foreign Deposit (USD)
-                        cash_usd = float(cash_item.get('frcr_dncl_amt_2', 0))
-                except Exception as e:
-                    logger.error(f"Failed to fetch cash balance: {e}")
+            # Get Cash Balance (Present Balance) - Once after loop
+            cash_usd = 0.0
+            try:
+                cash_res = osf.get_present_balance(
+                    cano=self.cano,
+                    acnt_prdt_cd=self.prdt_cd
+                )
+                cash_out2 = cash_res.get('output2', [])
+                if cash_out2:
+                    if isinstance(cash_out2, list) and len(cash_out2) > 0:
+                        cash_item = cash_out2[0]
+                    elif isinstance(cash_out2, dict):
+                        cash_item = cash_out2
+                    else:
+                        cash_item = {}
+                    
+                    # frcr_dncl_amt_2: Foreign Deposit (USD)
+                    cash_usd = float(cash_item.get('frcr_dncl_amt_2', 0))
+            except Exception as e:
+                logger.error(f"Failed to fetch cash balance: {e}")
 
-                return {
-                    "total_value": total_value,
-                    "positions": positions,
-                    "cash": cash_usd,
-                    "daily_pnl": total_daily_pnl
-                }
-            else:
-                logger.warning("No balance data available")
-
-                return {"total_value": 0, "positions": [], "cash": 0}
+            return {
+                "total_value": total_value,
+                "positions": positions,
+                "cash": cash_usd,
+                "daily_pnl": total_daily_pnl
+            }
 
         except Exception as e:
             logger.error(f"Failed to get account balance: {e}")

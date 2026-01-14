@@ -40,6 +40,7 @@ from backend.monitoring.health_monitor import (
 
 # Import API key configuration and logger
 from backend.auth import APIKeyConfig
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)  # Suppress delisted/no data errors
 logger = logging.getLogger(__name__)
 api_key_config = APIKeyConfig()
 
@@ -628,6 +629,14 @@ try:
     logger.info("Briefing router registered")
 except Exception as e:
     logger.warning(f"Briefing router not available: {e}")
+
+# 🆕 Shadow Router (Phase 4: Dashboard)
+try:
+    from backend.api.routers import shadow
+    app.include_router(shadow.router, prefix="/api/shadow")
+    logger.info("Shadow router registered")
+except Exception as e:
+    logger.warning(f"Shadow router not available: {e}")
 
 # Feedback Router (Frontend Integration Phase)
 try:

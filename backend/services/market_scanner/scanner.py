@@ -88,6 +88,7 @@ class DynamicScreener:
         self,
         universe: List[str] = None,
         universe_type: UniverseType = UniverseType.COMBINED,
+        force: bool = False,
     ) -> ScanResult:
         """
         시장 전체를 스캔하여 후보 종목 선정
@@ -95,10 +96,18 @@ class DynamicScreener:
         Args:
             universe: 스캔할 종목 리스트 (None이면 기본 유니버스 사용)
             universe_type: 유니버스 타입
+            force: 쿨다운 무시하고 강제 실행
             
         Returns:
             ScanResult: 스캔 결과
         """
+        # 쿨다운 체크 (30분)
+        if not force and self.last_scan_result:
+            elapsed = (datetime.now() - self.last_scan_result.timestamp).total_seconds()
+            if elapsed < 1800:  # 30분
+                logger.info(f"스캔 쿨다운 중 (경과: {elapsed/60:.1f}분). 이전 결과 반환.")
+                return self.last_scan_result
+
         start_time = datetime.now()
         
         # 종목 리스트 가져오기

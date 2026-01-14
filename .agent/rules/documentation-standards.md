@@ -1,71 +1,67 @@
 ---
-description: Documentation standards including filename conventions (YYMMDD_) and folder structure.
+description: Documentation standards including filename conventions, folder structure, and category mapping.
 ---
 
 # Documentation Standards
 
-문서의 체계적인 관리와 시간순 정렬을 위해 다음 표준을 준수해야 합니다.
+문서의 체계적인 관리와 검색 효율성을 높이기 위해 다음 표준을 엄격히 준수해야 합니다.
 
-## 1. 파일명 규칙 (Filename Convention)
+## 1. 폴더 구조 규칙 (Folder Structure)
 
-모든 새 문서는 다음 형식을 따릅니다:
+문서의 **성격**에 따라 반드시 지정된 폴더에 위치해야 합니다.
+
+| 폴더 경로 | 포함 내용 |
+|-----------|-----------|
+| `docs/guides/` | 사용자 매뉴얼, 설치 가이드, 배포 가이드 |
+| `docs/architecture/` | 시스템 구조도, 아키텍처 분석, 다이어그램 |
+| `docs/api/` | API 명세서, 엔드포인트 설명 |
+| `docs/rules/` | 개발 규칙, 컨벤션, 템플릿 |
+| `docs/features/{category}/` | 시스템 컴포넌트별 상세 기능 명세 (Active Document) |
+| `docs/planning/active/` | 현재 진행 중인 기획서, 로드맵 |
+| `docs/planning/history/` | 완료되었거나 보류된 과거 기획서 |
+| `docs/reports/{Year}/` | 테스트 결과, Phase 완료 보고서, 회고 (연도별 폴더링) |
+| `docs/discussions/` | 아이디어 스케치, 회의록, AI 토론 (구 ai토론) |
+| `docs/archive/{Year}/` | 더 이상 참조하지 않는 폐기 문서 |
+
+### Features 하위 카테고리
+- `news`: 뉴스 수집 및 분석
+- `debate`: AI 토론, 에이전트
+- `risk`: 리스크 관리, 스로틀링
+- `execution`: 주문 실행, 브로커
+- `reasoning`: 추론, 지식 그래프
+
+## 2. 파일명 규칙 (Filename Convention)
+
+### A. 리포트/기획서/회의록 (Transactional)
+시간 흐름에 따라 생성되는 문서는 `YYMMDD` 접두어를 사용합니다.
 
 **Format**: `YYMMDD_Category_Description.md`
 
-| 구성요소 | 설명 | 예시 | 비고 |
-|----------|------|------|------|
-| **YYMMDD** | 작성일 (년월일) | `260114` | 파일의 시간순 정렬 보장 |
-| **Category** | 문서 유형 | `Implementation` | 아래 카테고리 참조 |
-| **Description** | 문서 내용 (Snake Case) | `structure_map_automation` | 영문 소문자, 언더스코어 `_` 사용 |
+- **예시**:
+  - `260114_Implementation_Docs_Consolidation.md`
+  - `260120_Report_Phase5_Test_Result.md`
 
-### 카테고리 (Category)
+### B. 기능 명세/가이드 (Active/Living)
+지속적으로 업데이트되는 문서는 명확한 영문 이름을 사용하되, `YYMMDD`를 생략할 수 있습니다.
 
-| 카테고리 | 설명 |
-|----------|------|
-| `Implementation` | 기능 구현 완료 보고서 |
-| `Planning` | 개발 계획, 설계 문서 |
-| `Rules` | 규칙, 정책, 가이드라인 변경 |
-| `Workflow` | 새로운 워크플로우 또는 프로세스 |
-| `Guide` | 사용자 매뉴얼, 튜토리얼 |
-| `Report` | 진행 상황 보고, 회고 |
-| `Architecture` | 시스템 아키텍처, 구조 변경 |
-| `Analysis` | 리서치, 분석 결과 |
+**Format**: `Description_Spec.md` 또는 `Description_Guide.md`
 
-### 예시
+- **예시**:
+  - `docs/features/news/News_System_Spec.md`
+  - `docs/guides/Quick_Start_Guide.md`
 
-- `260114_Implementation_db_schema_agent.md`
-- `260114_Planning_rag_system_v2.md`
-- `260114_Rules_coding_conventions.md`
+## 3. 문서 카테고리 (Category Key)
 
-## 2. 폴더 구조 (Folder Structure)
+| 카테고리 | 설명 | 대상 폴더 |
+|----------|------|-----------|
+| `Implementation` | 구현 완료 보고 | `docs/reports/{Year}` |
+| `Planning` | 기획, 설계 | `docs/planning/active` |
+| `Rule` | 규칙 변경 | `docs/rules` |
+| `Analysis` | 리서치 분석 | `docs/architecture` or `reports` |
+| `Discussion` | 토론, 아이디어 | `docs/discussions` |
 
-문서는 `docs/` 디렉토리 내 적절한 하위 폴더에 위치해야 합니다.
+## 4. 작성 가이드
 
-```
-docs/
-├── architecture/        # 시스템 아키텍처 및 구조 관련
-├── planning/            # 개발 계획, 스펙, 요구사항
-├── progress/            # 일일/주간 보고서, 진행 상황
-├── guides/              # 사용자 가이드, 개발자 가이드, 매뉴얼
-├── features/            # 특정 기능에 대한 상세 설명
-├── api/                 # API 문서
-├── database/            # DB 스키마, 마이그레이션 로그
-├── skills/              # AI Agent Skills 관련
-└── archive/             # 오래되거나 더 이상 유효하지 않은 문서
-```
-
-## 3. 문서 작성 가이드
-
-- **Header**: 문서 상단에 제목, 작성일, 작성자, 요약을 포함합니다.
-- **Markdown**: 표준 Markdown 문법을 사용합니다.
-- **Images**: 이미지는 `docs/images/` 폴더에 `YYMMDD_description.png` 형식으로 저장하고 참조합니다.
-- **Links**: 관련 문서는 상대 경로로 링크합니다.
-
-## 4. 자동화 도구
-
-문서 생성 시 실수를 방지하기 위해 `.agent/scripts/create_doc.py` 스크립트(추후 구현 예정) 사용을 권장합니다.
-
-```bash
-# 예시:
-python .agent/scripts/create_doc.py --category Implementation --desc structure_map_automation
-```
+1. **위치 준수**: 문서를 생성하기 전에 `docs/` 내의 어느 폴더에 속하는지 먼저 판단하십시오.
+2. **Context 연결**: 문서 내에서 관련된 소스 코드 경로는 반드시 절대 경로 또는 관련도 높은 상대 경로로 명시합니다.
+3. **이미지**: `docs/images/` 폴더 사용을 권장합니다.

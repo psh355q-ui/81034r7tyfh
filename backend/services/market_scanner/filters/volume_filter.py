@@ -50,11 +50,17 @@ class VolumeFilter:
             VolumeFilterResult: 필터 결과
         """
         try:
+            # yfinance 로깅 레벨 조정 (불필요한 에러 로그 방지)
+            import logging
+            logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+            
             # Yahoo Finance에서 데이터 가져오기
             stock = yf.Ticker(ticker)
+            
+            # Period를 1달로 설정
             hist = stock.history(period="1mo")
             
-            if len(hist) < 20:
+            if hist.empty or len(hist) < 20:
                 return VolumeFilterResult(
                     ticker=ticker,
                     score=0,
@@ -62,7 +68,7 @@ class VolumeFilter:
                     avg_volume_20d=0,
                     volume_ratio=0,
                     passed=False,
-                    reason="데이터 부족"
+                    reason="데이터 부족/상장폐지 가능성"
                 )
             
             current_volume = int(hist['Volume'].iloc[-1])

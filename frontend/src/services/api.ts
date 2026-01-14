@@ -188,4 +188,79 @@ export const getFeedbackList = async (limit: number = 20): Promise<any[]> => {
   return response.data;
 };
 
+// --- Shadow Trading & GNN API (v2.0) ---
+
+export interface ShadowLog {
+  timestamp: string;
+  ticker: string;
+  intent: { direction: 'BUY' | 'SELL' | 'HOLD'; score: number; rationale: string[] };
+  status: 'SHADOW_FILLED' | 'SKIPPED';
+  execution?: { action: number; price: number };
+}
+
+export interface GNNNode {
+  id: string;
+  group: string;
+  value?: number;
+}
+
+export interface GNNLink {
+  source: string;
+  target: string;
+  value: number;
+}
+
+export interface GNNGraphData {
+  nodes: GNNNode[];
+  links: GNNLink[];
+}
+
+export const getShadowLogs = async (): Promise<ShadowLog[]> => {
+  const response = await apiClient.get('/shadow/logs');
+  return response.data;
+};
+
+export const getGNNGraph = async (): Promise<GNNGraphData> => {
+  const response = await apiClient.get('/shadow/graph');
+  return response.data;
+};
+
+// --- Real Data API (Phase 8) ---
+
+export interface RealTimeQuote {
+  ticker: string;
+  price: number;
+  change: number;
+  change_pct: number;
+  volume: number;
+  timestamp: string;
+}
+
+export interface SectorPerformance {
+  name: string;
+  ticker: string;
+  change_pct: number;
+  price: number;
+}
+
+export const getRealTimeQuotes = async (tickers: string): Promise<{ success: boolean; data: RealTimeQuote[] }> => {
+  const response = await apiClient.get(`/stock-prices/quotes?tickers=${tickers}`);
+  return response.data;
+};
+
+export const getSectorPerformance = async (): Promise<{ success: boolean; data: SectorPerformance[] }> => {
+  const response = await apiClient.get('/stock-prices/sectors/performance');
+  return response.data;
+};
+
+export const getGlobalMarketMap = async (): Promise<any> => {
+  const response = await apiClient.get('/global-macro/market-map');
+  return response.data;
+};
+
+export const getCountryRisks = async (): Promise<any> => {
+  const response = await apiClient.get('/global-macro/country-risks');
+  return response.data;
+};
+
 export default apiClient;

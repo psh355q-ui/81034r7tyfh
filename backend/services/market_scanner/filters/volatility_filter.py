@@ -69,10 +69,14 @@ class VolatilityFilter:
             VolatilityFilterResult: 필터 결과
         """
         try:
+            # yfinance 로깅 레벨 조정
+            import logging
+            logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+            
             stock = yf.Ticker(ticker)
             hist = stock.history(period="1mo")
             
-            if len(hist) < self.atr_period + 1:
+            if hist.empty or len(hist) < self.atr_period + 1:
                 return VolatilityFilterResult(
                     ticker=ticker,
                     score=0,
@@ -81,7 +85,7 @@ class VolatilityFilter:
                     price_change_pct=0,
                     breakout_detected=False,
                     passed=False,
-                    reason="데이터 부족"
+                    reason="데이터 부족/상장폐지 가능성"
                 )
             
             # ATR 계산

@@ -22,14 +22,17 @@ def get_service():
 @router.get("/latest")
 @log_endpoint("briefing", "read")
 async def get_latest_briefing():
-    """Get the latest daily briefing"""
+    """Get the latest daily briefing, generating it if missing for today"""
     service = get_service()
     briefing = await service.get_latest_briefing()
     
-    if not briefing:
-        # If none exists, try generating one for today?
-        # Or return 404
-        return {"content": "No briefing available yet. generating...", "date": str(date.today())}
+    today = date.today()
+    
+    # If no briefing or briefing is old, generate a new one
+    if not briefing or briefing.date != today:
+        briefing_data = await service.generate_briefing()
+        # The service returns a dict, not the ORM object directly in generate_briefing return
+        return briefing_data
     
     return {
         "id": briefing.id,

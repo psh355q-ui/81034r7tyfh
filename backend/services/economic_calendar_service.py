@@ -18,6 +18,8 @@ class EconomicCalendarService:
             {"date": "2026-01-28", "event": "FOMC Meeting", "impact": "CRITICAL"},
             {"date": "2026-02-06", "event": "Non-Farm Payrolls", "impact": "HIGH"},
             {"date": "2026-02-12", "event": "PPI Data Release", "impact": "MEDIUM"},
+            {"date": "2026-03-18", "event": "FOMC Meeting", "impact": "CRITICAL"},
+            {"date": "2026-04-15", "event": "GDP Growth Rate", "impact": "HIGH"},
         ]
 
     async def get_upcoming_events(self, days: int = 7) -> List[Dict[str, Any]]:
