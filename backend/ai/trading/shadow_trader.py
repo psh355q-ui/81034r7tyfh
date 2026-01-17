@@ -7,7 +7,8 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from backend.data.news_models import SessionLocal
+# Use PostgreSQL instead of SQLite
+from backend.database.repository import get_sync_session
 from backend.database.models import TradingSignal, Order
 from backend.ai.portfolio.account_partitioning import get_partition_manager, WalletType
 from backend.brokers.kis_broker import KISBroker
@@ -72,7 +73,7 @@ class ShadowTradingAgent:
 
     async def process_signals(self):
         """Process new trading signals"""
-        db = SessionLocal()
+        db = get_sync_session()  # PostgreSQL session
         try:
             # Fetch new signals
             signals = db.query(TradingSignal)\

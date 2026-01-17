@@ -29,7 +29,8 @@ except ImportError:
     Config = None
 
 from sqlalchemy.orm import Session
-from backend.data.news_models import NewsArticle, RSSFeed, SessionLocal, init_db
+# Use PostgreSQL models instead of SQLite
+from backend.database.models import NewsArticle, RSSFeed
 
 logger = logging.getLogger(__name__)
 
@@ -339,40 +340,68 @@ class RSSCrawler:
 # Utility Functions
 # ============================================================================
 
-def get_recent_articles(
+async def get_recent_articles(
     db: Session,
     limit: int = 50,
     hours: int = 24,
     source: Optional[str] = None
 ) -> List[NewsArticle]:
-    """최근 기사 조회"""
+    """
+    최근 기사 조회 (비동기)
+
+    AsyncSession을 사용하므로 select() 문법 사용
+    """
+    from sqlalchemy import select, func
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
-    
-    query = db.query(NewsArticle).filter(NewsArticle.published_date >= cutoff)
-    
+
+    # select() 문법으로 쿼리 생성
+    stmt = select(NewsArticle).filter(NewsArticle.published_date >= cutoff)
+
     if source:
-        query = query.filter(NewsArticle.source.ilike(f"%{source}%"))
-    
-    return query.order_by(NewsArticle.published_date.desc()).limit(limit).all()
+        stmt = stmt.filter(NewsArticle.source.ilike(f"%{source}%"))
+
+    stmt = stmt.order_by(NewsArticle.published_date.desc()).limit(limit)
+
+    # 비동기 실행
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
-def get_unanalyzed_articles(db: Session, limit: int = 100) -> List[NewsArticle]:
-    """분석되지 않은 기사 조회"""
-    return (
-        db.query(NewsArticle)
+async def get_unanalyzed_articles(db: Session, limit: int = 100) -> List[NewsArticle]:
+    """
+    분석되지 않은 기사 조회 (비동기)
+
+    AsyncSession을 사용하므로 select() 문법 사용
+    """
+    from sqlalchemy import select
+
+    stmt = (
+        select(NewsArticle)
         .outerjoin(NewsArticle.analysis)
         .filter(NewsArticle.analysis == None)
         .filter(NewsArticle.content != None)
         .filter(NewsArticle.content != "")
         .order_by(NewsArticle.published_date.desc())
         .limit(limit)
-        .all()
     )
 
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
-def get_feed_stats(db: Session) -> List[Dict[str, Any]]:
-    """피드별 통계"""
-    feeds = db.query(RSSFeed).all()
+
+async def get_feed_stats(db: Session) -> List[Dict[str, Any]]:
+    """
+    피드별 통계 (비동기)
+
+    AsyncSession을 사용하므로 select() 문법 사용
+    """
+    from sqlalchemy import select
+
+    stmt = select(RSSFeed)
+    result = await db.execute(stmt)
+    feeds = result.scalars().all()
+
     return [
         {
             "id": f.id,

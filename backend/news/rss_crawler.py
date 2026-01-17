@@ -247,6 +247,81 @@ class RSSNewsCrawler:
             print(f"[ERROR] Analysis failed for '{article.title[:50]}...': {e}")
             return None
 
+    async def analyze_article_with_glm(
+        self,
+        article: NewsArticle,
+        glm_client=None,
+        save_to_db: bool = False
+    ) -> Optional[Dict]:
+        """
+        GLM-4.7로 뉴스 기사 분석 (종목/섹터 추출)
+
+        Phase: Phase 3, T3.1
+
+        Args:
+            article: 뉴스 기사
+            glm_client: GLMClient 인스턴스 (None이면 MockGLMClient 사용)
+            save_to_db: DB 저장 여부
+
+        Returns:
+            {
+                'article': NewsArticle,
+                'glm_analysis': dict,  # GLM 분석 결과
+                'tickers': List[str],  # 추출된 종목
+                'sectors': List[str],  # 추출된 섹터
+                'confidence': float,   # 신뢰도
+            }
+        """
+        try:
+            # GLM 클라이언트 초기화
+            if glm_client is None:
+                from backend.ai.glm_client import MockGLMClient
+                glm_client = MockGLMClient()
+
+            # 뉴스 텍스트 준비
+            news_text = f"{article.title}. {article.content}"
+
+            # GLM 분석
+            print(f"[GLM] Analyzing: {article.title[:50]}...")
+            glm_result = await glm_client.analyze_news(news_text)
+
+            print(f"[GLM] Result: tickers={glm_result.get('tickers', [])}, "
+                  f"sectors={glm_result.get('sectors', [])}, "
+                  f"confidence={glm_result.get('confidence', 0):.2f}")
+
+            # DB 저장 (옵션)
+            if save_to_db:
+                try:
+                    from backend.database.repository import NewsRepository
+                    from backend.database.models import NewsArticle as DBNewsArticle
+
+                    # 먼저 DB에 기사 저장/조회
+                    repo = NewsRepository(session=get_sync_session())
+
+                    # URL로 기사 찾기
+                    db_article = repo.get_by_url(article.url)
+
+                    if db_article:
+                        # GLM 분석 결과 저장
+                        repo.save_glm_analysis(db_article.id, glm_result)
+                        print(f"[GLM] Saved to DB: news_id={db_article.id}")
+
+                except Exception as db_error:
+                    print(f"[WARNING] DB save failed: {db_error}")
+
+            return {
+                'article': article,
+                'glm_analysis': glm_result,
+                'tickers': glm_result.get('tickers', []),
+                'sectors': glm_result.get('sectors', []),
+                'confidence': glm_result.get('confidence', 0.0),
+                'timestamp': datetime.now()
+            }
+
+        except Exception as e:
+            print(f"[ERROR] GLM analysis failed for '{article.title[:50]}...': {e}")
+            return None
+
     async def run_single_cycle(self) -> List[Dict]:
         """
         단일 크롤링 사이클 실행

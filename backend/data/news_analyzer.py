@@ -100,7 +100,7 @@ class NewsDeepAnalyzer:
         if len(content) > 5000:  # 로컬 모델 한계 고려
             content = content[:5000] + "... [truncated]"
         
-        keywords = ", ".join(article.keywords or [])
+        keywords = ", ".join(article.tags or [])
         
         # Ollama는 한국어 프롬프트를 잘 이해하지만, 구조화된 출력을 위해 명확하게
         return f"""

@@ -119,6 +119,9 @@ async def main():
 if __name__ == "__main__":
     # Windows event loop policy fix
     if sys.platform == 'win32':
+        # Suppress deprecation warning for WindowsSelectorEventLoopPolicy (removed in Python 3.16)
+        import warnings
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         # Use WindowsSelectorEventLoopPolicy to avoid ProactorEventLoop issues
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

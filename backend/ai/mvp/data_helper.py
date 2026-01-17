@@ -7,9 +7,17 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
-from backend.data.news_models import NewsArticle, get_db
+# PostgreSQL 모델 사용 (backend.database.models)
+from backend.database.models import NewsArticle
+from backend.database.repository import NewsRepository
 from backend.data.rss_crawler import get_recent_articles
-from backend.data.news_analyzer import get_ticker_news
+# news_analyzer는 의존성 문제로 조건부 import
+try:
+    from backend.data.news_analyzer import get_ticker_news
+    GET_TICKER_NEWS_AVAILABLE = True
+except ImportError:
+    GET_TICKER_NEWS_AVAILABLE = False
+    get_ticker_news = None
 from backend.ai.mvp.ticker_mappings import get_ticker_keywords
 
 
@@ -35,22 +43,23 @@ def get_news_for_symbol(
     """
     try:
         # 1. 티커별 뉴스 먼저 시도 (NewsTickerRelevance 테이블)
-        ticker_news = get_ticker_news(db, symbol.upper(), limit)
-        
-        if ticker_news:
-            print(f"   → Found {len(ticker_news)} articles from ticker mapping")
-            return [
-                {
-                    'title': article.get('title', ''),
-                    'source': article.get('source', 'Unknown'),
-                    'published': article.get('published_at', datetime.utcnow().isoformat()),
-                    'summary': article.get('summary', ''),
-                    'sentiment': article.get('sentiment'),
-                    'url': article.get('url', '')
-                }
-                for article in ticker_news[:limit]
-            ]
-        
+        if GET_TICKER_NEWS_AVAILABLE and get_ticker_news:
+            ticker_news = get_ticker_news(db, symbol.upper(), limit)
+
+            if ticker_news:
+                print(f"   → Found {len(ticker_news)} articles from ticker mapping")
+                return [
+                    {
+                        'title': article.get('title', ''),
+                        'source': article.get('source', 'Unknown'),
+                        'published': article.get('published_at', datetime.utcnow().isoformat()),
+                        'summary': article.get('summary', ''),
+                        'sentiment': article.get('sentiment'),
+                        'url': article.get('url', '')
+                    }
+                    for article in ticker_news[:limit]
+                ]
+
         # 2. 키워드 검색 (영문명 + 한글명 + 티커)
         keywords = get_ticker_keywords(symbol)
         print(f"   → Searching with keywords: {keywords}")
@@ -84,8 +93,8 @@ def get_news_for_symbol(
                 'title': a.title,
                 'source': a.source or 'RSS',
                 'published': a.published_date.isoformat() if a.published_date else datetime.utcnow().isoformat(),
-                'summary': a.summary or a.content[:200] if a.content else '',
-                'sentiment': a.analysis.sentiment_overall if a.analysis else 'neutral',
+                'summary': a.summary or (a.content[:200] if a.content else ''),
+                'sentiment': a.sentiment_label or 'neutral',
                 'url': a.url
             }
             for a in articles

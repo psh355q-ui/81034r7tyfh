@@ -1,482 +1,329 @@
 """
-Analyst Agent MVP - Information (30% weight)
+Analyst Agent MVP (Two-Stage Architecture - Gemini Edition)
 
-Phase: MVP Consolidation
-Date: 2025-12-31
+Phase: MVP Consolidation - Gemini Integration
+Date: 2026-01-17
 
 Purpose:
-    전문 애널리스트의 정보 분석 관점
-    - 뉴스 분석 및 해석 (News Agent 흡수)
-    - 글로벌 매크로 경제 분석 (Macro Agent 흡수)
-    - 기관 투자자 동향 분석 (Institutional Agent 흡수)
-    - 반도체 패권 경쟁 지정학적 분석 (ChipWar Agent 일부 흡수)
+    Two-Stage 정보 분석 에이전트 구현 (Gemini 버전)
+    - Stage 1: GeminiReasoningAgent → 자연어 추론
+    - Stage 2: GeminiStructuringAgent → JSON 변환
 
-Key Responsibilities:
-    1. 뉴스 이벤트 분석 및 영향 평가
-    2. 매크로 경제 지표 해석
-    3. 기관 투자자 포지션 변화 추적
-    4. 반도체 패권 경쟁 지정학적 리스크 평가
-    5. 종합 정보 분석 리포트 생성
+Two-Stage Architecture:
+    1. GeminiReasoningAgent: Gemini로 자연어 정보 분석 생성
+    2. GeminiStructuringAgent: 추론 텍스트를 AnalystOpinion 스키마로 변환
 
-Absorbed Legacy Agents:
-    - News Agent (100%)
-    - Macro Agent (100%)
-    - Institutional Agent (100%)
-    - ChipWar Agent (지정학 부분)
+Benefits:
+    - 높은 Concurrency 제한 (60+ vs GLM 3)
+    - 빠른 응답 속도
+    - 비용 절감
 """
 
 import os
+import asyncio
+import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-import google.generativeai as genai
 
+from backend.ai.mvp.gemini_reasoning_agent_base import GeminiReasoningAgentBase
+from backend.ai.mvp.gemini_structuring_agent import GeminiStructuringAgent
 from backend.ai.schemas.war_room_schemas import AnalystOpinion
-from backend.ai.debate.news_agent import NewsAgent
-from backend.ai.reasoning.deep_reasoning_agent import DeepReasoningAgent
-# [Phase 4] Stock Specific Analyzers
-from backend.ai.mvp.stock_specific.tsla_analyzer import TSLAAnalyzer
-from backend.ai.mvp.stock_specific.nvda_analyzer import NVDAAnalyzer
+
+logger = logging.getLogger(__name__)
+
+
+class AnalystReasoningAgent(GeminiReasoningAgentBase):
+    """
+    Stage 1: Analyst Reasoning Agent (Gemini 버전)
+
+    Uses Gemini 2.0 Flash for natural language reasoning only.
+    No JSON output required.
+
+    Benefits:
+    - Higher concurrency limit (60+ vs GLM 3)
+    - Faster response time
+    - Cost-effective
+    """
+
+    def __init__(self):
+        super().__init__(
+            agent_name='analyst',
+            role='수석 정보 분석가'
+        )
+        self.weight = 0.35  # 35% voting weight
+
+    def _build_reasoning_prompt(
+        self,
+        symbol: str,
+        price_data: Dict[str, Any],
+        technical_data: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ) -> str:
+        """Build reasoning prompt for analyst analysis"""
+        prompt_parts = [
+            f"종목: {symbol}",
+            f"현재가: ${price_data.get('current_price', 'N/A')}",
+        ]
+
+        # News data
+        news_data = kwargs.get('news_data')
+        if news_data:
+            prompt_parts.append("\n최근 뉴스:")
+            for article in news_data[:5]:  # Top 5
+                prompt_parts.append(f"- {article.get('title', 'N/A')}")
+                if 'sentiment' in article:
+                    prompt_parts.append(f"  심리: {article['sentiment']}")
+                if 'impact_score' in article:
+                    prompt_parts.append(f"  영향: {article['impact_score']}")
+
+        # Macro data
+        macro_data = kwargs.get('macro_data')
+        if macro_data:
+            prompt_parts.append("\n거시경제 상황:")
+            if 'interest_rate' in macro_data:
+                prompt_parts.append(f"- 금리: {macro_data['interest_rate']}%")
+            if 'gdp_growth' in macro_data:
+                prompt_parts.append(f"- GDP 성장: {macro_data['gdp_growth']}%")
+            if 'trend' in macro_data:
+                prompt_parts.append(f"- 경기 트렌드: {macro_data['trend']}")
+
+        # Institutional flow
+        institutional_flow = kwargs.get('institutional_flow')
+        if institutional_flow:
+            prompt_parts.append("\n기관 동향:")
+            if 'net_flow' in institutional_flow:
+                flow = institutional_flow['net_flow']
+                if flow > 0:
+                    prompt_parts.append(f"- 기관 순매수: +{flow:.2f}%")
+                else:
+                    prompt_parts.append(f"- 기관 순매도: {flow:.2f}%")
+            if 'top_buyers' in institutional_flow:
+                prompt_parts.append(f"- 주요 매수자: {', '.join(institutional_flow['top_buyers'][:3])}")
+
+        # Geopolitical risks
+        geopolitical_risks = kwargs.get('geopolitical_risks')
+        if geopolitical_risks:
+            prompt_parts.append("\n지정학적 리스크:")
+            for risk in geopolitical_risks[:3]:
+                prompt_parts.append(f"- {risk.get('event', 'N/A')}: {risk.get('impact', 'N/A')}")
+
+        # Sector context
+        sector_context = kwargs.get('sector_context')
+        if sector_context:
+            prompt_parts.append("\n섹터 맥락:")
+            if 'sector_name' in sector_context:
+                prompt_parts.append(f"- 섹터: {sector_context['sector_name']}")
+            if 'sector_performance' in sector_context:
+                prompt_parts.append(f"- 섹터 성과: {sector_context['sector_performance']:+.2f}%")
+            if 'relative_strength' in sector_context:
+                prompt_parts.append(f"- 상대적 강도: {sector_context['relative_strength']}")
+
+        return "\n".join(prompt_parts)
 
 
 class AnalystAgentMVP:
-    """MVP Analyst Agent - 종합 정보 분석 (News + Macro + Institutional + ChipWar Geopolitics)"""
+    """
+    Two-Stage Analyst Agent (Gemini Edition)
+
+    Orchestrates:
+    1. Reasoning (Gemini 2.0 Flash) → Natural language information analysis
+    2. Structuring (Gemini JSON mode) → JSON conversion
+
+    This is the main entry point for analyst analysis.
+
+    Benefits:
+    - Higher concurrency limit (60+ vs GLM 3)
+    - Faster response time
+    - Cost-effective
+    """
 
     def __init__(self):
-        """Initialize Analyst Agent MVP"""
-        # Gemini API 설정
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+        """Initialize Two-Stage Analyst Agent with Gemini"""
+        self.reasoning_agent = AnalystReasoningAgent()
+        self.structuring_agent = GeminiStructuringAgent()
+        self.weight = 0.35  # 35% voting weight
 
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        
-        # Initialize Agents
-        self.news_agent = NewsAgent()
-        self.deep_reasoning_agent = DeepReasoningAgent()
-
-        # Agent configuration
-        self.weight = 0.30  # 30% voting weight
-        self.role = "종합 정보 애널리스트"
-
-        # System prompt
-        self.system_prompt = """당신은 'War Room'의 수석 정보 분석가(Lead Analyst)입니다. 단순한 뉴스 브리핑은 필요 없습니다. 당신의 임무는 파편화된 정보(뉴스, 매크로, 수급, 지정학)를 연결하여 **'하나의 완성된 투자 시나리오(Narrative)'**를 만드는 것입니다.
-
-역할:
-1. **Connect the Dots**: "금리가 올랐다"와 "기술주가 내렸다"를 따로 말하지 말고, "금리 상승이 기술주 밸류에이션에 하방 압력을 가하고 있다"고 연결하십시오.
-2. **So What?**: 뉴스가 발생했다는 사실보다, **"그래서 주가에 무슨 영향을 주는가?"**를 분석하십시오.
-3. **Fact Check**: 뜬소문과 팩트를 구분하고, 정보의 신뢰도(Evidence Grade)를 평가하십시오.
-4. **Context**: 현재 주가가 그 뉴스를 이미 반영했는지(Priced-in), 아니면 새로운 충격인지 판단하십시오.
-
-분석 원칙:
-- **Depth over Width**: 많은 뉴스를 나열하기보단, 핵심 재료 1~2개의 파급력을 심층 분석하십시오.
-- **Narrative over List**: 불렛포인트 나열보다 인과관계 설명이 중요합니다.
-- **Institutional Mindset**: 개미들이 모르는 '기관의 뷰'를 추론하십시오.
-
-출력 형식 (JSON):
-    "action": "buy" | "sell" | "hold" | "pass",
-    "confidence": 0.0 ~ 1.0,
-    "reasoning": "전체 시장 맥락과 종목 이슈를 통합한 3줄 요약",
-    "valuation_analysis": {"pe_ratio": 0.0, "ps_ratio": 0.0, "interpretation": "고평가/적정/저평가"},
-    "catalyst_analysis": {
-        "positive": ["호재1 (영향력 상)", "호재2"],
-        "negative": ["악재1"],
-        "dates": ["일정1", "일정2"]
-    },
-    "evidence_grades": {
-        "news_reliability": "A/B/C",
-        "institutional_evidence": "A/B/C",
-        "macro_impact": "A/B/C"
-    },
-    "news_impact": {
-        "sentiment": "positive" | "negative" | "neutral",
-        "impact_score": 0.0 ~ 10.0,
-        "time_horizon": "short" | "medium" | "long"
-    },
-    "macro_impact": {
-        "interest_rate_risk": 0.0 ~ 10.0,
-        "inflation_risk": 0.0 ~ 10.0,
-        "recession_risk": 0.0 ~ 10.0,
-        "overall_macro_score": -10.0 ~ 10.0
-    },
-    "institutional_flow": {
-        "direction": "inflow" | "outflow" | "neutral",
-        "magnitude": 0.0 ~ 10.0,
-        "confidence": 0.0 ~ 1.0
-    },
-    "chipwar_risk": {
-        "geopolitical_tension": 0.0 ~ 10.0,
-        "export_control_risk": 0.0 ~ 10.0,
-        "supply_chain_risk": 0.0 ~ 10.0,
-        "overall_chipwar_score": 0.0 ~ 10.0
-    },
-    "overall_information_score": -10.0 ~ 10.0,
-    "key_catalysts": ["catalyst1", "catalyst2", ...],
-    "red_flags": ["red_flag1", "red_flag2", ...]
-}
-
-중요:
-- **반드시 한글로 응답할 것.**
-- 정보가 상충될 때(예: 실적은 좋은데 매크로는 나쁨), 어느 쪽이 우세한지 결론을 내리십시오.
-"""
+        # AnalystOpinion schema definition for structuring
+        self.schema_definition = {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["buy", "sell", "hold", "pass"]},
+                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "reasoning": {"type": "string"},
+                "news_headline": {"type": "string"},
+                "news_sentiment": {"type": "string", "enum": ["positive", "negative", "neutral"]},
+                "news_impact_score": {"type": "number", "minimum": -5.0, "maximum": 5.0},
+                "macro_trend": {"type": "string", "enum": ["expansion", "contraction", "stable"]},
+                "macro_score": {"type": "number", "minimum": -10.0, "maximum": 10.0},
+                "overall_information_score": {"type": "number", "minimum": -10.0, "maximum": 10.0},
+                "key_catalyst": {"type": "string"},
+                "red_flag": {"type": "string"},
+                "time_horizon": {"type": "string", "enum": ["short", "medium", "long"]}
+            },
+            "required": ["action", "confidence", "reasoning"]
+        }
 
     async def analyze(
         self,
         symbol: str,
-        news_articles: Optional[List[Dict[str, Any]]] = None,
-        macro_indicators: Optional[Dict[str, Any]] = None,
-        institutional_data: Optional[Dict[str, Any]] = None,
-        chipwar_events: Optional[List[Dict[str, Any]]] = None,
-
-        price_context: Optional[Dict[str, Any]] = None,
-
-        event_data: Optional[Dict[str, Any]] = None, # [Phase 3]
-        market_data: Optional[Dict[str, Any]] = None # [Phase 4 - Need full market data for analyzers]
+        price_data: Dict[str, Any],
+        technical_data: Optional[Dict[str, Any]] = None,
+        news_data: Optional[List[Dict]] = None,
+        macro_data: Optional[Dict[str, Any]] = None,
+        institutional_flow: Optional[Dict[str, Any]] = None,
+        geopolitical_risks: Optional[List[Dict]] = None,
+        sector_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        종합 정보 분석
-        
+        Two-stage analyst analysis:
+        1. Generate reasoning with GLM-4.7
+        2. Structure reasoning into JSON
+
+        Args:
+            symbol: Stock symbol
+            price_data: Current price data
+            technical_data: Technical indicators
+            news_data: Recent news articles
+            macro_data: Macro economic data
+            institutional_flow: Institutional trading flow
+            geopolitical_risks: Geopolitical risk events
+            sector_context: Sector performance context
+
         Returns:
-            Dict (compatible with AnalystOpinion model)
+            Dict matching AnalystOpinion schema
         """
-        # Get News Interpretations from News Agent
-        news_interpretations = []
-        deep_reasoning_result = None
-        
-        if news_articles:
-            try:
-                # 1. Use NewsAgent to interpret articles with Macro Context
-                news_interpretations = await self.news_agent.interpret_articles(symbol, news_articles)
-                
-                # 2. [NEW] Check for Critical Geopolitical/ChipWar Events
-                critical_event = self.news_agent.detect_critical_events(news_articles)
-                
-                if critical_event['detected']:
-                    print(f"🚨 AnalystAgent: Detected {critical_event['event_type']} ({critical_event['keywords']})")
-                    keywords = critical_event['keywords']
-                    base_info = {'ticker': symbol, 'news_count': len(news_articles)}
-                    
-                    # 3. [NEW] Trigger Deep Reasonig Agent
-                    deep_reasoning_result = await self.deep_reasoning_agent.analyze_event(
-                        event_type=critical_event['event_type'],
-                        keywords=keywords,
-                        base_info=base_info
-                    )
-            except Exception as e:
-                print(f"⚠️ AnalystAgent: News interpretation/reasoning failed: {e}")
+        import time
+        start_time = time.time()
 
-        # [Phase 4] Stock Specific Analysis
-        stock_specific_result = None
-        prompt_addition = ""
-        
         try:
-            analyzer = None
-            if symbol.upper() == 'TSLA':
-                analyzer = TSLAAnalyzer(symbol)
-            elif symbol.upper() == 'NVDA':
-                analyzer = NVDAAnalyzer(symbol)
-                
-            if analyzer:
-                print(f"🔍 Running Stock Specific Analyzer for {symbol}...")
-                stock_specific_result = analyzer.analyze_specifics(
-                    news_articles=news_articles,
-                    market_data=market_data, # Passed from router
-                    event_data=event_data
-                )
-                prompt_addition = analyzer.get_prompt_addition()
-                
-        except Exception as e:
-            print(f"⚠️ Stock Specific Analysis Failed: {e}")
+            # Stage 1: Generate reasoning
+            reasoning_result = await self.reasoning_agent.reason(
+                symbol=symbol,
+                price_data=price_data,
+                technical_data=technical_data,
+                news_data=news_data,
+                macro_data=macro_data,
+                institutional_flow=institutional_flow,
+                geopolitical_risks=geopolitical_risks,
+                sector_context=sector_context
+            )
 
-        # Construct analysis prompt
-        prompt = self._build_prompt(
-            symbol=symbol,
-            news_articles=news_articles,
-            news_interpretations=news_interpretations,
-            deep_reasoning_result=deep_reasoning_result,
-            macro_indicators=macro_indicators,
-            institutional_data=institutional_data,
-            chipwar_events=chipwar_events,
-            price_context=price_context,
-            event_data=event_data,
-            stock_specific_result=stock_specific_result, # [Phase 4]
-            prompt_addition=prompt_addition              # [Phase 4]
-        )
+            if 'error' in reasoning_result:
+                return {
+                    'agent': 'analyst_mvp',
+                    'action': 'pass',
+                    'confidence': 0.0,
+                    'reasoning': f'추론 실패: {reasoning_result.get("error", "Unknown error")}',
+                    'news_headline': '분석 실패',
+                    'news_sentiment': 'neutral',
+                    'overall_information_score': 0.0,
+                    'weight': self.weight,
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'symbol': symbol,
+                    'stage': 'failed',
+                    'error': reasoning_result.get('error')
+                }
 
-        # Call Gemini API
-        try:
-            response = self.model.generate_content([
-                self.system_prompt,
-                prompt
-            ])
+            reasoning_text = reasoning_result['reasoning']
 
-            # Parse and Validate with Pydantic
-            # _parse_response now returns AnalystOpinion object
-            opinion = self._parse_response(response.text)
+            # Stage 2: Structure reasoning into JSON
+            structured_result = await self.structuring_agent.structure(
+                reasoning_text=reasoning_text,
+                schema_definition=self.schema_definition,
+                agent_type='analyst',
+                symbol=symbol
+            )
 
-            # Convert to dict for compatibility
-            result = opinion.model_dump()
+            # Add weight and timing metadata
+            structured_result['weight'] = self.weight
+            structured_result['latency_seconds'] = round(time.time() - start_time, 2)
+            structured_result['reasoning_text'] = reasoning_text
 
-            # Add metadata
-            result['agent'] = 'analyst_mvp'
-            result['weight'] = self.weight
-            result['timestamp'] = datetime.utcnow().isoformat()
-            result['symbol'] = symbol
-
-            return result
+            return structured_result
 
         except Exception as e:
-            # Error handling - return safe default
+            logger.error(f"Two-stage analyst analysis failed: {e}")
             return {
                 'agent': 'analyst_mvp',
                 'action': 'pass',
                 'confidence': 0.0,
                 'reasoning': f'분석 실패: {str(e)}',
-                'news_impact': {
-                    'sentiment': 'neutral',
-                    'impact_score': 0.0,
-                    'time_horizon': 'short'
-                },
-                'macro_impact': {
-                    'interest_rate_risk': 5.0,
-                    'inflation_risk': 5.0,
-                    'recession_risk': 5.0,
-                    'overall_macro_score': 0.0
-                },
-                'institutional_flow': {
-                    'direction': 'neutral',
-                    'magnitude': 0.0,
-                    'confidence': 0.0
-                },
-                'chipwar_risk': {
-                    'geopolitical_tension': 5.0,
-                    'export_control_risk': 5.0,
-                    'supply_chain_risk': 5.0,
-                    'overall_chipwar_score': 5.0
-                },
-                'overall_score': 0.0,
-                'key_catalysts': [],
-                'red_flags': [f'Analysis error: {str(e)}'],
+                'news_headline': '분석 실패',
+                'news_sentiment': 'neutral',
+                'overall_information_score': 0.0,
                 'weight': self.weight,
                 'timestamp': datetime.utcnow().isoformat(),
                 'symbol': symbol,
-                'error': str(e)
+                'stage': 'failed',
+                'error': str(e),
+                'latency_seconds': round(time.time() - start_time, 2)
             }
-
-    # ... _build_prompt kept ...
-
-    def _build_prompt(
-        self,
-        symbol: str,
-        news_articles: Optional[List[Dict[str, Any]]] = None,
-        news_interpretations: Optional[List[Dict[str, Any]]] = None,
-        deep_reasoning_result: Optional[Dict[str, Any]] = None, # [NEW]
-        macro_indicators: Optional[Dict[str, Any]] = None,
-        institutional_data: Optional[Dict[str, Any]] = None,
-        chipwar_events: Optional[List[Dict[str, Any]]] = None,
-
-        price_context: Optional[Dict[str, Any]] = None,
-
-        event_data: Optional[Dict[str, Any]] = None,
-        stock_specific_result: Optional[Dict[str, Any]] = None, # [Phase 4]
-        prompt_addition: str = ""                               # [Phase 4]
-    ) -> str:
-        """Construct analysis prompt"""
-        prompt = f"Analyze information for {symbol} based on the following data:\n\n"
-        
-        # 1. News Analysis (with Interpretations)
-        prompt += "1. News & Events:\n"
-        
-        # [NEW] Add Deep Reasoning Analysis (Top Priority)
-        if deep_reasoning_result and deep_reasoning_result.get('status') == 'SUCCESS':
-            prompt += "🚨 [CRITICAL: DEEP REASONING ANALYSIS]\n"
-            prompt += f"Event Type: {deep_reasoning_result.get('event_type')}\n"
-            
-            # Add classification
-            classification = deep_reasoning_result.get('classification', {})
-            prompt += f"Classification: {classification.get('type')} (Confidence: {classification.get('confidence')})\n"
-            
-            # Add simulation
-            simulation = deep_reasoning_result.get('simulation', {})
-            prompt += f"Simulation Channel: {simulation.get('channel')}\n"
-            prompt += f"Impact Chain: {simulation.get('impact_chain')}\n"
-            
-            # Add action plan (Most important)
-            action_plan = deep_reasoning_result.get('action_plan', {})
-            prompt += f"⚠️ RECOMMENDED STRATEGY: {action_plan.get('action')} (Scenario: {action_plan.get('key_scenario')})\n"
-            prompt += f"   Reasoning: {action_plan.get('reasoning')}\n\n"
-
-        # Add Expert Interpretations (High Value)
-        if news_interpretations:
-            prompt += "[News Agent Expert Analysis]\n"
-            for i, interp in enumerate(news_interpretations):
-                headline = interp.get('headline') or interp.get('title') or 'News'
-                impact = interp.get('expected_impact', 'Unknown')
-                score = interp.get('impact_score', 0)
-                reasoning = interp.get('reasoning', 'No reasoning provided')
-                
-                prompt += f"- Analysis {i+1}: {headline}\n"
-                prompt += f"  Impact: {impact} (Score: {score}/10)\n"
-                prompt += f"  Timeframe: {interp.get('time_horizon', 'Short')}\n"
-                prompt += f"  Insight: {reasoning}\n\n"
-        
-        # Add Raw Articles
-        if news_articles:
-            prompt += "[Raw News Articles]\n"
-            for i, article in enumerate(news_articles[:5]):  # Limit to 5
-                prompt += f"- {article.get('title')}\n"
-                source = article.get('source', 'Unknown')
-                summary = article.get('summary', 'N/A')
-                prompt += f"  Source: {source} | Summary: {summary}\n"
-        else:
-            prompt += "No recent news reported.\n"
-
-        prompt += "\n"
-
-        # 2. Macro Indicators
-        prompt += "2. Macro Economic Context:\n"
-        if macro_indicators:
-            for k, v in macro_indicators.items():
-                prompt += f"- {k}: {v}\n"
-        else:
-            prompt += "No macro data provided.\n"
-        prompt += "\n"
-
-        # 3. Institutional Data
-        prompt += "3. Institutional Flow:\n"
-        if institutional_data:
-            # Assuming simplified dict for prompt
-            prompt += f"{str(institutional_data)}\n"
-        else:
-             prompt += "No institutional data.\n"
-        prompt += "\n"
-        
-        # 4. Chip War / Geopolitics
-        prompt += "4. Chip War & Geopolitics:\n"
-        if chipwar_events:
-            for event in chipwar_events:
-                date_str = event.get('date', 'Unknown Date')
-                evt = event.get('event', 'Unknown Event')
-                impact = event.get('impact', 'Unknown Impact')
-                prompt += f"- {date_str}: {evt} (Impact: {impact})\n"
-        else:
-             prompt += "No significant geopolitical events.\n"
-        prompt += "\n"
-        
-        # 5. Price Context
-        if price_context:
-             prompt += f"5. Price Context: {price_context}\n"
-             
-        # 6. Event Proximity (Phase 3)
-        if event_data:
-            prompt += "\n6. Upcoming Events:\n"
-            earnings = event_data.get('earnings', {})
-            earnings_date = earnings.get('date', 'N/A') if isinstance(earnings, dict) else str(earnings)
-            prompt += f"- Earnings Date: {earnings_date}\n"
-            prompt += f"- Earnings Date: {earnings_date}\n"
-            prompt += f"- Ex-Dividend: {event_data.get('ex_dividend', 'N/A')}\n"
-
-        # 7. Stock Specific Analysis (Phase 4)
-        if stock_specific_result:
-            prompt += f"\n7. Stock Specific Factors ({symbol}):\n"
-            prompt += f"- Specific Catalysts: {', '.join(stock_specific_result.get('specific_catalysts', []))}\n"
-            prompt += f"- Specific Risks: {', '.join(stock_specific_result.get('specific_risks', []))}\n"
-            prompt += f"- Score Adjustment: {stock_specific_result.get('score_adjustment', 0.0)}\n"
-            if prompt_addition:
-                prompt += f"\n[Special Focus Areas]\n{prompt_addition}\n"
-        
-        return prompt
-
-    def _parse_response(self, response_text: str) -> AnalystOpinion:
-        """Parse Gemini response using Pydantic"""
-        import json
-        import re
-
-        # Extract JSON from response
-        try:
-            result_dict = json.loads(response_text)
-        except json.JSONDecodeError:
-            json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
-            if json_match:
-                result_dict = json.loads(json_match.group(1))
-            else:
-                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-                if json_match:
-                    result_dict = json.loads(json_match.group(0))
-                else:
-                    raise ValueError("No valid JSON found in response")
-
-        # Basic field normalization
-        if 'overall_information_score' in result_dict:
-            result_dict['overall_score'] = result_dict.pop('overall_information_score')
-        
-        # Ensure default fields if missing (Pydantic defaults handle most, but ensure dict structure)
-        
-        # Instantiate and Validate with Pydantic
-        return AnalystOpinion(**result_dict)
 
     def get_agent_info(self) -> Dict[str, Any]:
         """Get agent information"""
         return {
-            'name': 'AnalystAgentMVP',
-            'role': self.role,
+            'name': 'AnalystAgentMVP (Two-Stage Gemini)',
+            'role': '수석 정보 분석가',
             'weight': self.weight,
-            'focus': '종합 정보 분석 (News + Macro + Institutional + 반도체 패권 경쟁)',
-            'absorbed_agents': [
-                'News Agent',
-                'Macro Agent',
-                'Institutional Agent',
-                'ChipWar Agent (geopolitics)'
+            'architecture': 'two-stage',
+            'llm_provider': 'gemini',
+            'focus': '정보 통합 및 종합 분석',
+            'stages': {
+                'reasoning': 'Gemini 2.0 Flash → 자연어 정보 분석',
+                'structuring': 'Gemini JSON mode → JSON 변환'
+            },
+            'benefits': [
+                '높은 Concurrency 제한 (60+ vs GLM 3)',
+                '빠른 응답 속도',
+                '비용 효율성'
             ],
             'responsibilities': [
-                '뉴스 이벤트 분석 및 영향 평가',
-                '매크로 경제 지표 해석',
-                '기관 투자자 동향 분석',
-                '반도체 패권 경쟁 지정학적 리스크 평가',
-                '종합 정보 분석 리포트 생성'
+                '뉴스 감성 분석',
+                '거시경제 통합',
+                '기관 동향 파악',
+                '지정학적 리스크 평가'
             ]
         }
+
+    async def close(self):
+        """Close all GLM client sessions."""
+        await self.reasoning_agent.close()
+        await self.structuring_agent.close()
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
 
 
 # Example usage
 if __name__ == "__main__":
-    agent = AnalystAgentMVP()
+    async def test():
+        agent = AnalystAgentMVP()
 
-    # Test data
-    news_articles = [
-        {
-            'title': 'NVIDIA announces new AI chip',
-            'source': 'Reuters',
-            'published': '2025-12-30',
-            'summary': 'New GPU targets enterprise AI market'
-        }
-    ]
+        price_data = {'current_price': 150.25}
 
-    macro_indicators = {
-        'interest_rate': 5.25,
-        'inflation_rate': 3.1,
-        'gdp_growth': 2.5,
-        'fed_policy': 'hawkish'
-    }
+        news_data = [
+            {'title': 'AAPL, AI 기능 탑재로 2026년 성장 전망', 'sentiment': 'positive', 'impact_score': 3.5},
+            {'title': '연준, 금리 인상 속도 완화 시사', 'sentiment': 'positive', 'impact_score': 2.0}
+        ]
 
-    chipwar_events = [
-        {
-            'event': 'US tightens chip export controls to China',
-            'impact': 'Negative for NVIDIA China revenue',
-            'date': '2025-12-28'
-        }
-    ]
+        macro_data = {'interest_rate': 5.25, 'gdp_growth': 2.1, 'trend': 'stable'}
 
-    result = agent.analyze(
-        symbol='NVDA',
-        news_articles=news_articles,
-        macro_indicators=macro_indicators,
-        chipwar_events=chipwar_events,
-        price_context={'current_price': 500.0, 'trend': 'uptrend'}
-    )
+        result = await agent.analyze(
+            symbol='AAPL',
+            price_data=price_data,
+            news_data=news_data,
+            macro_data=macro_data
+        )
 
-    print(f"Action: {result['action']}")
-    print(f"Confidence: {result['confidence']:.2f}")
-    print(f"Overall Info Score: {result['overall_information_score']:.1f}")
-    print(f"Key Catalysts: {result['key_catalysts']}")
-    print(f"Red Flags: {result['red_flags']}")
+        print(f"Action: {result['action']}")
+        print(f"Confidence: {result['confidence']:.2f}")
+        print(f"News Headline: {result.get('news_headline', 'N/A')}")
+        print(f"Overall Score: {result.get('overall_information_score', 0):.1f}")
+        print(f"Time Horizon: {result.get('time_horizon', 'N/A')}")
+
+    asyncio.run(test())

@@ -14,11 +14,19 @@ It integrates legacy ChipWar logic for technology war scenarios.
 import logging
 import asyncio
 import json
+import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from backend.ai.economics.chip_war_simulator_v2 import ChipComparator
 from backend.ai.gemini_client import call_gemini_api
+
+# Import GLM client for news processing
+try:
+    from backend.ai.glm_client import GLMClient
+    GLM_AVAILABLE = True
+except ImportError:
+    GLM_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +39,14 @@ class DeepReasoningAgent:
 
     def __init__(self):
         self.agent_name = "deep_reasoning"
-        self.model_name = "gemini-2.0-flash-exp"
-        
+
+        # Load model configuration from environment
+        self.provider = os.getenv('DEEP_REASONING_PROVIDER', 'glm').lower()
+        default_model = 'glm-4-plus' if self.provider == 'glm' else 'gemini-2.5-flash-lite'
+        self.model_name = os.getenv('DEEP_REASONING_MODEL', default_model)
+
+        logger.info(f"🧠 DeepReasoningAgent initialized: provider={self.provider}, model={self.model_name}")
+
         # Legacy: Chip War Simulation Logic
         try:
             self.chip_comparator = ChipComparator()
@@ -41,20 +55,58 @@ class DeepReasoningAgent:
             logger.error(f"❌ DeepReasoningAgent: Failed to load ChipComparator: {e}")
             self.chip_comparator = None
 
+    async def _call_llm(self, prompt: str, response_mime_type: str = "application/json") -> str:
+        """
+        Call LLM based on provider configuration
+
+        Args:
+            prompt: The prompt to send
+            response_mime_type: Response type (application/json or text/plain)
+
+        Returns:
+            Response text
+        """
+        if self.provider == 'glm' and GLM_AVAILABLE:
+            # Use GLM API
+            api_key = os.getenv('GLM_API_KEY')
+            if not api_key:
+                raise ValueError("GLM_API_KEY not set")
+
+            glm_client = GLMClient(api_key=api_key, model=self.model_name)
+
+            # Set temperature based on response type
+            temperature = 0.1 if response_mime_type == "application/json" else 0.7
+
+            response = await glm_client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=2048,
+                temperature=temperature
+            )
+
+            # Extract content from response
+            message = response["choices"][0]["message"]
+            content = message.get("content") or message.get("reasoning_content", "")
+            await glm_client.close()
+
+            return content.strip()
+        else:
+            # Use Gemini API (default)
+            return await call_gemini_api(prompt, self.model_name, response_mime_type=response_mime_type)
+
     async def analyze_event(self, event_type: str, keywords: List[str], base_info: Dict[str, Any]) -> Dict[str, Any]:
         """
         심층 분석 메인 진입점
-        
+
         Args:
             event_type: "GEOPOLITICS" or "CHIP_WAR"
             keywords: 감지된 키워드 (예: ['invasion', 'war'])
             base_info: 관련 티커, 기본 뉴스 정보 등
-            
+
         Returns:
             Dict: 분석 결과 (시나리오, 행동 지침 등)
         """
         logger.info(f"🧠 DeepReasoning: Starting analysis for {event_type} (keywords: {keywords})")
-        
+
         try:
             # 1. 이벤트 분류 (Structural vs Noise)
             classification = await self._classify_event_structure(event_type, keywords, base_info)
@@ -138,7 +190,7 @@ class DeepReasoningAgent:
         }}
         """
         
-        response = await call_gemini_api(prompt, self.model_name, response_mime_type="application/json")
+        response = await self._call_llm(prompt, response_mime_type="application/json")
         result = self._parse_json(response)
         
         # Calculate GRS (Geopolitical Risk Score)
@@ -233,7 +285,7 @@ class DeepReasoningAgent:
                 }}
             }}
             """
-            response = await call_gemini_api(prompt, self.model_name, response_mime_type="application/json")
+            response = await self._call_llm(prompt, response_mime_type="application/json")
             result = self._parse_json(response)
             
             # Ensure result is a dictionary
@@ -321,7 +373,7 @@ class DeepReasoningAgent:
             ...
         ]
         """
-        response = await call_gemini_api(prompt, self.model_name, response_mime_type="application/json")
+        response = await self._call_llm(prompt, response_mime_type="application/json")
         result = self._parse_json(response)
         if isinstance(result, list):
             return result

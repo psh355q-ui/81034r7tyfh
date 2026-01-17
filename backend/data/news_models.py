@@ -1,5 +1,10 @@
 """
-News Database Models
+News Database Models (LEGACY - SQLite)
+
+⚠️ DEPRECATED: This file uses SQLite and is kept for backward compatibility.
+    - New code should use `backend.database.models` (PostgreSQL)
+    - GLM analysis (glm_analysis) requires PostgreSQL JSONB support
+    - This file will be removed after migration is complete
 
 SQLite + SQLAlchemy for local storage
 """

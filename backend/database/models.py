@@ -94,6 +94,9 @@ class NewsArticle(Base):
     processed_at = Column(DateTime, nullable=True)
     embedding_model = Column(String(100), nullable=True)
 
+    # GLM-4.7 뉴스 해석 결과 (Added in Phase 0)
+    glm_analysis = Column(JSONB, nullable=True)  # GLM 분석 결과: tickers, sectors, confidence, reasoning
+
     # Relationships
     analyses = relationship("AnalysisResult", back_populates="article", cascade="all, delete-orphan")
     analysis = relationship("NewsAnalysis", back_populates="article", uselist=False, cascade="all, delete-orphan")
@@ -420,6 +423,33 @@ class NewsSource(Base):
 
     def __repr__(self):
         return f"<NewsSource(name='{self.name}', type='{self.source_type}', active={self.is_active})>"
+
+
+class RSSFeed(Base):
+    """RSS 피드 설정 (뉴스 크롤러용)"""
+    __tablename__ = 'rss_feeds'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(128), unique=True, nullable=False)
+    url = Column(String(2048), nullable=False)
+    category = Column(String(64))  # global | korea | sector_specific
+    enabled = Column(Boolean, nullable=False, default=True)
+
+    # Stats
+    last_fetched = Column(DateTime, nullable=True)
+    total_articles = Column(Integer, nullable=False, default=0)
+    error_count = Column(Integer, nullable=False, default=0)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_rss_feed_enabled', 'enabled'),
+        Index('idx_rss_feed_category', 'category'),
+    )
+
+    def __repr__(self):
+        return f"<RSSFeed(id={self.id}, name='{self.name}', category='{self.category}', enabled={self.enabled})>"
 
 
 class Order(Base):

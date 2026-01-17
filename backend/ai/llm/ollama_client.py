@@ -48,6 +48,101 @@ class OllamaClient:
             logger.warning(f"Ollama health check failed: {e}")
             return False
     
+    async def analyze_news(self, text: str) -> Dict[str, Any]:
+        """
+        뉴스에서 종목/섹터 추출 (GLM API 호환 인터페이스)
+
+        Args:
+            text: 뉴스 텍스트
+
+        Returns:
+            {
+                'tickers': ['AAPL', 'MSFT'],  # 관련 종목 티커
+                'sectors': ['Technology', 'Semiconductor'],  # 관련 섹터
+                'confidence': 0.85,  # 추출 확신도
+                'reasoning': '분석 이유'  # 분석 근거
+            }
+        """
+        prompt = f"""당신은 금융 뉴스 분석 전문가입니다. 다음 뉴스에서 관련 종목과 섹터를 추출하세요:
+
+뉴스:
+{text[:2000]}
+
+다음 JSON 형식으로 결과를 제공하세요:
+{{
+    "tickers": ["AAPL", "MSFT", "NVDA"],
+    "sectors": ["Technology", "Semiconductor"],
+    "confidence": 0.85,
+    "reasoning": "분석 근거"
+}}
+
+규칙:
+- tickers: 뉴스에 언급된 주식 티커 (없으면 빈 리스트)
+- sectors: 관련 산업 섹터 (없으면 빈 리스트)
+- confidence: 0.0 ~ 1.0 (추출 확신도)
+- reasoning: 왜 이 종목/섹터를 선택했는지
+
+유효한 JSON만 응답하세요."""
+
+        try:
+            response = httpx.post(
+                f"{self.base_url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json",
+                    "options": {
+                        "temperature": 0.2,
+                        "num_predict": 200
+                    }
+                },
+                timeout=self.timeout
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Ollama API error: {response.status_code}")
+                return self._fallback_extraction()
+
+            result = response.json()
+
+            try:
+                analysis = json.loads(result["response"])
+
+                # 필수 키 확인
+                if 'tickers' not in analysis:
+                    analysis['tickers'] = []
+                if 'sectors' not in analysis:
+                    analysis['sectors'] = []
+                if 'confidence' not in analysis:
+                    analysis['confidence'] = 0.5
+                if 'reasoning' not in analysis:
+                    analysis['reasoning'] = ''
+
+                return analysis
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Ollama JSON response: {e}")
+                return self._fallback_extraction()
+
+        except Exception as e:
+            logger.error(f"Ollama extraction failed: {e}")
+            return self._fallback_extraction()
+
+    def _fallback_extraction(self) -> Dict[str, Any]:
+        """
+        Ollama 실패 시 폴백 추출 결과
+
+        Returns:
+            빈 추출 결과
+        """
+        return {
+            'tickers': [],
+            'sectors': [],
+            'confidence': 0.0,
+            'reasoning': 'Ollama analysis failed'
+        }
+
     def analyze_news_sentiment(self, title: str, content: str) -> Dict[str, Any]:
         """
         뉴스 감성 및 거래 영향 분석

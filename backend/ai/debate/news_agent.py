@@ -30,6 +30,14 @@ from backend.database.repository import (
 )
 from backend.ai.gemini_client import call_gemini_api
 
+# Use GLM instead of Claude for cost efficiency
+try:
+    from backend.ai.glm_client import GLMClient
+    GLM_AVAILABLE = True
+except ImportError:
+    GLM_AVAILABLE = False
+    logger.warning("GLM client not available, will use fallback")
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +48,17 @@ class NewsAgent:
         self.agent_name = "news"
         self.vote_weight = 0.10  # 10% 투표권
         self.model_name = "gemini-2.0-flash-exp"
-        self.claude_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        # Use GLM client instead of Claude for cost efficiency
+        if GLM_AVAILABLE and os.getenv("GLM_API_KEY"):
+            try:
+                self.glm_client = GLMClient()
+                self.use_glm = True
+                logger.info("✅ NewsAgent using GLM-4.7 for news interpretation")
+            except Exception as e:
+                logger.warning(f"GLM client init failed: {e}, falling back to Claude")
+                self.use_glm = False
+        else:
+            self.use_glm = False
         self.enable_interpretation = os.getenv("ENABLE_NEWS_INTERPRETATION", "true").lower() == "true"
     
     async def interpret_articles(self, ticker: str, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -901,15 +919,15 @@ class NewsAgent:
 """
 
         try:
-            message = self.claude_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
-                max_tokens=300,
+            # Use GLM for cost efficiency
+            response = await self.glm_client.chat(
                 messages=[
                     {"role": "user", "content": prompt}
-                ]
+                ],
+                max_tokens=300,
+                temperature=0.3
             )
-
-            response_text = message.content[0].text.strip()
+            response_text = response["choices"][0]["message"]["content"].strip()
 
             # JSON 파싱
             if "```json" in response_text:

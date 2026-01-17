@@ -1,11 +1,14 @@
 """
 Unified News Processor 테스트 스크립트
+
+⚠️ DEPRECATED: This test file uses SQLite and should be updated to use PostgreSQL.
+    For testing with PostgreSQL, use `pytest tests/` instead.
 """
 import sys
 import asyncio
 sys.path.insert(0, 'd:/code/ai-trading-system')
 
-from backend.data.news_models import SessionLocal, init_db
+from backend.database.repository import get_sync_session
 from backend.data.rss_crawler import RSSCrawler
 from backend.data.processors.unified_news_processor import UnifiedNewsProcessor
 
@@ -15,15 +18,9 @@ async def test_unified_processor():
     print("Unified News Processor 테스트")
     print("=" * 80)
     print()
-    
-    # DB 초기화
-    print("📦 SQLite DB 초기화...")
-    init_db()
-    print("✅ DB 초기화 완료")
-    print()
-    
-    # SQLite 세션 사용
-    db = SessionLocal()
+
+    # PostgreSQL 세션 사용
+    db = get_sync_session()
     
     try:
         # 1. RSS Crawler로 원시 기사 가져오기

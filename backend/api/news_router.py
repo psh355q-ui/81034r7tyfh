@@ -18,14 +18,9 @@ from sqlalchemy.orm import Session
 import json
 import asyncio
 
-from backend.data.news_models import (
-    NewsArticle,
-    NewsAnalysis,
-    NewsTickerRelevance,
-    RSSFeed,
-    get_db,
-    init_db,
-)
+# Use PostgreSQL models (NOT SQLite news_models)
+from backend.database.models import NewsArticle, NewsAnalysis, NewsTickerRelevance, RSSFeed
+from backend.core.database import get_db
 from backend.data.rss_crawler import RSSCrawler, get_recent_articles, get_unanalyzed_articles, get_feed_stats
 from backend.data.news_analyzer import (
     NewsDeepAnalyzer,
@@ -118,13 +113,10 @@ class AnalyzeResponse(BaseModel):
 
 
 # ============================================================================
-# Initialize Database
+# Database Note
 # ============================================================================
-
-@router.on_event("startup")
-async def startup():
-    init_db()
-
+# PostgreSQL is used (managed by backend.core.database)
+# SQLite init_db() is no longer needed
 
 # ============================================================================
 # Crawling Endpoints
@@ -157,8 +149,11 @@ async def crawl_rss_feeds_stream(
                 gemini_client = None
 
         try:
+            from sqlalchemy import select
             crawler = RSSCrawler(db)
-            feeds = db.query(RSSFeed).filter(RSSFeed.enabled == True).all()
+            stmt = select(RSSFeed).filter(RSSFeed.enabled == True)
+            result = await db.execute(stmt)
+            feeds = result.scalars().all()
             total_feeds = len(feeds)
 
             if total_feeds == 0:
@@ -349,7 +344,12 @@ async def analyze_single_article(
     db: Session = Depends(get_db)
 ):
     """단일 기사 분석"""
-    article = db.query(NewsArticle).filter(NewsArticle.id == article_id).first()
+    from sqlalchemy import select
+
+    stmt = select(NewsArticle).filter(NewsArticle.id == article_id)
+    result = await db.execute(stmt)
+    article = result.scalar_one_or_none()
+
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     
@@ -401,7 +401,7 @@ async def get_news_articles(
     if sentiment or actionable_only:
         articles = get_analyzed_articles(db, limit, sentiment, actionable_only)
     else:
-        articles = get_recent_articles(db, limit, hours, source)
+        articles = await get_recent_articles(db, limit, hours, source)
     
     return [
         NewsArticleResponse(
@@ -432,7 +432,12 @@ async def get_news_detail(
     db: Session = Depends(get_db)
 ):
     """기사 상세 조회 (분석 포함)"""
-    article = db.query(NewsArticle).filter(NewsArticle.id == article_id).first()
+    from sqlalchemy import select
+
+    stmt = select(NewsArticle).filter(NewsArticle.id == article_id)
+    result = await db.execute(stmt)
+    article = result.scalar_one_or_none()
+
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     
@@ -553,18 +558,37 @@ async def get_warning_articles(db: Session = Depends(get_db)):
 @log_endpoint("news", "analysis")
 async def get_news_statistics(db: Session = Depends(get_db)):
     """뉴스 통계"""
-    total_articles = db.query(NewsArticle).count()
-    analyzed_articles = db.query(NewsAnalysis).count()
-    
+    from sqlalchemy import select, func
+
+    # 전체 기사 수
+    total_stmt = select(func.count(NewsArticle.id))
+    total_result = await db.execute(total_stmt)
+    total_articles = total_result.scalar()
+
+    # 분석된 기사 수
+    analyzed_stmt = select(func.count(NewsAnalysis.id))
+    analyzed_result = await db.execute(analyzed_stmt)
+    analyzed_articles = analyzed_result.scalar()
+
     # 감정별 통계
-    positive = db.query(NewsAnalysis).filter(NewsAnalysis.sentiment_overall == "positive").count()
-    negative = db.query(NewsAnalysis).filter(NewsAnalysis.sentiment_overall == "negative").count()
-    neutral = db.query(NewsAnalysis).filter(NewsAnalysis.sentiment_overall == "neutral").count()
-    
+    positive_stmt = select(func.count(NewsAnalysis.id)).filter(NewsAnalysis.sentiment_overall == "positive")
+    positive_result = await db.execute(positive_stmt)
+    positive = positive_result.scalar()
+
+    negative_stmt = select(func.count(NewsAnalysis.id)).filter(NewsAnalysis.sentiment_overall == "negative")
+    negative_result = await db.execute(negative_stmt)
+    negative = negative_result.scalar()
+
+    neutral_stmt = select(func.count(NewsAnalysis.id)).filter(NewsAnalysis.sentiment_overall == "neutral")
+    neutral_result = await db.execute(neutral_stmt)
+    neutral = neutral_result.scalar()
+
     # 행동 가능한 뉴스
-    actionable = db.query(NewsAnalysis).filter(NewsAnalysis.trading_actionable == True).count()
-    
-    
+    actionable_stmt = select(func.count(NewsAnalysis.id)).filter(NewsAnalysis.trading_actionable == True)
+    actionable_result = await db.execute(actionable_stmt)
+    actionable = actionable_result.scalar()
+
+
     return {
         "total_articles": total_articles,
         "analyzed_articles": analyzed_articles,
@@ -589,7 +613,7 @@ async def get_news_statistics(db: Session = Depends(get_db)):
 @log_endpoint("news", "analysis")
 async def get_rss_feeds(db: Session = Depends(get_db)):
     """RSS 피드 목록 및 통계"""
-    return get_feed_stats(db)
+    return await get_feed_stats(db)
 
 
 @router.post("/feeds")
@@ -601,7 +625,12 @@ async def add_rss_feed(
     db: Session = Depends(get_db)
 ):
     """새 RSS 피드 추가"""
-    existing = db.query(RSSFeed).filter(RSSFeed.name == name).first()
+    from sqlalchemy import select
+
+    stmt = select(RSSFeed).filter(RSSFeed.name == name)
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+
     if existing:
         raise HTTPException(status_code=400, detail="Feed with this name already exists")
     
@@ -625,7 +654,12 @@ async def toggle_feed(
     db: Session = Depends(get_db)
 ):
     """피드 활성화/비활성화 토글"""
-    feed = db.query(RSSFeed).filter(RSSFeed.id == feed_id).first()
+    from sqlalchemy import select
+
+    stmt = select(RSSFeed).filter(RSSFeed.id == feed_id)
+    result = await db.execute(stmt)
+    feed = result.scalar_one_or_none()
+
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
     

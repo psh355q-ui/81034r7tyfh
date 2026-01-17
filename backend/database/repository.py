@@ -1,6 +1,6 @@
-"""
 from __future__ import annotations
 
+"""
 Database Repository Layer
 
 Repository pattern for data access:
@@ -16,6 +16,7 @@ Usage:
         article = await news_repo.create_article(...)
 """
 
+import logging
 from typing import List, Optional, Dict, Tuple, TYPE_CHECKING, Callable, Any
 from functools import wraps
 
@@ -23,6 +24,8 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_, or_
 from contextlib import asynccontextmanager
+
+logger = logging.getLogger(__name__)
 
 from backend.database.models import (
     NewsArticle,
@@ -184,6 +187,87 @@ class NewsRepository:
     def get_by_url(self, url: str) -> Optional[NewsArticle]:
         """URL로 기사 조회"""
         return self.session.query(NewsArticle).filter_by(url=url).first()
+
+    def save_glm_analysis(self, news_id: int, glm_result: dict) -> bool:
+        """
+        GLM-4.7 뉴스 분석 결과 저장
+
+        Phase: Phase 1, T2.1
+
+        Args:
+            news_id: 뉴스 기사 ID
+            glm_result: GLM 분석 결과 딕셔너리
+                {
+                    "tickers": ["AAPL", "TSLA"],
+                    "sectors": ["Technology", "Semiconductors"],
+                    "confidence": 0.87,
+                    "reasoning": "분석 근거",
+                    "analyzed_at": "2026-01-15T10:30:00Z",
+                    "model": "glm-4.7",
+                    "latency_ms": 150,
+                    "cost_usd": 0.001
+                }
+
+        Returns:
+            저장 성공 여부 (bool)
+
+        Raises:
+            ValueError: news_id가 유효하지 않은 경우
+        """
+        try:
+            # 뉴스 기사 존재 확인
+            article = self.session.query(NewsArticle).filter_by(id=news_id).first()
+            if not article:
+                raise ValueError(f"NewsArticle with id={news_id} not found")
+
+            # glm_analysis 컬럼 업데이트
+            article.glm_analysis = glm_result
+            self.session.commit()
+
+            logger.info(
+                f"GLM analysis saved for news_id={news_id}: "
+                f"tickers={len(glm_result.get('tickers', []))}, "
+                f"confidence={glm_result.get('confidence', 0):.2f}"
+            )
+            return True
+
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error saving GLM analysis for news_id={news_id}: {e}")
+            raise
+
+    def get_glm_analyzed_articles(
+        self,
+        hours: int = 24,
+        min_confidence: float = 0.5
+    ) -> List[NewsArticle]:
+        """
+        GLM 분석이 완료된 뉴스 기사 조회
+
+        Phase: Phase 1, T2.1
+
+        Args:
+            hours: 최근 N시간 내 기사 (기본 24시간)
+            min_confidence: 최소 신뢰도 (기본 0.5)
+
+        Returns:
+            NewsArticle 리스트 (glm_analysis 있는 기사만)
+        """
+        from sqlalchemy import and_
+
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+
+        return (
+            self.session.query(NewsArticle)
+            .filter(
+                and_(
+                    NewsArticle.glm_analysis.is_not(None),
+                    NewsArticle.crawled_at >= cutoff_time
+                )
+            )
+            .order_by(desc(NewsArticle.published_date))
+            .all()
+        )
 
     @cache_with_ttl(300)  # Phase 1.3: 5분 캐시
     def get_recent_articles(self, hours: int = 24, source: Optional[str] = None) -> List[NewsArticle]:

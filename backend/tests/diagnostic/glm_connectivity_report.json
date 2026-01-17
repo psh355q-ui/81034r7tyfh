@@ -1,0 +1,43 @@
+{
+  "timestamp": 220094.453,
+  "env_vars": {
+    "has_api_key": true,
+    "api_base": "https://open.bigmodel.cn/api/paas/v4",
+    "api_key_prefix": "16167176...",
+    "model": "GLM-4.7"
+  },
+  "dns": {
+    "hostname": "open.bigmodel.cn",
+    "resolved": true,
+    "ip_addresses": [
+      "47.110.175.20"
+    ],
+    "error": null
+  },
+  "proxy": {
+    "http_proxy": null,
+    "https_proxy": null,
+    "no_proxy": null
+  },
+  "tcp": {
+    "hostname": "open.bigmodel.cn",
+    "port": 443,
+    "connected": true,
+    "error": null,
+    "duration_ms": 82.87
+  },
+  "api_auth": {
+    "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "tested": true,
+    "authenticated": false,
+    "status_code": 429,
+    "error": "Rate limit exceeded",
+    "duration_ms": 531.69
+  },
+  "summary": {
+    "all_passed": false,
+    "issues": [
+      "❌ API authentication failed: Rate limit exceeded"
+    ]
+  }
+}

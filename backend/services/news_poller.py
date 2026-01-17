@@ -17,8 +17,9 @@ from sqlalchemy.orm import Session
 from backend.data.rss_crawler import RSSCrawler
 from backend.data.news_analyzer import NewsDeepAnalyzer
 from backend.ai.reasoning.deep_reasoning_agent import DeepReasoningAgent
-from backend.data.news_models import SessionLocal, NewsArticle, NewsAnalysis
-from backend.database.models import TradingSignal
+# Use PostgreSQL instead of SQLite
+from backend.database.models import NewsArticle, NewsAnalysis, TradingSignal
+from backend.database.repository import get_sync_session
 from backend.data.processors.unified_news_processor import UnifiedNewsProcessor
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class NewsPoller:
 
     async def poll_and_process(self):
         """Single polling cycle (with UnifiedNewsProcessor)"""
-        db = SessionLocal()
+        db = get_sync_session()  # PostgreSQL session
         try:
             crawler = RSSCrawler(db)
             

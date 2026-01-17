@@ -6,9 +6,9 @@
 -- Description: orders 테이블에 전략 추적 및 충돌 검사 결과 컬럼 추가
 -- ====================================
 
--- Add strategy_id column
+-- Add strategy_id column (VARCHAR(36) to match Strategy.id)
 ALTER TABLE orders
-ADD COLUMN IF NOT EXISTS strategy_id UUID;
+ADD COLUMN IF NOT EXISTS strategy_id VARCHAR(36);
 
 -- Add conflict check columns
 ALTER TABLE orders

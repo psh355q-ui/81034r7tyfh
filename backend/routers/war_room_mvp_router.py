@@ -26,7 +26,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from execution.shadow_trading_mvp import ShadowTradingMVP, ShadowTradingStatus
-from backend.data.news_models import get_db
+# PostgreSQL 사용 (backend.database.repository)
+from backend.database.repository import get_sync_session
 from backend.ai.mvp.data_helper import prepare_additional_data
 from backend.ai.mvp.enhanced_data_provider import EnhancedDataProvider
 import yfinance as yf
@@ -255,7 +256,7 @@ from concurrent.futures import ThreadPoolExecutor
 # ... imports ...
 
 @router.post("/deliberate")
-async def deliberate(request: DeliberationRequest, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def deliberate(request: DeliberationRequest, db: Session = Depends(get_sync_session)) -> Dict[str, Any]:
     """
     MVP 전쟁실 심의
     
