@@ -129,7 +129,60 @@ class PMAgentMVP:
 - Agent 간 의견 차이가 크면 신중 모드
 - 포트폴리오 전체 관점에서 평가
 
+## Context-Aware Analysis (NEW)
+
+`action_context` 파라미터에 따라 분석 관점을 조정하세요:
+
+### 1. existing_position (보유 중인 종목)
+- **목적**: HOLD vs SELL 판단, 추가매수 여부 결정
+- **분석 초점**:
+  - 현재 포지션 유지 권장 여부
+  - 추가 매수 타이밍 및 가격대 (구체적)
+  - 익절/손절 레벨 (평균가 대비 %)
+  - Stop-loss 조정 권장
+  - 포지션 축소/확대 비율
+  - 투자 논리(Thesis) 유효성 재확인
+  - 다음 재평가 시점 (실적 발표, 이벤트)
+
+### 2. new_position (신규 진입 검토)
+- **목적**: BUY vs HOLD 판단
+- **분석 초점**:
+  - 진입 타이밍 및 진입가
+  - 목표가 및 손절가
+  - 포지션 사이즈 권장
+
+## Portfolio Action Guide (NEW)
+
+보유 종목에 대해 다음 4가지 액션 중 하나를 선택하세요:
+
+1. **SELL (매도 추천)**: 리스크 급증, 손절가 도달, 목표가 도달, 기술적 약세
+   - 언제: 구체적 가격 레벨 또는 조건 (예: "$185 저항 돌파 실패 시")
+   - 얼마나: 일부 익절(50%) vs 전량 청산
+
+2. **BUY_MORE (추가 매수)**: 강한 모멘텀, 긍정적 촉매, 낮은 리스크
+   - 언제: 구체적 매수 타이밍 (예: "지지선 $176 유지 시")
+   - 얼마나: 추가 매수 비중 (ex: 현재 대비 +20%)
+
+3. **HOLD (보유 유지)**: 중립적 신호, 촉매 대기 중
+   - 추가 매수 불필요 명시
+   - 다음 재평가 시점 제시 (예: "실적 발표 2026-02-15 후")
+   - Stop-loss 조정 여부
+
+4. **DO_NOT_BUY (미진입/관망)**: 높은 리스크, 불확실한 테마
+
 출력 형식:
+{
+    ... existing fields ...,
+    "portfolio_action": "buy_more" | "sell" | "hold" | "do_not_buy",
+    "action_reason": "액션 선택 이유 (한국어, 구체적 가격/조건 포함)",
+    "action_strength": "weak" | "moderate" | "strong",
+    "position_adjustment_pct": -1.0 ~ 1.0  // -0.5 = 50% 매도, +0.2 = 20% 추가매수
+}
+
+**중요**: action_reason에는 반드시 구체적인 가격 레벨과 조건을 포함하세요.
+예: "평균가 $175 대비 현재가 $178 (+1.7%), 저항선 $185 돌파 시 50% 익절 권장"
+
+## Original Output Format
 {
     "final_decision": "approve" | "reject" | "reduce_size" | "silence" | "conditional",
     "confidence": 0.0 ~ 1.0,
@@ -150,14 +203,18 @@ class PMAgentMVP:
         "resolution": "how conflicts were resolved"
     },
     "warnings": ["warning1", "warning2", ...],
-    "approval_conditions": ["condition1", "condition2", ...] or []
+    "approval_conditions": ["condition1", "condition2", ...] or [],
+    "portfolio_action": "buy_more" | "sell" | "hold" | "do_not_buy",
+    "action_reason": "액션 선택 이유 (한국어, 구체적 가격/조건 포함)",
+    "action_strength": "weak" | "moderate" | "strong",
+    "position_adjustment_pct": -1.0 ~ 1.0
 }
 
 중요:
 - final_decision = "silence"는 판단 거부 (정보 불충분)
 - Agent 의견이 상충하면 보수적으로 결정
 - 포트폴리오 전체 건강도 우선 고려
-- **반드시 한글로 응답할 것** (reasoning, warnings, approval_conditions 등 모든 텍스트 필드는 한국어로 작성)
+- **반드시 한글로 응답할 것** (reasoning, warnings, approval_conditions, action_reason 등 모든 텍스트 필드는 한국어로 작성)
 """
 
     def make_final_decision(
@@ -167,7 +224,8 @@ class PMAgentMVP:
         risk_opinion: Dict[str, Any],
         analyst_opinion: Dict[str, Any],
         portfolio_state: Dict[str, Any],
-        correlation_data: Optional[Dict[str, Any]] = None
+        correlation_data: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position"
     ) -> Dict[str, Any]:
         """
         최종 의사결정 수행
@@ -270,7 +328,8 @@ class PMAgentMVP:
             analyst_opinion=analyst_opinion,
             portfolio_state=portfolio_state,
             correlation_data=correlation_data,
-            avg_confidence=avg_confidence
+            avg_confidence=avg_confidence,
+            action_context=action_context
         )
 
         # Call Gemini API
@@ -279,6 +338,8 @@ class PMAgentMVP:
                 self.system_prompt,
                 prompt
             ])
+
+            logger.info(f"🔍 DEBUG: PM Agent Raw Response:\n{response.text}")
 
             # Parse and Validate with Pydantic
             decision = self._parse_response(response.text)
@@ -302,9 +363,22 @@ class PMAgentMVP:
             result['symbol'] = symbol
             result['avg_agent_confidence'] = avg_confidence
 
+            # NEW: Add portfolio action guide
+            # If AI didn't provide portfolio_action, determine it from the decision
+            if 'portfolio_action' not in result or not result['portfolio_action']:
+                action_guide = self._determine_portfolio_action(
+                    final_decision=result.get('final_decision', 'hold'),
+                    recommended_action=result.get('recommended_action', 'hold'),
+                    confidence=result.get('confidence', 0.5),
+                    risk_level=risk_opinion.get('risk_level', 'medium'),
+                    action_context=action_context
+                )
+                result.update(action_guide)
+
             return result
 
         except Exception as e:
+            logger.error(f"❌ PM Agent Analysis Failed: {str(e)}", exc_info=True)
             # Error handling - return safe default (reject)
             return {
                 'agent': 'pm_mvp',
@@ -452,10 +526,18 @@ class PMAgentMVP:
 
         # Rule 5: Stop Loss Required
         if self.HARD_RULES['stop_loss_required']:
-            stop_loss = risk_opinion.get('stop_loss_pct', 0.0)
-            if stop_loss <= 0.0 or stop_loss > 0.10:  # Must be 0.1% ~ 10%
+            stop_loss = float(risk_opinion.get('stop_loss_pct', 0.0))
+            
+            # AI Hallucination Guard: if > 1.0, assume it means percentage (e.g. 10.5 -> 0.105)
+            if abs(stop_loss) > 1.0:
+                stop_loss = stop_loss / 100.0
+                
+            # Handle negative values (e.g. -0.05 for 5% loss)
+            abs_stop_loss = abs(stop_loss)
+            
+            if abs_stop_loss <= 0.0 or abs_stop_loss > 0.20:  # Must be 0.1% ~ 20%
                 violations.append(
-                    f"손절매 {stop_loss*100:.2f}%가 유효하지 않습니다 (0.1% ~ 10% 범위여야 함)"
+                    f"손절매 {stop_loss*100:.2f}%가 유효하지 않습니다 (0.1% ~ 20% 범위여야 함)"
                 )
 
         # Rule 6: Risk Level "extreme" → Reject
@@ -563,11 +645,13 @@ class PMAgentMVP:
         analyst_opinion: Dict[str, Any],
         portfolio_state: Dict[str, Any],
         correlation_data: Optional[Dict[str, Any]],
-        avg_confidence: float
+        avg_confidence: float,
+        action_context: str = "new_position"
     ) -> str:
         """Build PM decision prompt"""
         prompt_parts = [
             f"종목: {symbol}",
+            f"Context: {action_context.upper()}",
             f"평균 Confidence: {avg_confidence:.2f}",
             "",
             "=== Trader Agent (35% weight) ===",
@@ -609,6 +693,104 @@ class PMAgentMVP:
         prompt_parts.append("\n위 정보를 종합하여 최종 결정을 내리고 JSON 형식으로 답변하세요.")
 
         return "\n".join(prompt_parts)
+
+    def _determine_portfolio_action(
+        self,
+        final_decision: str,
+        recommended_action: str,
+        confidence: float,
+        risk_level: str,
+        action_context: str = "new_position"
+    ) -> Dict[str, Any]:
+        """
+        Determine portfolio-level action from agent inputs.
+
+        Mapping Logic:
+        - approve + sell → SELL
+        - approve + buy + confidence > 0.7 → BUY_MORE
+        - approve + buy + confidence 0.5-0.7 → HOLD
+        - reject + extreme risk → SELL
+        - reject + medium/high risk → HOLD
+        - silence → HOLD
+        - reduce_size → SELL (partial)
+
+        Args:
+            final_decision: PM's final decision (approve/reject/silence/reduce_size)
+            recommended_action: Recommended action (buy/sell/hold)
+            confidence: Confidence level (0.0 ~ 1.0)
+            risk_level: Risk level (low/medium/high/extreme)
+
+        Returns:
+            Dict with portfolio_action, action_strength, position_adjustment_pct
+        """
+        # Action mapping based on final_decision, recommended_action, confidence, risk_level
+        action_map = {
+            ("approve", "sell"): ("sell", "strong"),
+            ("approve", "buy"): ("buy_more" if confidence > 0.7 else "hold", "moderate"),
+            ("reject", "extreme"): ("sell", "strong"),
+            ("reject", "high"): ("hold", "moderate"),
+            ("reject", "medium"): ("hold", "moderate"),
+            ("silence", ""): ("hold", "weak"),
+            ("reduce_size", ""): ("sell", "moderate"),
+        }
+
+        # Determine key for action_map
+        if final_decision == "reject" and risk_level == "extreme":
+            key = ("reject", "extreme")
+        elif final_decision == "reject" and risk_level in ("high", "medium"):
+            key = ("reject", risk_level)
+        elif final_decision == "approve":
+            key = ("approve", recommended_action)
+        elif final_decision == "silence":
+            key = ("silence", "")
+        elif final_decision == "reduce_size":
+            key = ("reduce_size", "")
+        else:
+            key = ("approve", "hold")  # Default fallback
+
+        portfolio_action, strength = action_map.get(key, ("hold", "moderate"))
+
+        # Context-Aware Refinement
+        if action_context == "existing_position":
+            # Avoid 'do_not_buy' for existing positions
+            if portfolio_action == "do_not_buy":
+                portfolio_action = "hold"
+        elif action_context == "new_position":
+            # For new positions, 'hold' often means 'do_not_buy' (don't enter yet)
+            if portfolio_action == "hold":
+                portfolio_action = "do_not_buy"
+            # 'sell' is invalid for new position, map to 'do_not_buy'
+            if portfolio_action == "sell":
+                portfolio_action = "do_not_buy"
+
+        return {
+            "portfolio_action": portfolio_action,
+            "action_strength": strength,
+            "position_adjustment_pct": self._calculate_position_adjustment(
+                portfolio_action, confidence
+            )
+        }
+
+    def _calculate_position_adjustment(self, action: str, confidence: float) -> float:
+        """
+        Calculate position adjustment percentage.
+
+        Args:
+            action: Portfolio action (sell/buy_more/hold/do_not_buy)
+            confidence: Confidence level (0.0 ~ 1.0)
+
+        Returns:
+            Position adjustment percentage (-1.0 ~ 1.0)
+            -0.5 = sell 50%, +0.2 = buy 20% more
+        """
+        adjustments = {
+            "sell": -0.5,      # Sell 50%
+            "buy_more": 0.2,    # Add 20%
+            "hold": 0.0,
+            "do_not_buy": 0.0
+        }
+        base = adjustments.get(action, 0.0)
+        return base * confidence  # Scale by confidence
 
     def _parse_response(self, response_text: str) -> PMDecision:
         """Parse Gemini response using Pydantic"""

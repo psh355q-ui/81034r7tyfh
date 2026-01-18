@@ -54,6 +54,12 @@ export interface AIDecision {
   position_size: number;
   risk_factors: string[];
   timestamp?: string;
+
+  // Context-Aware Portfolio Action Fields
+  portfolio_action?: 'buy' | 'sell' | 'hold' | 'buy_more' | 'do_not_buy';
+  action_reason?: string;
+  action_strength?: 'weak' | 'moderate' | 'strong';
+  position_adjustment_pct?: number;
 }
 
 export interface RiskStatus {

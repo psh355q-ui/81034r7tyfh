@@ -23,6 +23,7 @@
     "dayjs": "^1.11.19",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
+    "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -21,14 +21,8 @@ import asyncio
 # Use PostgreSQL models (NOT SQLite news_models)
 from backend.database.models import NewsArticle, NewsAnalysis, NewsTickerRelevance, RSSFeed
 from backend.core.database import get_db
-from backend.data.rss_crawler import RSSCrawler, get_recent_articles, get_unanalyzed_articles, get_feed_stats
-from backend.data.news_analyzer import (
-    NewsDeepAnalyzer,
-    get_analyzed_articles,
-    get_ticker_news,
-    get_high_impact_news,
-    get_warning_news,
-)
+from backend.data.rss_crawler import RSSCrawler, get_unanalyzed_articles, get_feed_stats
+from backend.data.news_analyzer import NewsDeepAnalyzer
 from backend.ai.gemini_client import GeminiClient
 from backend.ai.skills.common.logging_decorator import log_endpoint
 
@@ -391,18 +385,53 @@ async def get_news_articles(
 ):
     """
     뉴스 기사 조회
-    
+
     - limit: 최대 개수
     - hours: 최근 N시간
     - source: 소스 필터
     - sentiment: 감정 필터 (positive/negative/neutral/mixed)
     - actionable_only: 행동 가능한 것만
     """
+    from sqlalchemy import select, func
+    from sqlalchemy.orm import selectinload
+
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+    # Build base query with eager loading to avoid MissingGreenlet error
+    stmt = (
+        select(NewsArticle)
+        .options(
+            selectinload(NewsArticle.analysis),  # Eager load analysis relationship
+            selectinload(NewsArticle.ticker_relevances)  # Eager load ticker_relevances
+        )
+        .outerjoin(NewsAnalysis)  # Use outerjoin to include articles without analysis
+    )
+
+    # Apply filters
     if sentiment or actionable_only:
-        articles = get_analyzed_articles(db, limit, sentiment, actionable_only)
-    else:
-        articles = await get_recent_articles(db, limit, hours, source)
-    
+        # For sentiment/actionable filters, we need to filter on the joined table
+        stmt = stmt.where(NewsAnalysis.id.isnot(None))
+
+        if sentiment:
+            stmt = stmt.where(NewsAnalysis.sentiment_overall == sentiment)
+
+        if actionable_only:
+            stmt = stmt.where(NewsAnalysis.trading_actionable == True)
+
+    # Time filter
+    stmt = stmt.where(NewsArticle.published_date >= cutoff)
+
+    # Source filter
+    if source:
+        stmt = stmt.where(NewsArticle.source.ilike(f"%{source}%"))
+
+    # Order and limit
+    stmt = stmt.order_by(NewsArticle.published_date.desc()).limit(limit)
+
+    # Execute query
+    result = await db.execute(stmt)
+    articles = result.scalars().all()
+
     return [
         NewsArticleResponse(
             id=a.id,
@@ -433,14 +462,22 @@ async def get_news_detail(
 ):
     """기사 상세 조회 (분석 포함)"""
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
-    stmt = select(NewsArticle).filter(NewsArticle.id == article_id)
+    stmt = (
+        select(NewsArticle)
+        .options(
+            selectinload(NewsArticle.analysis),  # Eager load analysis relationship
+            selectinload(NewsArticle.ticker_relevances)  # Eager load ticker_relevances
+        )
+        .filter(NewsArticle.id == article_id)
+    )
     result = await db.execute(stmt)
     article = result.scalar_one_or_none()
 
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    
+
     analysis_response = None
     if article.analysis:
         a = article.analysis
@@ -462,7 +499,7 @@ async def get_news_detail(
             analyzed_at=a.analyzed_at.isoformat() if a.analyzed_at else datetime.utcnow().isoformat(),
             tokens_used=a.tokens_used or 0
         )
-    
+
     related_tickers = [
         {
             "ticker": rel.ticker,
@@ -471,7 +508,7 @@ async def get_news_detail(
         }
         for rel in article.ticker_relevances
     ]
-    
+
     return NewsDetailResponse(
         id=article.id,
         url=article.url,
@@ -495,7 +532,35 @@ async def get_news_by_ticker(
     db: Session = Depends(get_db)
 ):
     """특정 티커 관련 뉴스"""
-    news = get_ticker_news(db, ticker.upper(), limit)
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    # Use async query with eager loading to avoid MissingGreenlet error
+    stmt = (
+        select(NewsTickerRelevance)
+        .options(
+            selectinload(NewsTickerRelevance.article)  # Eager load article
+        )
+        .filter(NewsTickerRelevance.ticker == ticker.upper())
+        .order_by(NewsTickerRelevance.relevance_score.desc())
+        .limit(limit)
+    )
+
+    result = await db.execute(stmt)
+    relevances = result.scalars().all()
+
+    news = [
+        {
+            "article_id": rel.article.id,
+            "title": rel.article.title,
+            "source": rel.article.source,
+            "published_at": rel.article.published_date.isoformat() if rel.article.published_date else None,
+            "relevance": rel.relevance_score,
+            "sentiment": rel.sentiment_for_ticker
+        }
+        for rel in relevances
+    ]
+
     return {
         "ticker": ticker.upper(),
         "count": len(news),
@@ -510,7 +575,24 @@ async def get_high_impact_articles(
     db: Session = Depends(get_db)
 ):
     """높은 영향도 뉴스"""
-    articles = get_high_impact_news(db, min_magnitude)
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    # Use async query with eager loading to avoid MissingGreenlet error
+    stmt = (
+        select(NewsArticle)
+        .options(
+            selectinload(NewsArticle.analysis)  # Eager load analysis
+        )
+        .join(NewsAnalysis)
+        .filter(NewsAnalysis.impact_magnitude >= min_magnitude)
+        .order_by(NewsArticle.published_date.desc())
+        .limit(20)
+    )
+
+    result = await db.execute(stmt)
+    articles = result.scalars().all()
+
     return {
         "count": len(articles),
         "articles": [
@@ -518,7 +600,7 @@ async def get_high_impact_articles(
                 "id": a.id,
                 "title": a.title,
                 "source": a.source,
-                "published_at": a.published_at.isoformat() if a.published_at else None,
+                "published_at": a.published_date.isoformat() if a.published_date else None,
                 "impact_magnitude": a.analysis.impact_magnitude if a.analysis else 0,
                 "sentiment": a.analysis.sentiment_overall if a.analysis else "unknown",
                 "affected_sectors": a.analysis.affected_sectors if a.analysis else []
@@ -532,7 +614,24 @@ async def get_high_impact_articles(
 @log_endpoint("news", "analysis")
 async def get_warning_articles(db: Session = Depends(get_db)):
     """경고 신호가 있는 뉴스"""
-    articles = get_warning_news(db)
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    # Use async query with eager loading to avoid MissingGreenlet error
+    stmt = (
+        select(NewsArticle)
+        .options(
+            selectinload(NewsArticle.analysis)  # Eager load analysis
+        )
+        .join(NewsAnalysis)
+        .filter(NewsAnalysis.red_flags.isnot(None))
+        .order_by(NewsArticle.published_date.desc())
+        .limit(20)
+    )
+
+    result = await db.execute(stmt)
+    articles = result.scalars().all()
+
     return {
         "count": len(articles),
         "articles": [

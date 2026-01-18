@@ -287,7 +287,7 @@ JSON 객체만 출력하십시오. 설명이나 추가 텍스트 없이 JSON만 
             'symbol': symbol,
             'stage': 'structured_fallback',
             'fallback_reason': error_msg,
-            'reasoning': reasoning_text[:500] + '...' if len(reasoning_text) > 500 else reasoning_text
+            'reasoning': reasoning_text[:2000] + '...' if len(reasoning_text) > 2000 else reasoning_text
         }
 
         # Extract action/decision using keyword patterns

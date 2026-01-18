@@ -99,11 +99,28 @@ export const PersonaProvider: React.FC<PersonaProviderProps> = ({ children }) =>
             setError(null);
             const data = await getCurrentMode();
             setModeInfo(data);
-            setCurrentMode(data.mode as PersonaMode);
-            localStorage.setItem('persona_mode', data.mode);
+
+            // Only update state and localStorage if backend has a different mode
+            // This preserves user's preference when backend has default value
+            const savedMode = localStorage.getItem('persona_mode');
+            if (savedMode && savedMode !== data.mode) {
+                // Keep the saved mode - user preference takes priority
+                console.log(`[PersonaContext] Preserving saved mode: ${savedMode} (backend: ${data.mode})`);
+                setCurrentMode(savedMode as PersonaMode);
+                // Don't update localStorage - keep user preference
+            } else {
+                setCurrentMode(data.mode as PersonaMode);
+                localStorage.setItem('persona_mode', data.mode);
+            }
         } catch (err) {
             console.error('Failed to fetch current mode:', err);
-            setError('Failed to load persona mode');
+            // On API failure, keep using the saved mode from localStorage
+            // Don't set error - just silently continue with saved preference
+            const savedMode = localStorage.getItem('persona_mode');
+            if (savedMode) {
+                console.log(`[PersonaContext] API failed, using saved mode: ${savedMode}`);
+                setCurrentMode(savedMode as PersonaMode);
+            }
         } finally {
             setIsLoading(false);
         }

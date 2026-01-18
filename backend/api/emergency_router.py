@@ -42,15 +42,16 @@ async def get_emergency_status(db: Session = Depends(get_db)):
         total_drawdown = 0.0
         
         try:
-            from backend.api.mock_router import get_portfolio
+            # Import from actual portfolio router
+            from backend.api.portfolio_router import get_portfolio
             portfolio = await get_portfolio()
             
-            # Daily loss from portfolio
-            daily_loss = portfolio.get("daily_return_pct", 0) / 100.0
+            # Daily loss from portfolio (PortfolioResponse object)
+            daily_loss = (portfolio.daily_return_pct or 0) / 100.0
             
-            # Calculate drawdown (simplified - ideally track peak value)
-            total_value = portfolio.get("total_value", 100000)
-            total_pnl = portfolio.get("total_pnl", 0)
+            # Calculate drawdown
+            total_value = portfolio.total_value or 100000
+            total_pnl = portfolio.total_pnl or 0
             initial_value = total_value - total_pnl
             
             if initial_value > 0:
@@ -153,8 +154,8 @@ async def track_grounding_search(
         
         log = GroundingSearchLog(
             ticker=ticker.upper(),
-            search_query=f"latest news about {ticker.upper()} stock",
-            results_count=results_count,
+            query=f"latest news about {ticker.upper()} stock",
+            result_count=results_count,
             estimated_cost=cost,
             emergency_trigger=emergency_trigger,
             was_emergency=emergency_trigger is not None

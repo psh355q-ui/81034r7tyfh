@@ -145,6 +145,13 @@ except ImportError as e:
     logger.warning(f"KIS router not available: {e}")
 
 try:
+    from backend.api.kis_sync_router import router as kis_sync_router
+    KIS_SYNC_AVAILABLE = True
+except ImportError as e:
+    KIS_SYNC_AVAILABLE = False
+    logger.warning(f"KIS sync router not available: {e}")
+
+try:
     from backend.api.ai_signals_router import router as ai_signals_router
     AI_SIGNALS_AVAILABLE = True
 except ImportError as e:
@@ -180,6 +187,13 @@ except ImportError as e:
     logger.warning(f"Auto Trade router not available: {e}")
 
 try:
+    from backend.api.stock_price_router import router as stock_price_router
+    STOCK_PRICE_AVAILABLE = True
+except ImportError as e:
+    STOCK_PRICE_AVAILABLE = False
+    logger.warning(f"Stock Price router not available: {e}")
+
+try:
     from backend.api.ceo_analysis_router import router as ceo_analysis_router
     CEO_ANALYSIS_AVAILABLE = True
 except ImportError as e:
@@ -199,6 +213,13 @@ try:
 except ImportError as e:
     REPORTS_AVAILABLE = False
     logger.warning(f"Reports router not available: {e}")
+
+try:
+    from backend.api.chart_router import router as chart_router
+    CHART_AVAILABLE = True
+except ImportError as e:
+    CHART_AVAILABLE = False
+    logger.warning(f"Chart router not available: {e}")
 
 try:
     from backend.api.reasoning_api import router as reasoning_router
@@ -584,6 +605,9 @@ if INCREMENTAL_AVAILABLE:
 if REPORTS_AVAILABLE:
     app.include_router(reports_router, prefix="/api")
     logger.info("Reports router registered (/api/reports)")
+if CHART_AVAILABLE:
+    app.include_router(chart_router)
+    logger.info("Chart router registered (/api/chart)")
 if REASONING_AVAILABLE:
     app.include_router(reasoning_router)
     logger.info("Reasoning router registered")
@@ -593,6 +617,9 @@ if PHASE_AVAILABLE:
 if KIS_AVAILABLE:
     app.include_router(kis_router)
     logger.info("KIS router registered")
+if KIS_SYNC_AVAILABLE:
+    app.include_router(kis_sync_router)
+    logger.info("KIS sync router registered")
 if AI_SIGNALS_AVAILABLE:
     app.include_router(ai_signals_router)
     logger.info("AI Signals router registered")
@@ -608,7 +635,10 @@ if GLOBAL_MACRO_AVAILABLE:
 if AUTO_TRADE_AVAILABLE:
     app.include_router(auto_trade_router)
     logger.info("Auto Trade router registered")
-    
+if STOCK_PRICE_AVAILABLE:
+    app.include_router(stock_price_router)
+    logger.info("Stock Price router registered")
+
 # Emergency Detection
 from backend.api.emergency_router import router as emergency_router
 app.include_router(emergency_router, prefix="/api")
@@ -726,6 +756,9 @@ class AnalyzeRequest(BaseModel):
     ticker: str
     urgency: str = "MEDIUM"
     market_context: Optional[Dict] = None
+    # NEW: Add context and persona_mode for portfolio action guide
+    context: str = "new_position"  # "new_position" | "existing_position"
+    persona_mode: Optional[str] = "trading"  # "dividend" | "long_term" | "trading" | "aggressive"
 
 class BatchAnalyzeRequest(BaseModel):
     tickers: list[str]
@@ -798,56 +831,186 @@ async def prometheus_metrics():
 # =============================================================================
 @app.post("/api/analyze", tags=["Trading"])
 async def analyze_ticker(request: AnalyzeRequest, background_tasks: BackgroundTasks):
-    """Analyze a single ticker using Trading Agent."""
+    """
+    Analyze a single ticker using War Room MVP (3+1 Agents).
+
+    Returns:
+        - ticker: Symbol analyzed
+        - final_decision: approve/reject/reduce_size/silence
+        - recommended_action: buy/sell/hold
+        - confidence: Final confidence score
+        - agents_analysis: Individual agent opinions (trader, risk, analyst, pm)
+        - analysis_timestamp: When analysis was performed
+        - analysis_duration_seconds: How long it took
+    """
     if metrics_collector:
         start_time_req = datetime.utcnow()
-    
+
     try:
-        # Import and initialize TradingAgent inside the endpoint to avoid circular imports during startup
-        from backend.ai.trading_agent import TradingAgent
-        agent = TradingAgent()
-        
-        # Perform analysis
-        decision = await agent.analyze(
-            ticker=request.ticker,
-            market_context=request.market_context
+        # Import War Room MVP for 3+1 Agent analysis
+        from backend.ai.mvp.war_room_mvp import WarRoomMVP
+        from backend.routers.war_room_mvp_router import fetch_market_data
+        from backend.database.repository import get_sync_session
+
+        war_room = WarRoomMVP()
+        db = get_sync_session()
+
+        # Fetch market data
+        market_data = fetch_market_data(request.ticker)
+
+        # Fetch additional data (news, macro, etc.)
+        from backend.ai.mvp.data_helper import prepare_additional_data
+        additional_data = prepare_additional_data(request.ticker, db)
+
+        # Default portfolio state for single ticker analysis
+        portfolio_state = {
+            "total_value": 100000.0,
+            "available_cash": 100000.0,
+            "total_risk": 0.0,
+            "position_count": 0,
+            "current_positions": []
+        }
+
+        # Run War Room deliberation
+        # Pass context and persona_mode for context-aware analysis
+        war_room_result = await war_room.deliberate(
+            symbol=request.ticker,
+            action_context=request.context,  # "new_position" | "existing_position"
+            persona_mode=request.persona_mode or "trading",  # Pass persona mode
+            market_data=market_data,
+            portfolio_state=portfolio_state,
+            additional_data=additional_data
         )
-        
+
+        # Transform War Room result to expected frontend format
+        agents = war_room_result.get('agent_opinions', {})
+        pm_decision = war_room_result.get('pm_decision', {})
+
+        # Map actions to standard format
+        def normalize_action(action: str) -> str:
+            action_upper = action.upper() if action else "HOLD"
+            if action_upper in ["BUY", "SELL", "HOLD"]:
+                return action_upper
+            if action_upper == "APPROVE":
+                return "BUY"
+            if action_upper == "REJECT":
+                return "SELL"
+            return "HOLD"
+
         result = {
-            "ticker": decision.ticker,
-            "action": decision.action,
-            "conviction": decision.conviction,
-            "reasoning": decision.reasoning,
-            "position_size": decision.position_size,
-            "target_price": decision.target_price,
-            "stop_loss": decision.stop_loss,
-            "risk_factors": decision.risk_factors,
-            "timestamp": decision.timestamp.isoformat() if decision.timestamp else datetime.utcnow().isoformat(),
+            "ticker": request.ticker,
+            "final_decision": {
+                "action": normalize_action(pm_decision.get("final_decision", "HOLD")),
+                "confidence": war_room_result.get("confidence", 0.5),
+                "reasoning": pm_decision.get("reasoning", "No reasoning provided")
+            },
+            "agents_analysis": {
+                "trader_agent": {
+                    "action": normalize_action(agents.get("trader", {}).get("action", "HOLD")),
+                    "confidence": agents.get("trader", {}).get("confidence", 0.5),
+                    "reasoning": agents.get("trader", {}).get("reasoning", ""),
+                    "weight": agents.get("trader", {}).get("weight", 0.35),
+                    "latency_seconds": agents.get("trader", {}).get("latency_seconds", 0)
+                },
+                "risk_agent": {
+                    "action": normalize_action(agents.get("risk", {}).get("recommendation", "HOLD")),
+                    "confidence": agents.get("risk", {}).get("confidence", 0.5),
+                    "reasoning": agents.get("risk", {}).get("reasoning", ""),
+                    "weight": agents.get("risk", {}).get("weight", 0.30),
+                    "latency_seconds": agents.get("risk", {}).get("latency_seconds", 0)
+                },
+                "analyst_agent": {
+                    "action": normalize_action(agents.get("analyst", {}).get("action", "HOLD")),
+                    "confidence": agents.get("analyst", {}).get("confidence", 0.5),
+                    "reasoning": agents.get("analyst", {}).get("reasoning", ""),
+                    "weight": agents.get("analyst", {}).get("weight", 0.35),
+                    "latency_seconds": agents.get("analyst", {}).get("latency_seconds", 0)
+                },
+                "pm_agent": {
+                    "action": normalize_action(pm_decision.get("final_decision", "HOLD")),
+                    "confidence": pm_decision.get("confidence", 0.5),
+                    "reasoning": pm_decision.get("reasoning", ""),
+                    "hard_rules_passed": pm_decision.get("hard_rules_passed", []),
+                    "hard_rules_violations": pm_decision.get("hard_rules_violations", [])
+                }
+            },
+            # NEW: Portfolio Action Guide
+            "portfolio_action_guide": {
+                "action": pm_decision.get("portfolio_action", "hold").upper(),  # SELL | BUY_MORE | HOLD | DO_NOT_BUY
+                "reason": pm_decision.get("action_reason", ""),
+                "strength": pm_decision.get("action_strength", "moderate"),  # weak | moderate | strong
+                "confidence": pm_decision.get("confidence", 0.5),
+                "position_adjustment_pct": pm_decision.get("position_adjustment_pct", 0.0),
+                "stop_loss_pct": agents.get("risk", {}).get("stop_loss_pct", 0.05),
+                "take_profit_pct": agents.get("risk", {}).get("take_profit_pct", 0.10)
+            },
+            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "analysis_duration_seconds": war_room_result.get("timestamp", 0),
+            "weights": war_room_result.get("weights", {"trader_mvp": 0.35, "risk_mvp": 0.30, "analyst_mvp": 0.35}),
+            "persona_mode": war_room_result.get("persona_mode", "trading"),
+            "news_summary": {
+                "total_articles": len(additional_data.get("news_articles", [])),
+                "recent_headlines": [a.get("title", "") for a in additional_data.get("news_articles", [])[:3]]
+            }
         }
 
         if metrics_collector:
             latency = (datetime.utcnow() - start_time_req).total_seconds()
             metrics_collector.record_trading_decision(
                 ticker=request.ticker,
-                action=result["action"],
-                conviction=result["conviction"],
+                action=result["final_decision"]["action"],
+                conviction=result["final_decision"]["confidence"],
                 latency_seconds=latency,
             )
+
+        db.close()
         return result
-        
+
     except Exception as e:
-        logger.error(f"Analysis failed for {request.ticker}: {e}", exc_info=True)
-        # Fallback to safe HOLD response
+        logger.error(f"War Room analysis failed for {request.ticker}: {e}", exc_info=True)
+        # Fallback to safe HOLD response with agent structure
         return {
             "ticker": request.ticker,
-            "action": "HOLD",
-            "conviction": 0.0,
-            "reasoning": f"Analysis failed: {str(e)}",
-            "position_size": 0.0,
-            "target_price": None,
-            "stop_loss": None,
-            "risk_factors": ["system_error"],
-            "timestamp": datetime.utcnow().isoformat(),
+            "final_decision": {
+                "action": "HOLD",
+                "confidence": 0.5,
+                "reasoning": f"Analysis failed: {str(e)}"
+            },
+            "agents_analysis": {
+                "trader_agent": {
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "reasoning": f"Agent failed: {str(e)}",
+                    "weight": 0.35,
+                    "latency_seconds": 0
+                },
+                "risk_agent": {
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "reasoning": f"Agent failed: {str(e)}",
+                    "weight": 0.30,
+                    "latency_seconds": 0
+                },
+                "analyst_agent": {
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "reasoning": f"Agent failed: {str(e)}",
+                    "weight": 0.35,
+                    "latency_seconds": 0
+                },
+                "pm_agent": {
+                    "action": "HOLD",
+                    "confidence": 0.0,
+                    "reasoning": f"Analysis failed: {str(e)}",
+                    "hard_rules_passed": [],
+                    "hard_rules_violations": []
+                }
+            },
+            "analysis_timestamp": datetime.utcnow().isoformat(),
+            "analysis_duration_seconds": 0,
+            "weights": {"trader_mvp": 0.35, "risk_mvp": 0.30, "analyst_mvp": 0.35},
+            "persona_mode": "trading",
+            "news_summary": {"total_articles": 0, "recent_headlines": []}
         }
 
 @app.post("/api/analyze/batch", tags=["Trading"])

@@ -129,7 +129,8 @@ class AnalystOpinion(BaseModel):
 class PMDecision(BaseModel):
     """PM Agent MVP 최종 결정 스키마"""
     agent: Literal['pm_mvp'] = 'pm_mvp'
-    final_decision: Literal['approve', 'reject', 'reduce_size', 'silence', 'conditional']
+    # Updated to include 'hold' for existing_position context
+    final_decision: Literal['approve', 'reject', 'reduce_size', 'silence', 'conditional', 'hold']
     confidence: float = Field(ge=0.0, le=1.0, description="최종 결정 신뢰도")
     reasoning: str = Field(min_length=10, description="결정 근거")
     hard_rules_passed: bool = Field(description="Hard Rules 통과 여부")
@@ -137,6 +138,24 @@ class PMDecision(BaseModel):
     approved_params: Optional[Dict[str, Any]] = Field(default=None, description="승인된 파라미터")
     risk_warnings: List[str] = Field(default_factory=list, description="리스크 경고")
     approval_conditions: List[str] = Field(default_factory=list, description="승인 조건")
+
+    # NEW: Portfolio Action Guide fields (Phase 1)
+    portfolio_action: Optional[str] = Field(
+        default="hold",
+        description="Portfolio-level action: sell | buy_more | hold | do_not_buy"
+    )
+    action_reason: Optional[str] = Field(
+        default="",
+        description="Reasoning for the portfolio action (Korean)"
+    )
+    action_strength: Optional[str] = Field(
+        default="moderate",
+        description="Strength: weak | moderate | strong"
+    )
+    position_adjustment_pct: Optional[float] = Field(
+        default=0.0,
+        description="Suggested adjustment (+0.2 = add 20%, -0.5 = sell 50%)"
+    )
 
     class Config:
         json_schema_extra = {
@@ -165,7 +184,8 @@ class WarRoomResult(BaseModel):
     execution_mode: Literal['fast_track', 'deep_dive'] = Field(description="실행 모드")
     agent_opinions: Dict[str, Any] = Field(description="각 Agent 의견")
     pm_decision: PMDecision = Field(description="PM 최종 결정")
-    final_decision: Literal['approve', 'reject', 'reduce_size', 'silence', 'conditional']
+    # Updated to include 'hold'
+    final_decision: Literal['approve', 'reject', 'reduce_size', 'silence', 'conditional', 'hold']
     approved_params: Optional[Dict[str, Any]] = Field(default=None)
     processing_time_ms: int = Field(ge=0, description="처리 시간 (ms)")
     timestamp: datetime = Field(default_factory=datetime.utcnow)

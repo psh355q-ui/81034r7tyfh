@@ -16,7 +16,10 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import sys
 import os
+import logging
 from backend.ai.skills.common.logging_decorator import log_endpoint
+
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

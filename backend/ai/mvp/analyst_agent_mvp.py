@@ -57,11 +57,13 @@ class AnalystReasoningAgent(GeminiReasoningAgentBase):
         symbol: str,
         price_data: Dict[str, Any],
         technical_data: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position",
         **kwargs
     ) -> str:
         """Build reasoning prompt for analyst analysis"""
         prompt_parts = [
             f"종목: {symbol}",
+            f"분석 관점: {'신규 진입 (New Entry)' if action_context == 'new_position' else '보유 중 (Existing Position)'}",
             f"현재가: ${price_data.get('current_price', 'N/A')}",
         ]
 
@@ -118,6 +120,18 @@ class AnalystReasoningAgent(GeminiReasoningAgentBase):
             if 'relative_strength' in sector_context:
                 prompt_parts.append(f"- 상대적 강도: {sector_context['relative_strength']}")
 
+        # Context-Specific Instructions
+        if action_context == "existing_position":
+            prompt_parts.append("\n[보유자 관점 정보 분석 검증]")
+            prompt_parts.append("1. 현재 보유 근거(Investment Thesis)를 훼손하는 부정적 뉴스가 있는지 확인하세요.")
+            prompt_parts.append("2. 실적 발표 등 단기 변동성을 유발할 수 있는 이벤트가 임박했는지 확인하세요.")
+            prompt_parts.append("3. 장기 보유를 지속할 만한 펀더멘털 개선 신호가 있는지 확인하세요.")
+        else:
+            prompt_parts.append("\n[신규 진입 관점 정보 분석 지침]")
+            prompt_parts.append("1. 주가 상승을 견인할 주요 촉매제(Key Catalyst)가 식별되는지 확인하세요.")
+            prompt_parts.append("2. 현재 진입하기에 거시경제 및 섹터 환경이 우호적인지 평가하세요.")
+            prompt_parts.append("3. 잠재적인 악재(Red Flag)가 선반영되었는지 확인하세요.")
+        
         return "\n".join(prompt_parts)
 
 
@@ -172,7 +186,8 @@ class AnalystAgentMVP:
         macro_data: Optional[Dict[str, Any]] = None,
         institutional_flow: Optional[Dict[str, Any]] = None,
         geopolitical_risks: Optional[List[Dict]] = None,
-        sector_context: Optional[Dict[str, Any]] = None
+        sector_context: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position"
     ) -> Dict[str, Any]:
         """
         Two-stage analyst analysis:
@@ -205,7 +220,8 @@ class AnalystAgentMVP:
                 macro_data=macro_data,
                 institutional_flow=institutional_flow,
                 geopolitical_risks=geopolitical_risks,
-                sector_context=sector_context
+                sector_context=sector_context,
+                action_context=action_context
             )
 
             if 'error' in reasoning_result:

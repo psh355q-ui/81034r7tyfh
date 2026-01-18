@@ -316,11 +316,14 @@ class GroundingSearchLog(Base):
     __tablename__ = 'grounding_search_logs'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(50), nullable=True)
     query = Column(Text, nullable=False)
     result_count = Column(Integer, nullable=False, default=0)
     search_date = Column(DateTime, nullable=False, default=datetime.now, index=True)
     estimated_cost = Column(Float, nullable=False, default=0.0)
     response_time_ms = Column(Integer, nullable=True)
+    emergency_trigger = Column(String(255), nullable=True)
+    was_emergency = Column(Boolean, default=False)
     metadata_ = Column("metadata", JSONB, nullable=True)
 
     # Indexes

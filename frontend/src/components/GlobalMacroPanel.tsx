@@ -104,11 +104,15 @@ const CountryCard: React.FC<{ risk: CountryRisk }> = ({ risk }) => {
 
 // 이벤트 카드 컴포넌트 (Restyled)
 const EventCard: React.FC<{ event: MacroEvent }> = ({ event }) => {
+  const eventDate = new Date(event.timestamp);
+  const dateStr = eventDate.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace(/\./g, '').replace(/\s/g, '');
+  const timeStr = eventDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+
   return (
     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:shadow-sm transition-shadow">
       <div className="flex justify-between items-start mb-1">
         <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{event.source}</span>
-        <span className="text-xs text-gray-400">{new Date(event.timestamp).toLocaleTimeString('ko-KR')}</span>
+        <span className="text-xs text-gray-400">{dateStr} {timeStr}</span>
       </div>
       <p className="text-sm text-gray-800 font-medium mb-2">{event.description}</p>
       <div className="flex justify-between items-center text-xs">

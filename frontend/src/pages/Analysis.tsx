@@ -238,7 +238,7 @@ export const Analysis: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-600">Conviction</p>
                   <p className="text-2xl font-bold">
-                    {(analysisResult.conviction * 100).toFixed(0)}%
+                    {((analysisResult.conviction ?? 0) * 100).toFixed(0)}%
                   </p>
                 </div>
               </div>
@@ -252,13 +252,13 @@ export const Analysis: React.FC = () => {
             <div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full ${analysisResult.conviction >= 0.8
+                  className={`h-full ${(analysisResult.conviction ?? 0) >= 0.8
                     ? 'bg-green-500'
-                    : analysisResult.conviction >= 0.6
+                    : (analysisResult.conviction ?? 0) >= 0.6
                       ? 'bg-yellow-500'
                       : 'bg-red-500'
                     }`}
-                  style={{ width: `${analysisResult.conviction * 100}%` }}
+                  style={{ width: `${(analysisResult.conviction ?? 0) * 100}%` }}
                 />
               </div>
             </div>
@@ -357,12 +357,12 @@ export const Analysis: React.FC = () => {
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">
-                    Conviction: {(result.conviction * 100).toFixed(0)}%
+                    Conviction: {((result.conviction ?? 0) * 100).toFixed(0)}%
                   </p>
                   <div className="h-2 bg-gray-200 rounded-full">
                     <div
                       className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${result.conviction * 100}%` }}
+                      style={{ width: `${(result.conviction ?? 0) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -496,7 +496,7 @@ export const Analysis: React.FC = () => {
                     </Badge>
                   </div>
                   <div className="space-y-1 text-sm text-gray-600">
-                    <p>Conviction: {(item.conviction * 100).toFixed(0)}%</p>
+                    <p>Conviction: {((item.conviction ?? 0) * 100).toFixed(0)}%</p>
                     <p>Position: {item.position_size}%</p>
                     <p className="text-xs text-gray-400">
                       {new Date(item.timestamp).toLocaleString()}
@@ -505,7 +505,7 @@ export const Analysis: React.FC = () => {
                   <div className="h-2 bg-gray-200 rounded-full mt-2">
                     <div
                       className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${item.conviction * 100}%` }}
+                      style={{ width: `${(item.conviction ?? 0) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -553,7 +553,7 @@ export const Analysis: React.FC = () => {
                 </Badge>
                 <div>
                   <p className="text-sm text-gray-600">Conviction</p>
-                  <p className="text-xl font-bold">{(selectedHistory.conviction * 100).toFixed(0)}%</p>
+                  <p className="text-xl font-bold">{((selectedHistory.conviction ?? 0) * 100).toFixed(0)}%</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Position Size</p>

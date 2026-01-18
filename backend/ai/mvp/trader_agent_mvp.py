@@ -61,11 +61,13 @@ class TraderReasoningAgent(GeminiReasoningAgentBase):
         chipwar_events: Optional[list] = None,
         market_context: Optional[Dict[str, Any]] = None,
         multi_timeframe_data: Optional[Dict[str, Any]] = None,
-        option_data: Optional[Dict[str, Any]] = None
+        option_data: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position"
     ) -> str:
         """Build reasoning prompt for trader analysis"""
         prompt_parts = [
             f"종목: {symbol}",
+            f"분석 관점: {'신규 진입 (New Entry)' if action_context == 'new_position' else '보유 중 (Existing Position)'}",
             f"현재가: ${price_data.get('current_price', 'N/A')}",
             f"시가: ${price_data.get('open', 'N/A')}",
             f"고가: ${price_data.get('high', 'N/A')}",
@@ -118,6 +120,18 @@ class TraderReasoningAgent(GeminiReasoningAgentBase):
             prompt_parts.append(f"- Max Pain: {option_data.get('max_pain', 'N/A')}")
             prompt_parts.append(f"- Volume: Call {option_data.get('total_call_volume', 0)} vs Put {option_data.get('total_put_volume', 0)}")
 
+        # Context-Specific Instructions
+        if action_context == "existing_position":
+            prompt_parts.append("\n[보유자 관점 분석 지침]")
+            prompt_parts.append("1. 현재 추세가 꺾일 징후가 있는지 확인하세요. (Exit Signal)")
+            prompt_parts.append("2. 지지선이 견고하여 홀딩이 가능한지 판단하세요. (Hold Validity)")
+            prompt_parts.append("3. 추가 매수(불타기)가 유효한 강력한 상승장인지 확인하세요. (Add-on Opportunity)")
+        else:
+            prompt_parts.append("\n[신규 진입 관점 분석 지침]")
+            prompt_parts.append("1. 진입 타이밍이 적절한지 확인하세요. (Entry Timing)")
+            prompt_parts.append("2. 손익비(Risk/Reward)가 유리한 구간인지 확인하세요.")
+            prompt_parts.append("3. 돌파 또는 지지 반등 시그널이 명확한지 확인하세요.")
+
         return "\n".join(prompt_parts)
 
 
@@ -168,7 +182,8 @@ class TraderAgentMVP:
         chipwar_events: Optional[list] = None,
         market_context: Optional[Dict[str, Any]] = None,
         multi_timeframe_data: Optional[Dict[str, Any]] = None,
-        option_data: Optional[Dict[str, Any]] = None
+        option_data: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position"
     ) -> Dict[str, Any]:
         """
         Two-stage analysis:
@@ -199,7 +214,8 @@ class TraderAgentMVP:
                 chipwar_events=chipwar_events,
                 market_context=market_context,
                 multi_timeframe_data=multi_timeframe_data,
-                option_data=option_data
+                option_data=option_data,
+                action_context=action_context
             )
 
             if 'error' in reasoning_result:

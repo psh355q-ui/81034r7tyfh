@@ -6,11 +6,11 @@ Date: 2026-01-17
 
 Purpose:
     Two-Stage 리스크 관리 에이전트 구현
-    - Stage 1: Reasoning Agent (GLM-4.7) → 자연어 추론
+    - Stage 1: Reasoning Agent (Gemini) → 자연어 추론
     - Stage 2: Structuring Agent → JSON 변환
 
 Two-Stage Architecture:
-    1. ReasoningAgent: GLM-4.7으로 자연어 리스크 분석 생성
+    1. ReasoningAgent: Gemini로 자연어 리스크 분석 생성
     2. StructuringAgent: 추론 텍스트를 RiskOpinion 스키마로 변환
 """
 
@@ -20,18 +20,18 @@ import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from backend.ai.mvp.reasoning_agent_base import ReasoningAgentBase
-from backend.ai.mvp.structuring_agent import StructuringAgent
+from backend.ai.mvp.gemini_reasoning_agent_base import GeminiReasoningAgentBase
+from backend.ai.mvp.gemini_structuring_agent import GeminiStructuringAgent
 from backend.ai.schemas.war_room_schemas import RiskOpinion
 
 logger = logging.getLogger(__name__)
 
 
-class RiskReasoningAgent(ReasoningAgentBase):
+class RiskReasoningAgent(GeminiReasoningAgentBase):
     """
     Stage 1: Risk Reasoning Agent
 
-    Uses GLM-4.7 for natural language reasoning only.
+    Uses Gemini for natural language reasoning only.
     No JSON output required.
     """
 
@@ -47,11 +47,13 @@ class RiskReasoningAgent(ReasoningAgentBase):
         symbol: str,
         price_data: Dict[str, Any],
         technical_data: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position",
         **kwargs
     ) -> str:
         """Build reasoning prompt for risk analysis"""
         prompt_parts = [
             f"종목: {symbol}",
+            f"분석 관점: {'신규 진입 (New Entry)' if action_context == 'new_position' else '보유 중 (Existing Position)'}",
             f"현재가: ${price_data.get('current_price', 'N/A')}",
             f"변동률: {price_data.get('change_pct', 0):+.2f}%" if 'change_pct' in price_data else "",
         ]
@@ -91,6 +93,19 @@ class RiskReasoningAgent(ReasoningAgentBase):
             if 'volatility_index' in market_context:
                 prompt_parts.append(f"- VIX: {market_context['volatility_index']}")
 
+        # Context-Specific Instructions
+        if action_context == "existing_position":
+            prompt_parts.append("\n[보유자 관점 리스크 분석 검증]")
+            prompt_parts.append("1. 현재 수익 상태(또는 손실 상태)를 지키기 위한 Trailing Stop 레벨을 제안하세요.")
+            prompt_parts.append("   (주의: 모든 퍼센트 값은 소수점으로 표현하세요. 예: 5% -> 0.05)")
+            prompt_parts.append("2. 기존 진입 근거(Thesis)가 훼손되었는지 확인하세요.")
+            prompt_parts.append("3. 비중 축소(Reduce Size)가 필요한 위험 신호가 있는지 확인하세요.")
+        else:
+            prompt_parts.append("\n[신규 진입 관점 리스크 분석 지침]")
+            prompt_parts.append("1. 진입 시 적절한 초기 손절가(Initial Stop Loss)를 산정하세요.")
+            prompt_parts.append("2. 현재 변동성 대비 적정 진입 비중(Position Size)을 계산하세요.")
+            prompt_parts.append("3. 지금 진입하기에 위험 보상 비율(Risk/Reward)이 적절한지 평가하세요.")
+
         return "\n".join(prompt_parts)
 
 
@@ -99,8 +114,8 @@ class RiskAgentMVP:
     Two-Stage Risk Agent
 
     Orchestrates:
-    1. Reasoning (GLM-4.7) → Natural language risk analysis
-    2. Structuring → JSON conversion
+    1. Reasoning (Gemini) → Natural language risk analysis
+    2. Structuring (Gemini) → JSON conversion
 
     This is the main entry point for risk analysis.
     """
@@ -108,7 +123,7 @@ class RiskAgentMVP:
     def __init__(self):
         """Initialize Two-Stage Risk Agent"""
         self.reasoning_agent = RiskReasoningAgent()
-        self.structuring_agent = StructuringAgent()
+        self.structuring_agent = GeminiStructuringAgent()
         self.weight = 0.30  # 30% voting weight
 
         # RiskOpinion schema definition for structuring
@@ -135,7 +150,8 @@ class RiskAgentMVP:
         price_data: Dict[str, Any],
         technical_data: Optional[Dict[str, Any]] = None,
         position_size_pct: Optional[float] = None,
-        market_context: Optional[Dict[str, Any]] = None
+        market_context: Optional[Dict[str, Any]] = None,
+        action_context: str = "new_position"
     ) -> Dict[str, Any]:
         """
         Two-stage risk analysis:
@@ -162,7 +178,8 @@ class RiskAgentMVP:
                 price_data=price_data,
                 technical_data=technical_data,
                 position_size_pct=position_size_pct,
-                market_context=market_context
+                market_context=market_context,
+                action_context=action_context
             )
 
             if 'error' in reasoning_result:
@@ -227,8 +244,8 @@ class RiskAgentMVP:
             'architecture': 'two-stage',
             'focus': '리스크 평가 및 포지션 사이징',
             'stages': {
-                'reasoning': 'GLM-4.7 → 자연어 리스크 분석',
-                'structuring': 'Lightweight → JSON 변환'
+                'reasoning': 'Gemini → 자연어 리스크 분석',
+                'structuring': 'Gemini → JSON 변환'
             },
             'responsibilities': [
                 '최악의 시나리오 분석',
@@ -239,9 +256,9 @@ class RiskAgentMVP:
         }
 
     async def close(self):
-        """Close all GLM client sessions."""
-        await self.reasoning_agent.close()
-        await self.structuring_agent.close()
+        """Close all client sessions."""
+        # GeminiReasoningAgentBase doesn't require explicit closing
+        pass
 
     async def __aenter__(self):
         """Async context manager entry."""

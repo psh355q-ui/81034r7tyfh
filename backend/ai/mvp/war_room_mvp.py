@@ -150,7 +150,8 @@ class WarRoomMVP:
             chipwar_events=additional_data.get('chipwar_events') if additional_data else None,
             market_context=market_conditions,
             multi_timeframe_data=multi_timeframe,
-            option_data=option_data
+            option_data=option_data,
+            action_context=action_context
         )
 
         risk_task = self.risk_agent.analyze(
@@ -158,7 +159,8 @@ class WarRoomMVP:
             price_data=price_data,
             technical_data=technical_data,
             position_size_pct=portfolio_state.get('position_size_pct'),
-            market_context=market_conditions
+            market_context=market_conditions,
+            action_context=action_context
         )
 
         analyst_task = self.analyst_agent.analyze(
@@ -169,7 +171,8 @@ class WarRoomMVP:
             macro_data=additional_data.get('macro_indicators') if additional_data else None,
             institutional_flow=additional_data.get('institutional_data') if additional_data else None,
             geopolitical_risks=additional_data.get('geopolitical_risks') if additional_data else None,
-            sector_context=additional_data.get('sector_context') if additional_data else None
+            sector_context=additional_data.get('sector_context') if additional_data else None,
+            action_context=action_context
         )
 
         # Wait for all agents
@@ -224,7 +227,8 @@ class WarRoomMVP:
             risk_opinion=risk_opinion,
             analyst_opinion=analyst_opinion,
             portfolio_state=portfolio_state,
-            correlation_data=additional_data.get('correlation_data') if additional_data else None
+            correlation_data=additional_data.get('correlation_data') if additional_data else None,
+            action_context=action_context
         )
 
         print(f"  → Final Decision: {pm_decision['final_decision']}")
@@ -378,8 +382,8 @@ class WarRoomMVP:
             "",
             f"[Risk Agent - 30%] {risk_opinion.get('recommendation', 'reject').upper()}",
             f"  Risk Level: {risk_opinion.get('risk_level', 'high')}",
-            f"  Max Position: {(risk_opinion.get('max_position_pct', 0.05) * 100):.1f}%",
-            f"  Stop Loss: {(risk_opinion.get('stop_loss_pct', 0.05) * 100):.1f}%",
+            f"  Max Position: {((risk_opinion.get('max_position_pct') or 0.05) * 100):.1f}%",
+            f"  Stop Loss: {((risk_opinion.get('stop_loss_pct') or 0.05) * 100):.1f}%",
             f"  Reasoning: {risk_opinion.get('reasoning', 'N/A')[:150]}...",
             f"  Stage: {risk_opinion.get('stage', 'unknown')}",
             "",

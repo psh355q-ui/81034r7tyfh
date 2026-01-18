@@ -14,15 +14,41 @@ from sqlalchemy import select, func
 from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any
 import logging
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.core.database import get_db
-from backend.core.models.stock_price_models import StockPrice, PriceSyncStatus
-from backend.data.sp500_universe import (
-    SP500_SECTORS, SP500_TICKERS, TICKER_TO_SECTOR,
-    get_sector, get_all_sectors, TOTAL_STOCKS
-)
-from backend.data.stock_price_storage import StockPriceStorage
 from backend.ai.skills.common.logging_decorator import log_endpoint
+
+# Try importing stock price models
+try:
+    from backend.core.models.stock_price_models import StockPrice, PriceSyncStatus
+    STOCK_PRICE_MODELS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Stock price models not available: {e}")
+    STOCK_PRICE_MODELS_AVAILABLE = False
+
+# Try importing sp500_universe
+try:
+    from backend.data.sp500_universe import (
+        SP500_SECTORS, SP500_TICKERS, TICKER_TO_SECTOR,
+        get_sector, get_all_sectors, TOTAL_STOCKS
+    )
+    SP500_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"SP500 universe not available: {e}")
+    SP500_AVAILABLE = False
+
+# Try importing stock price storage
+try:
+    from backend.data.stock_price_storage import StockPriceStorage
+    STOCK_PRICE_STORAGE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Stock price storage not available: {e}")
+    STOCK_PRICE_STORAGE_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 

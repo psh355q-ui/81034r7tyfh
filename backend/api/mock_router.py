@@ -214,77 +214,266 @@ async def get_alerts(limit: int = 20, db: Session = Depends(get_db)):
 @log_endpoint("unknown", "system")
 async def analyze_ticker(request: Dict[str, Any]):
     """
-    Analyze a ticker - returns mock data matching frontend AIDecision interface
-    
-    Now includes auto-save to database with source='manual_analysis'
+    Hybrid Analysis: TradingAgent (price) + War Room (3+1 agents with news)
+
+    Returns ALL agent opinions for transparency:
+    - TradingAgent: Price-based technical analysis
+    - Trader Agent MVP: Price action & momentum
+    - Risk Agent MVP: Risk assessment & position sizing
+    - Analyst Agent MVP: News & fundamentals
+    - PM Agent MVP: Final decision maker
+
+    This ensures consistent results even during market holidays when news is still available.
     """
     ticker = request.get("ticker", "").upper()
-    
+
     if not ticker:
         raise HTTPException(status_code=400, detail="Ticker is required")
-    
-    # Try real AI analysis first
+
+    start_time = datetime.now()
+
     try:
-        # Import here to avoid circular dependencies if any
+        # Import agents
         from backend.ai.trading_agent import TradingAgent
+        from backend.ai.mvp.war_room_mvp import WarRoomMVP
         from backend.database.models import TradingSignal as DBTradingSignal
         from backend.database.repository import get_sync_session
+
+        # Initialize War Room
+        war_room = WarRoomMVP()
+
+        # Step 1: Fetch recent news for this ticker
+        logger.info(f"🔍 Starting hybrid analysis for {ticker}")
+
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        from backend.database.models import NewsArticle, NewsTickerRelevance, NewsAnalysis
+        from datetime import timedelta
+
+        db = get_sync_session()
+        news_headlines = []
+        news_sentiment = []
+
+        try:
+            # Get recent news (last 7 days)
+            cutoff_date = datetime.now() - timedelta(days=7)
+
+            stmt = (
+                select(NewsTickerRelevance)
+                .options(
+                    selectinload(NewsTickerRelevance.article).selectinload(NewsArticle.analysis)
+                )
+                .join(NewsArticle)
+                .filter(
+                    NewsTickerRelevance.ticker == ticker,
+                    NewsArticle.published_date >= cutoff_date
+                )
+                .order_by(NewsTickerRelevance.relevance_score.desc())
+                .limit(10)
+            )
+
+            result = db.execute(stmt)
+            ticker_news = result.scalars().all()
+
+            for rel in ticker_news:
+                article = rel.article
+                if article:
+                    news_headlines.append(article.title)
+                    if article.analysis:
+                        news_sentiment.append(article.analysis.sentiment_overall)
+
+            logger.info(f"📰 Found {len(news_headlines)} news articles for {ticker}")
+
+        except Exception as news_error:
+            logger.warning(f"Failed to fetch news for {ticker}: {news_error}")
+        finally:
+            db.close()
+
+        # Step 2: Call War Room for full analysis (all 3+1 agents)
+        logger.info(f"📊 Calling War Room for {ticker} (3+1 agents)")
+
+        # Extract context and persona
+        context = request.get("context", "new_position")
+        persona_mode = request.get("persona_mode", "trading")
         
-        # Initialize agent
-        agent = TradingAgent()
+        # Portfolio State (Mock for now, should be real)
+        # TODO: Fetch real portfolio state if context is existing_position
+        portfolio_state = {"total_value": 100000}
         
-        # Analyze
-        logger.info(f"Starting real AI analysis for {ticker}")
-        decision = await agent.analyze(ticker=ticker)
-        
-        # 💾 Save to database (Phase 2: Signal Generator Integration)
-        if decision.action in ["BUY", "SELL"]:  # Don't save HOLD signals
+        war_room_result = await war_room.deliberate(
+            symbol=ticker,
+            action_context=context,
+            market_data={
+                "news_headlines": news_headlines,
+                "news_sentiment": news_sentiment,
+                "price_data": {},  # Will be populated by agents internally
+                "news_count": len(news_headlines)
+            },
+            portfolio_state=portfolio_state,
+            additional_data={
+                "news_count": len(news_headlines),
+                "analysis_source": "portfolio_api"
+            },
+            persona_mode=persona_mode
+        )
+
+        # Step 3: Extract individual agent opinions
+        # War Room returns detailed opinions from all agents
+        agent_opinions = war_room_result.get("agent_opinions", {})
+        pm_decision_data = war_room_result.get("pm_decision", {})
+
+        logger.info(f"🔍 DEBUG: PM Decision Data Keys: {pm_decision_data.keys()}")
+        logger.info(f"🔍 DEBUG: Risk Agent Keys: {agent_opinions.get('risk', {}).keys()}")
+
+        # Risk Position Size Logic
+        # RiskAgentMVP returns 'max_position_pct' (e.g. 0.05), frontend expects 'position_size' (5)
+        risk_op = agent_opinions.get("risk", {})
+        position_size_raw = risk_op.get("position_size_pct") or risk_op.get("max_position_pct") or 0.0
+
+        agents_analysis = {
+            "trader_agent": {
+                "action": agent_opinions.get("trader", {}).get("action", "HOLD"),
+                "confidence": agent_opinions.get("trader", {}).get("confidence", 0.5),
+                "reasoning": agent_opinions.get("trader", {}).get("reasoning", ""),
+                "weight": agent_opinions.get("trader", {}).get("weight", 0.35),
+                "latency_seconds": agent_opinions.get("trader", {}).get("latency_seconds", 0)
+            },
+            "risk_agent": {
+                "action": "HOLD",  # Risk agent returns recommendation, not action
+                "recommendation": risk_op.get("recommendation", "hold"),
+                "risk_level": risk_op.get("risk_level", "medium"),
+                "confidence": risk_op.get("confidence", 0.5),
+                "reasoning": risk_op.get("reasoning", ""),
+                "weight": risk_op.get("weight", 0.30),
+                "position_size_pct": position_size_raw,
+                "latency_seconds": risk_op.get("latency_seconds", 0)
+            },
+            "analyst_agent": {
+                "action": agent_opinions.get("analyst", {}).get("action", "HOLD"),
+                "overall_score": agent_opinions.get("analyst", {}).get("overall_information_score", 0.5),
+                "confidence": agent_opinions.get("analyst", {}).get("confidence", 0.5),
+                "reasoning": agent_opinions.get("analyst", {}).get("reasoning", ""),
+                "weight": agent_opinions.get("analyst", {}).get("weight", 0.35),
+                "latency_seconds": agent_opinions.get("analyst", {}).get("latency_seconds", 0),
+                "news_count": len(news_headlines)
+            },
+            "pm_agent": {
+                "action": pm_decision_data.get("final_decision", "hold"),
+                "recommended_action": pm_decision_data.get("recommended_action", "HOLD"),
+                "confidence": pm_decision_data.get("confidence", 0.5),
+                "reasoning": pm_decision_data.get("reasoning", ""),
+                "hard_rules_passed": pm_decision_data.get("hard_rules_passed", []),
+                "hard_rules_violations": pm_decision_data.get("hard_rules_violations", [])
+            }
+        }
+
+        # Convert risk_agent recommendation to action
+        if agents_analysis["risk_agent"]["recommendation"] == "buy":
+            agents_analysis["risk_agent"]["action"] = "BUY"
+        elif agents_analysis["risk_agent"]["recommendation"] == "sell":
+            agents_analysis["risk_agent"]["action"] = "SELL"
+        else:
+            agents_analysis["risk_agent"]["action"] = "HOLD"
+
+        # Calculate analysis time
+        end_time = datetime.now()
+        analysis_duration = (end_time - start_time).total_seconds()
+
+        logger.info(f"🔍 DEBUG: Extracted PM Reasoning: {agents_analysis['pm_agent']['reasoning'][:50]}...")
+        logger.info(f"🔍 DEBUG: Extracted PM Confidence: {agents_analysis['pm_agent']['confidence']}")
+        logger.info(f"🔍 DEBUG: PM Agent Keys: {list(agents_analysis['pm_agent'].keys())}")
+        logger.info(f"🔍 DEBUG: Extracted Risk Position: {agents_analysis['risk_agent']['position_size_pct']}")
+
+        # Create final response with all agent opinions
+        final_response = {
+            "ticker": ticker,
+            "analysis_timestamp": start_time.isoformat(),
+            "analysis_duration_seconds": round(analysis_duration, 2),
+            "data_sources": {
+                "price_data": True,
+                "news_data": len(news_headlines) > 0,
+                "news_count": len(news_headlines)
+            },
+            "agents_analysis": agents_analysis,
+            "final_decision": {
+                "action": agents_analysis["pm_agent"].get("action") or agents_analysis["pm_agent"].get("final_decision", "hold"),
+                "recommended_action": agents_analysis["pm_agent"].get("recommended_action", "hold"),
+                "confidence": agents_analysis["pm_agent"].get("confidence", 0.0),
+                "reasoning": agents_analysis["pm_agent"].get("reasoning", "")
+            },
+            # --- Frontend Compatibility Fields (AIDecision interface) ---
+            "action": agents_analysis["pm_agent"].get("action") or agents_analysis["pm_agent"].get("final_decision", "hold"),
+            "conviction": agents_analysis["pm_agent"].get("confidence", 0.0),
+            "reasoning": agents_analysis["pm_agent"].get("reasoning", ""),
+            "position_size": agents_analysis["risk_agent"].get("position_size_pct", 0) * 100,  # Convert to %
+            "risk_factors": agents_analysis["pm_agent"].get("hard_rules_violations", []) or ["None"],
+            
+            # Context-Aware Fields
+            "portfolio_action": agents_analysis["pm_agent"].get("portfolio_action"),
+            "action_reason": agents_analysis["pm_agent"].get("action_reason"),
+            "action_strength": agents_analysis["pm_agent"].get("action_strength"),
+            "position_adjustment_pct": agents_analysis["pm_agent"].get("position_adjustment_pct"),
+            "target_price": 0,  # Not currently provided by agents
+            "stop_loss": 0,     # Provided in risk agent opinion but not top level standard yet
+            # -----------------------------------------------------------
+            "news_summary": {
+                "total_articles": len(news_headlines),
+                "recent_headlines": news_headlines[:5],  # Top 5 headlines
+                "sentiment_summary": news_sentiment[:5] if news_sentiment else []
+            },
+            "timestamp": end_time.isoformat()
+        }
+
+        # Save to database for BUY/SELL signals
+        if final_response["final_decision"]["action"] in ["BUY", "SELL"]:
             db = get_sync_session()
             try:
                 signal = DBTradingSignal(
-                    analysis_id=None,  # Analysis Lab is independent
+                    analysis_id=None,
                     ticker=ticker,
-                    action=decision.action,
-                    signal_type="PRIMARY",  # Manual analysis = primary signal
-                    confidence=decision.conviction,
-                    reasoning=decision.reasoning,
-                    source="manual_analysis",  # 🆕 Source tracking
+                    action=final_response["final_decision"]["action"],
+                    signal_type="PRIMARY",
+                    confidence=final_response["final_decision"]["confidence"],
+                    reasoning=final_response["final_decision"]["reasoning"],
+                    source="war_room_analysis",  # 3+1 agents
                     generated_at=datetime.now()
                 )
                 db.add(signal)
                 db.commit()
-                db.refresh(signal)
-                
-                logger.info(f"📊 Signal saved to DB: {ticker} {decision.action} (ID: {signal.id})")
-            
+                logger.info(f"📊 War Room signal saved: {ticker} {final_response['final_decision']['action']} (3+1 agents)")
             except Exception as db_error:
                 logger.error(f"Failed to save signal to DB: {db_error}")
-                # Don't fail the request if DB save fails
             finally:
                 db.close()
-        
-        return decision.to_dict()
-        
+
+        logger.info(f"✅ Hybrid analysis complete for {ticker}: {final_response['final_decision']['action']} ({analysis_duration:.2f}s)")
+        return final_response
+
     except Exception as e:
-        logger.error(f"Real AI Analysis failed for {ticker}: {str(e)}")
-        logger.warning("Falling back to mock data")
-        
-        # Fallback to Mock Data
-        import random
-        actions = ["BUY", "HOLD", "SELL"]
-        action = random.choice(actions)
-        conviction = round(random.uniform(0.4, 0.9), 2)
-        
+        logger.error(f"Hybrid analysis failed for {ticker}: {str(e)}", exc_info=True)
+
+        # Fallback: Simple HOLD with explanation
         return {
             "ticker": ticker,
-            "action": action,
-            "conviction": conviction,
-            "reasoning": f"[FALLBACK due to error: {str(e)}] Analysis for {ticker}: Technical indicators suggest a {action.lower()} signal with {conviction*100:.0f}% confidence.",
-            "target_price": round(random.uniform(100, 300), 2) if action == "BUY" else None,
-            "stop_loss": round(random.uniform(80, 150), 2) if action == "BUY" else None,
-            "position_size": random.randint(3, 10),
-            "risk_factors": ["market_volatility", "system_fallback"] if action != "HOLD" else ["system_fallback"],
-            "timestamp": datetime.now().isoformat(),
+            "analysis_timestamp": start_time.isoformat(),
+            "analysis_duration_seconds": 0.0,
+            "error": str(e),
+            "agents_analysis": {
+                "trader_agent": {"action": "HOLD", "confidence": 0.0, "reasoning": "Analysis failed", "weight": 0.35},
+                "risk_agent": {"action": "HOLD", "recommendation": "hold", "risk_level": "unknown", "confidence": 0.0, "reasoning": "Analysis failed", "weight": 0.30},
+                "analyst_agent": {"action": "HOLD", "overall_score": 0.0, "confidence": 0.0, "reasoning": "Analysis failed", "weight": 0.35},
+                "pm_agent": {"action": "HOLD", "confidence": 0.0, "reasoning": "Analysis failed", "hard_rules_passed": [], "hard_rules_violations": []}
+            },
+            "final_decision": {
+                "action": "HOLD",
+                "confidence": 0.0,
+                "reasoning": f"분석 시스템 오류: {str(e)}"
+            },
+            "data_sources": {
+                "price_data": False,
+                "news_data": False
+            },
+            "timestamp": datetime.now().isoformat()
         }
 
 
