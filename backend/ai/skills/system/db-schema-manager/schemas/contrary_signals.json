@@ -1,0 +1,97 @@
+{
+    "table_name": "contrary_signals",
+    "description": "역발상 시그널 - 시장 쏠림/과열 경고 (ChatGPT P1)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "theme",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "테마 주제"
+        },
+        {
+            "name": "crowding_level",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "쏠림 수준",
+            "example": "LOW, MEDIUM, HIGH, EXTREME"
+        },
+        {
+            "name": "contrarian_signal",
+            "type": "VARCHAR(30)",
+            "nullable": true,
+            "description": "역발상 신호",
+            "example": "REVERSAL_IMMINENT, DIVERGENCE_WARNING, CONSENSUS_PEAK"
+        },
+        {
+            "name": "indicators",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "지표별 세부 데이터"
+        },
+        {
+            "name": "reasoning",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "판단 근거"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_contrary_signals_theme",
+            "columns": ["theme"],
+            "unique": false,
+            "description": "테마별 조회"
+        },
+        {
+            "name": "idx_contrary_signals_crowding",
+            "columns": ["crowding_level"],
+            "unique": false,
+            "description": "쏠림 수준별 조회"
+        },
+        {
+            "name": "idx_contrary_signals_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Daily",
+        "data_source": "ContrarySignalDetector",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/contrary_signal.py"
+        ],
+        "notes": "ChatGPT P1: 시장 쏠림 경고, ETF 자금 유입/감성 극단값/포지션 쏠림 탐지",
+        "market_intelligence_v2": true,
+        "phase": "Phase 1"
+    }
+}

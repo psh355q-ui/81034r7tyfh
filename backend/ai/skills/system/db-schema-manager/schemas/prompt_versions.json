@@ -1,0 +1,97 @@
+{
+    "table_name": "prompt_versions",
+    "description": "프롬프트 버전 관리 - A/B 테스트 및 최적화 (Gemini P2)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "prompt_name",
+            "type": "VARCHAR(100)",
+            "nullable": false,
+            "description": "프롬프트 이름"
+        },
+        {
+            "name": "version",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": 1,
+            "description": "버전 번호"
+        },
+        {
+            "name": "prompt_text",
+            "type": "TEXT",
+            "nullable": false,
+            "description": "프롬프트 텍스트"
+        },
+        {
+            "name": "performance_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "성능 점수 (0.0 ~ 1.0)"
+        },
+        {
+            "name": "is_active",
+            "type": "BOOLEAN",
+            "nullable": false,
+            "default": true,
+            "description": "활성화 여부"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_prompt_versions_name",
+            "columns": ["prompt_name"],
+            "unique": false,
+            "description": "프롬프트별 조회"
+        },
+        {
+            "name": "idx_prompt_versions_active",
+            "columns": ["is_active"],
+            "unique": false,
+            "description": "활성화된 프롬프트 조회",
+            "partial": "is_active = true"
+        },
+        {
+            "name": "idx_prompt_versions_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "On-demand",
+        "data_source": "PersonaTuning",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/prompts/persona_tuned_prompts.py"
+        ],
+        "notes": "Gemini P2: 프롬프트 A/B 테스트 및 최적화",
+        "market_intelligence_v2": true,
+        "phase": "Phase 2"
+    }
+}

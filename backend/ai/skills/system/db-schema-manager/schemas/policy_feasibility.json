@@ -1,0 +1,102 @@
+{
+    "table_name": "policy_feasibility",
+    "description": "정책 실현 확률 - 정책 발언의 실현 가능성 분석 (ChatGPT P2)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "policy_name",
+            "type": "VARCHAR(255)",
+            "nullable": false,
+            "description": "정책 이름"
+        },
+        {
+            "name": "feasibility_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "실현 가능성 점수 (0.0 ~ 1.0)"
+        },
+        {
+            "name": "factors",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "요인별 세부 점수"
+        },
+        {
+            "name": "risks",
+            "type": "TEXT[]",
+            "nullable": true,
+            "description": "위험 요소 목록"
+        },
+        {
+            "name": "reasoning",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "판단 근거"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "수정 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_policy_feasibility_name",
+            "columns": ["policy_name"],
+            "unique": false,
+            "description": "정책별 조회"
+        },
+        {
+            "name": "idx_policy_feasibility_score",
+            "columns": ["feasibility_score"],
+            "unique": false,
+            "description": "실현 가능성별 조회"
+        },
+        {
+            "name": "idx_policy_feasibility_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "On-demand",
+        "data_source": "PolicyFeasibilityAnalyzer",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/policy_feasibility.py"
+        ],
+        "notes": "ChatGPT P2: 정책 실현 확률 = presidential_power + congressional_alignment + historical_precedent - opposition_strength",
+        "market_intelligence_v2": true,
+        "phase": "Phase 2"
+    }
+}

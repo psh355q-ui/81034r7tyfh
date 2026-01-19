@@ -1,0 +1,95 @@
+{
+    "table_name": "user_feedback_intelligence",
+    "description": "사용자 피드백 - 액티브 러닝을 위한 피드백 수집 (Gemini P2)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "insight_id",
+            "type": "INTEGER",
+            "nullable": true,
+            "description": "인사이트 ID"
+        },
+        {
+            "name": "insight_type",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "인사이트 유형"
+        },
+        {
+            "name": "feedback_type",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "피드백 유형",
+            "example": "WRONG_THEME, BAD_SUMMARY, GOOD"
+        },
+        {
+            "name": "user_comment",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "사용자 코멘트"
+        },
+        {
+            "name": "corrected_data",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "수정된 데이터"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_user_feedback_intelligence_insight_id",
+            "columns": ["insight_id"],
+            "unique": false,
+            "description": "인사이트별 조회"
+        },
+        {
+            "name": "idx_user_feedback_intelligence_type",
+            "columns": ["feedback_type"],
+            "unique": false,
+            "description": "피드백 유형별 조회"
+        },
+        {
+            "name": "idx_user_feedback_intelligence_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Real-time",
+        "data_source": "User Feedback",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/persona_tuned_prompts.py"
+        ],
+        "notes": "Gemini P2: 액티브 러닝을 위한 사용자 피드백 수집",
+        "market_intelligence_v2": true,
+        "phase": "Phase 2"
+    }
+}

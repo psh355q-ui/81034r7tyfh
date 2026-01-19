@@ -1,0 +1,115 @@
+{
+    "table_name": "narrative_states",
+    "description": "내러티브 상태 추적 - 팩트와 내러티브를 분리하여 추적 (ChatGPT P0)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "topic",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "테마 주제",
+            "example": "AI_TECH, DEFENSE, GEOPOLITICS"
+        },
+        {
+            "name": "fact_layer",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "팩트 레이어 (검증된 사실)"
+        },
+        {
+            "name": "narrative_layer",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "내러티브 레이어 (시장 해석)"
+        },
+        {
+            "name": "market_expectation",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "시장 기대치"
+        },
+        {
+            "name": "expectation_gap",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "기대치와 현실의 간격 (-1.0 ~ 1.0)"
+        },
+        {
+            "name": "phase",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "내러티브 단계",
+            "example": "EMERGING, ACCELERATING, CONSENSUS, FATIGUED, REVERSING"
+        },
+        {
+            "name": "change_velocity",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "변화 속도 (내러티브 전이 감지용)"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        },
+        {
+            "name": "updated_at",
+            "type": "TIMESTAMP",
+            "nullable": true,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "수정 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_narrative_states_topic",
+            "columns": ["topic"],
+            "unique": false,
+            "description": "테마별 조회"
+        },
+        {
+            "name": "idx_narrative_states_phase",
+            "columns": ["phase"],
+            "unique": false,
+            "description": "단계별 조회"
+        },
+        {
+            "name": "idx_narrative_states_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Real-time",
+        "data_source": "NarrativeStateEngine",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/narrative_state_engine.py"
+        ],
+        "notes": "ChatGPT P0: 팩트와 내러티브 분리 핵심 테이블",
+        "market_intelligence_v2": true,
+        "phase": "Phase 0"
+    }
+}

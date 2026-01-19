@@ -166,6 +166,67 @@
             "type": "VARCHAR(100)",
             "nullable": true,
             "description": "사용된 임베딩 모델"
+        },
+        {
+            "name": "glm_analysis",
+            "type": "JSONB",
+            "nullable": true,
+            "description": "GLM-4.7 뉴스 해석 결과 (Phase 0)"
+        },
+        {
+            "name": "narrative_phase",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "내러티브 단계: EMERGING, ACCELERATING, CONSENSUS, FATIGUED, REVERSING (ChatGPT P0)"
+        },
+        {
+            "name": "narrative_strength",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "내러티브 강도: 0.0 ~ 1.0 (ChatGPT P0)"
+        },
+        {
+            "name": "narrative_consensus",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "내러티브 컨센서스: 0.0 ~ 1.0 (ChatGPT P0)"
+        },
+        {
+            "name": "fact_verification_status",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "팩트 검증 상태: VERIFIED, PARTIAL, MISMATCH, UNVERIFIED (Gemini P0)"
+        },
+        {
+            "name": "fact_confidence_adjustment",
+            "type": "FLOAT",
+            "nullable": false,
+            "default": 0.0,
+            "description": "신뢰도 조정: -0.2 ~ +0.1 (Gemini P0)"
+        },
+        {
+            "name": "price_correlation_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "가격 상관관계 점수: -1.0 ~ 1.0 (ChatGPT P0)"
+        },
+        {
+            "name": "confirmation_status",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "시장 확인 상태: CONFIRMED, DIVERGENT, LEADING, NOISE (ChatGPT P0)"
+        },
+        {
+            "name": "narrative_tags",
+            "type": "VARCHAR[]",
+            "nullable": true,
+            "description": "팩트 vs 내러티브 태그 (P0)"
+        },
+        {
+            "name": "horizon_tags",
+            "type": "VARCHAR[]",
+            "nullable": true,
+            "description": "시간축 태그: SHORT, MEDIUM, LONG (ChatGPT P1)"
         }
     ],
     "indexes": [
@@ -216,6 +277,33 @@
             ],
             "unique": true,
             "description": "중복 체크"
+        },
+        {
+            "name": "idx_news_narrative_phase",
+            "columns": [
+                "narrative_phase"
+            ],
+            "unique": false,
+            "description": "내러티브 단계 조회 (Market Intelligence v2.0)",
+            "partial": "narrative_phase IS NOT NULL"
+        },
+        {
+            "name": "idx_news_fact_status",
+            "columns": [
+                "fact_verification_status"
+            ],
+            "unique": false,
+            "description": "팩트 검증 상태 조회 (Market Intelligence v2.0)",
+            "partial": "fact_verification_status IS NOT NULL"
+        },
+        {
+            "name": "idx_news_confirmation_status",
+            "columns": [
+                "confirmation_status"
+            ],
+            "unique": false,
+            "description": "시장 확인 상태 조회 (Market Intelligence v2.0)",
+            "partial": "confirmation_status IS NOT NULL"
         }
     ],
     "metadata": {
@@ -223,14 +311,19 @@
         "repository": "NewsRepository",
         "module": "News Collection & Analysis",
         "created": "2024-01-01",
-        "last_updated": "2025-12-27",
+        "last_updated": "2026-01-18",
         "update_frequency": "Real-time (continuous)",
         "data_source": "RSS, NewsAPI",
         "related_files": [
             "backend/database/models.py",
             "backend/database/repository.py",
-            "backend/news/enhanced_news_crawler.py"
+            "backend/news/enhanced_news_crawler.py",
+            "backend/ai/intelligence/narrative_state_engine.py",
+            "backend/ai/intelligence/fact_checker.py",
+            "backend/ai/intelligence/market_confirmation.py"
         ],
-        "notes": "실제 DB 구조 기준. embedding은 ARRAY(Float) 사용"
+        "notes": "Market Intelligence v2.0 확장: Narrative/Fact/Market 확인 필드 추가. embedding은 ARRAY(Float) 사용",
+        "market_intelligence_v2": true,
+        "phase": "Phase 0"
     }
 }

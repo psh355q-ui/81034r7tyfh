@@ -17,8 +17,8 @@ models.py - SQLAlchemy 데이터베이스 모델
     - pgvector: 벡터 유사도 검색
     - TimescaleDB: 시계열 데이터 압축 및 집계
 
-📤 Database Models (38 classes):
-    1. NewsArticle: RSS 뉴스 (embedding, sentiment, tickers)
+📤 Database Models (49 classes):
+    1. NewsArticle: RSS 뉴스 (embedding, sentiment, tickers, Market Intelligence v2.0 fields)
     2. AnalysisResult: Deep Reasoning 분석 (bull/bear case)
     3. TradingSignal: 매매 시그널 (PRIMARY/HIDDEN/LOSER, 출처 추적)
     4. BacktestRun: 백테스트 실행 (Sharpe, Max DD, 수익률)
@@ -37,6 +37,17 @@ models.py - SQLAlchemy 데이터베이스 모델
     36. PositionOwnership: 포지션 소유권 추적 (충돌 방지)
     37. ConflictLog: 전략 간 충돌 로그 (AI 설명 가능성)
     38. UserFeedback: 사용자 피드백
+    39. NarrativeState: 내러티브 상태 추적 (Market Intelligence v2.0)
+    40. MarketConfirmation: 시장 확인 로그 (Market Intelligence v2.0)
+    41. NarrativeFatigue: 내러티브 피로도 (Market Intelligence v2.0)
+    42. ContrarySignal: 역발상 시그널 (Market Intelligence v2.0)
+    43. HorizonTag: 시간축 태깅 (Market Intelligence v2.0)
+    44. PolicyFeasibility: 정책 실현 확률 (Market Intelligence v2.0)
+    45. InsightReview: 인사이트 사후 분석 (Market Intelligence v2.0)
+    46. UserFeedbackIntelligence: 사용자 피드백 (Market Intelligence v2.0)
+    47. PromptVersion: 프롬프트 버전 관리 (Market Intelligence v2.0)
+    48. GeneratedChart: 생성된 차트 로그 (Market Intelligence v2.0)
+    49. ... (existing models)
 
 🔄 Imported By (참조가 가장 많음):
     - backend/api/*.py: 모든 API 라우터
@@ -97,6 +108,24 @@ class NewsArticle(Base):
     # GLM-4.7 뉴스 해석 결과 (Added in Phase 0)
     glm_analysis = Column(JSONB, nullable=True)  # GLM 분석 결과: tickers, sectors, confidence, reasoning
 
+    # Market Intelligence v2.0 Fields (Added in Phase 0, T0.1)
+    # Narrative tracking (ChatGPT P0)
+    narrative_phase = Column(String(20), nullable=True)  # EMERGING, ACCELERATING, CONSENSUS, FATIGUED, REVERSING
+    narrative_strength = Column(Float, nullable=True)     # 0.0 ~ 1.0
+    narrative_consensus = Column(Float, nullable=True)    # 0.0 ~ 1.0
+
+    # Fact verification (Gemini P0)
+    fact_verification_status = Column(String(20), nullable=True)  # VERIFIED, PARTIAL, MISMATCH, UNVERIFIED
+    fact_confidence_adjustment = Column(Float, default=0.0)       # -0.2 ~ +0.1
+
+    # Market confirmation (ChatGPT P0)
+    price_correlation_score = Column(Float, nullable=True)  # -1.0 ~ 1.0
+    confirmation_status = Column(String(20), nullable=True)  # CONFIRMED, DIVERGENT, LEADING, NOISE
+
+    # Enhanced tagging
+    narrative_tags = Column(ARRAY(String), nullable=True)   # Fact vs Narrative tags
+    horizon_tags = Column(ARRAY(String), nullable=True)     # SHORT, MEDIUM, LONG
+
     # Relationships
     analyses = relationship("AnalysisResult", back_populates="article", cascade="all, delete-orphan")
     analysis = relationship("NewsAnalysis", back_populates="article", uselist=False, cascade="all, delete-orphan")
@@ -112,6 +141,10 @@ class NewsArticle(Base):
         # Phase 1 Optimization: 복합 인덱스
         Index('idx_news_ticker_date', 'tickers', 'published_date'),  # 티커별 뉴스 조회
         Index('idx_news_processed', 'published_date', postgresql_where='processed_at IS NOT NULL'),  # 처리된 뉴스만
+        # Market Intelligence v2.0 Indexes (Phase 0, T0.1)
+        Index('idx_news_narrative_phase', 'narrative_phase', postgresql_where='narrative_phase IS NOT NULL'),
+        Index('idx_news_fact_status', 'fact_verification_status', postgresql_where='fact_verification_status IS NOT NULL'),
+        Index('idx_news_confirmation_status', 'confirmation_status', postgresql_where='confirmation_status IS NOT NULL'),
         # Vector index would be created via migration, rarely defined in model for basic sync usage
         # Index('idx_news_embedding', 'embedding', postgresql_using='ivfflat', postgresql_ops={'embedding': 'vector_cosine_ops'}, postgresql_with={'lists': 100}),
     )
@@ -1198,4 +1231,250 @@ class ConflictLog(Base):
 
     def __repr__(self):
         return f"<ConflictLog(ticker={self.ticker}, resolution={self.resolution}, blocked={self.action_blocked})>"
+
+
+# ====================================
+# Market Intelligence v2.0 Models
+# Phase 0, Task T0.1 - Added 2026-01-18
+# Reference: docs/planning/260118_market_intelligence_roadmap.md
+# ====================================
+
+class NarrativeState(Base):
+    """내러티브 상태 추적 - 팩트와 내러티브를 분리하여 추적 (ChatGPT P0)"""
+    __tablename__ = "narrative_states"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    topic = Column(String(50), nullable=False, index=True)
+    fact_layer = Column(Text, nullable=True)
+    narrative_layer = Column(Text, nullable=True)
+    market_expectation = Column(Text, nullable=True)
+    expectation_gap = Column(Float, nullable=True)
+    phase = Column(String(20), nullable=True, index=True)
+    change_velocity = Column(Float, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        Index('idx_narrative_states_topic', 'topic'),
+        Index('idx_narrative_states_phase', 'phase'),
+        Index('idx_narrative_states_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<NarrativeState(id={self.id}, topic='{self.topic}', phase='{self.phase}')>"
+
+
+class MarketConfirmation(Base):
+    """시장 확인 로그 - 뉴스 강도와 시장 반응 교차 검증 (ChatGPT P0)"""
+    __tablename__ = "market_confirmations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    theme = Column(String(50), nullable=False, index=True)
+    news_intensity = Column(Float, nullable=True)
+    price_momentum = Column(Float, nullable=True)
+    volume_anomaly = Column(Float, nullable=True)
+    signal = Column(String(20), nullable=True, index=True)
+    divergence_score = Column(Float, nullable=True)
+    proxy_tickers = Column(ARRAY(String), nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_market_confirmations_theme', 'theme'),
+        Index('idx_market_confirmations_signal', 'signal'),
+        Index('idx_market_confirmations_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<MarketConfirmation(id={self.id}, theme='{self.theme}', signal='{self.signal}')>"
+
+
+class NarrativeFatigue(Base):
+    """내러티브 피로도 - 테마 과열/피크 탐지 (ChatGPT P1)"""
+    __tablename__ = "narrative_fatigue"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    theme = Column(String(50), nullable=False, index=True)
+    fatigue_score = Column(Float, nullable=True)
+    signal = Column(String(20), nullable=True, index=True)
+    mention_growth = Column(Float, nullable=True)
+    price_response = Column(Float, nullable=True)
+    new_info_ratio = Column(Float, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_narrative_fatigue_theme', 'theme'),
+        Index('idx_narrative_fatigue_signal', 'signal'),
+        Index('idx_narrative_fatigue_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<NarrativeFatigue(id={self.id}, theme='{self.theme}', signal='{self.signal}')>"
+
+
+class ContrarySignal(Base):
+    """역발상 시그널 - 시장 쏠림/과열 경고 (ChatGPT P1)"""
+    __tablename__ = "contrary_signals"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    theme = Column(String(50), nullable=False, index=True)
+    crowding_level = Column(String(20), nullable=True, index=True)
+    contrarian_signal = Column(String(30), nullable=True)
+    indicators = Column(JSONB, nullable=True, server_default="'{}'::jsonb")
+    reasoning = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_contrary_signals_theme', 'theme'),
+        Index('idx_contrary_signals_crowding', 'crowding_level'),
+        Index('idx_contrary_signals_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<ContrarySignal(id={self.id}, theme='{self.theme}', crowding='{self.crowding_level}')>"
+
+
+class HorizonTag(Base):
+    """시간축 태깅 - 인사이트를 투자 기간별로 분리 (ChatGPT P1)"""
+    __tablename__ = "horizon_tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    news_article_id = Column(Integer, ForeignKey('news_articles.id', ondelete='SET NULL'), nullable=True, index=True)
+    short_term = Column(Text, nullable=True)
+    mid_term = Column(Text, nullable=True)
+    long_term = Column(Text, nullable=True)
+    recommended_horizon = Column(String(10), nullable=True, index=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_horizon_tags_article_id', 'news_article_id'),
+        Index('idx_horizon_tags_horizon', 'recommended_horizon'),
+        Index('idx_horizon_tags_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<HorizonTag(id={self.id}, article_id={self.news_article_id}, horizon='{self.recommended_horizon}')>"
+
+
+class PolicyFeasibility(Base):
+    """정책 실현 확률 - 정책 발언의 실현 가능성 분석 (ChatGPT P2)"""
+    __tablename__ = "policy_feasibility"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    policy_name = Column(String(255), nullable=False, index=True)
+    feasibility_score = Column(Float, nullable=True, index=True)
+    factors = Column(JSONB, nullable=True, server_default="'{}'::jsonb")
+    risks = Column(ARRAY(String), nullable=True)
+    reasoning = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        Index('idx_policy_feasibility_name', 'policy_name'),
+        Index('idx_policy_feasibility_score', 'feasibility_score'),
+        Index('idx_policy_feasibility_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<PolicyFeasibility(id={self.id}, policy='{self.policy_name}', score={self.feasibility_score})>"
+
+
+class InsightReview(Base):
+    """인사이트 사후 분석 - 예측 정확도 추적 및 학습 (ChatGPT+Gemini P2)"""
+    __tablename__ = "insight_reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    insight_id = Column(Integer, nullable=False, index=True)
+    insight_type = Column(String(50), nullable=True)
+    predicted_direction = Column(String(20), nullable=True)
+    actual_outcome_7d = Column(Float, nullable=True)
+    actual_outcome_30d = Column(Float, nullable=True)
+    success = Column(Boolean, nullable=True, index=True)
+    accuracy_score = Column(Float, nullable=True)
+    failure_reason = Column(Text, nullable=True)
+    lesson_learned = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    reviewed_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_insight_reviews_insight_id', 'insight_id'),
+        Index('idx_insight_reviews_success', 'success'),
+        Index('idx_insight_reviews_reviewed_at', 'reviewed_at'),
+    )
+
+    def __repr__(self):
+        return f"<InsightReview(id={self.id}, insight_id={self.insight_id}, success={self.success})>"
+
+
+class UserFeedbackIntelligence(Base):
+    """사용자 피드백 - 액티브 러닝을 위한 피드백 수집 (Gemini P2)"""
+    __tablename__ = "user_feedback_intelligence"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    insight_id = Column(Integer, nullable=True, index=True)
+    insight_type = Column(String(50), nullable=True)
+    feedback_type = Column(String(20), nullable=True, index=True)
+    user_comment = Column(Text, nullable=True)
+    corrected_data = Column(JSONB, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_user_feedback_intelligence_insight_id', 'insight_id'),
+        Index('idx_user_feedback_intelligence_type', 'feedback_type'),
+        Index('idx_user_feedback_intelligence_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<UserFeedbackIntelligence(id={self.id}, insight_id={self.insight_id}, type='{self.feedback_type}')>"
+
+
+class PromptVersion(Base):
+    """프롬프트 버전 관리 - A/B 테스트 및 최적화 (Gemini P2)"""
+    __tablename__ = "prompt_versions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    prompt_name = Column(String(100), nullable=False, index=True)
+    version = Column(Integer, nullable=False, default=1)
+    prompt_text = Column(Text, nullable=False)
+    performance_score = Column(Float, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_prompt_versions_name', 'prompt_name'),
+        Index('idx_prompt_versions_active', 'is_active', postgresql_where=text("is_active = true")),
+        Index('idx_prompt_versions_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<PromptVersion(id={self.id}, name='{self.prompt_name}', version={self.version}, active={self.is_active})>"
+
+
+class GeneratedChart(Base):
+    """생성된 차트 로그 - 시각화 자동 생성 추적 (Gemini P1)"""
+    __tablename__ = "generated_charts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chart_type = Column(String(50), nullable=True, index=True)
+    chart_title = Column(String(255), nullable=True)
+    parameters = Column(JSONB, nullable=True, server_default="'{}'::jsonb")
+    file_path = Column(Text, nullable=True)
+    thumbnail_path = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True, server_default="'{}'::jsonb")
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    __table_args__ = (
+        Index('idx_generated_charts_type', 'chart_type'),
+        Index('idx_generated_charts_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<GeneratedChart(id={self.id}, type='{self.chart_type}', title='{self.chart_title}')>"
 

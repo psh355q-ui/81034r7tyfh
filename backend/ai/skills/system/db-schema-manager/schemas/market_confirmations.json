@@ -1,0 +1,109 @@
+{
+    "table_name": "market_confirmations",
+    "description": "시장 확인 로그 - 뉴스 강도와 시장 반응 교차 검증 (ChatGPT P0)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "theme",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "테마 이름",
+            "example": "DEFENSE, AI_TECH, GEOPOLITICS"
+        },
+        {
+            "name": "news_intensity",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "뉴스 강도 (0.0 ~ 1.0)"
+        },
+        {
+            "name": "price_momentum",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "가격 모멘텀 (-1.0 ~ 1.0)"
+        },
+        {
+            "name": "volume_anomaly",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "거래량 이상 징후 (Z-score)"
+        },
+        {
+            "name": "signal",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "확인 신호",
+            "example": "CONFIRMED, DIVERGENT, LEADING, NOISE"
+        },
+        {
+            "name": "divergence_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "뉴스-가격 발산 점수 (-1.0 ~ 1.0)"
+        },
+        {
+            "name": "proxy_tickers",
+            "type": "VARCHAR[]",
+            "nullable": true,
+            "description": "프록시 티커 배열",
+            "example": "[\"ITA\", \"SHLD\", \"LMT\", \"RTX\"]"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_market_confirmations_theme",
+            "columns": ["theme"],
+            "unique": false,
+            "description": "테마별 조회"
+        },
+        {
+            "name": "idx_market_confirmations_signal",
+            "columns": ["signal"],
+            "unique": false,
+            "description": "신호 유형별 조회"
+        },
+        {
+            "name": "idx_market_confirmations_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Real-time",
+        "data_source": "MarketConfirmationEngine",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/market_confirmation.py"
+        ],
+        "notes": "ChatGPT P0: 뉴스와 시장 가격 교차 검증",
+        "market_intelligence_v2": true,
+        "phase": "Phase 0"
+    }
+}

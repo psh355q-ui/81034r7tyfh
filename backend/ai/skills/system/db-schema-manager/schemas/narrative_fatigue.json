@@ -1,0 +1,101 @@
+{
+    "table_name": "narrative_fatigue",
+    "description": "내러티브 피로도 - 테마 과열/피크 탐지 (ChatGPT P1)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "theme",
+            "type": "VARCHAR(50)",
+            "nullable": false,
+            "description": "테마 주제"
+        },
+        {
+            "name": "fatigue_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "피로도 점수 (mention_growth - price_response - new_info_ratio)"
+        },
+        {
+            "name": "signal",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "피로도 신호",
+            "example": "OVERHEATED, FATIGUED, NORMAL, EMERGING"
+        },
+        {
+            "name": "mention_growth",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "언급량 증가율"
+        },
+        {
+            "name": "price_response",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "가격 반응률"
+        },
+        {
+            "name": "new_info_ratio",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "새 정보 비율 (정보/총언급)"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_narrative_fatigue_theme",
+            "columns": ["theme"],
+            "unique": false,
+            "description": "테마별 조회"
+        },
+        {
+            "name": "idx_narrative_fatigue_signal",
+            "columns": ["signal"],
+            "unique": false,
+            "description": "신호별 조회"
+        },
+        {
+            "name": "idx_narrative_fatigue_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Daily",
+        "data_source": "NarrativeFatigueDetector",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/narrative_fatigue.py"
+        ],
+        "notes": "ChatGPT P1: 테마 과열 탐지",
+        "market_intelligence_v2": true,
+        "phase": "Phase 1"
+    }
+}

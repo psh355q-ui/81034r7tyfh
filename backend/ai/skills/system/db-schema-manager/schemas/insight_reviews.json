@@ -1,0 +1,120 @@
+{
+    "table_name": "insight_reviews",
+    "description": "인사이트 사후 분석 - 예측 정확도 추적 및 학습 (ChatGPT+Gemini P2)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "insight_id",
+            "type": "INTEGER",
+            "nullable": false,
+            "description": "인사이트 ID"
+        },
+        {
+            "name": "insight_type",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "인사이트 유형",
+            "example": "narrative, market_confirmation, contrary_signal"
+        },
+        {
+            "name": "predicted_direction",
+            "type": "VARCHAR(20)",
+            "nullable": true,
+            "description": "예측 방향",
+            "example": "UP, DOWN, SIDEWAYS"
+        },
+        {
+            "name": "actual_outcome_7d",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "7일 후 실제 수익률 (%)"
+        },
+        {
+            "name": "actual_outcome_30d",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "30일 후 실제 수익률 (%)"
+        },
+        {
+            "name": "success",
+            "type": "BOOLEAN",
+            "nullable": true,
+            "description": "예측 성공 여부"
+        },
+        {
+            "name": "accuracy_score",
+            "type": "FLOAT",
+            "nullable": true,
+            "description": "정확도 점수 (0.0 ~ 1.0)"
+        },
+        {
+            "name": "failure_reason",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "실패 원인"
+        },
+        {
+            "name": "lesson_learned",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "학습 내용"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "reviewed_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "검토 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_insight_reviews_insight_id",
+            "columns": ["insight_id"],
+            "unique": false,
+            "description": "인사이트별 조회"
+        },
+        {
+            "name": "idx_insight_reviews_success",
+            "columns": ["success"],
+            "unique": false,
+            "description": "성공 여부별 조회"
+        },
+        {
+            "name": "idx_insight_reviews_reviewed_at",
+            "columns": ["reviewed_at"],
+            "unique": false,
+            "description": "검토 시각별 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Weekly",
+        "data_source": "InsightPostMortemEngine",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/insight_postmortem.py"
+        ],
+        "notes": "ChatGPT+Gemini P2: 인사이트 결과 복기 및 학습 루프",
+        "market_intelligence_v2": true,
+        "phase": "Phase 2"
+    }
+}

@@ -1,0 +1,97 @@
+{
+    "table_name": "horizon_tags",
+    "description": "시간축 태깅 - 인사이트를 투자 기간별로 분리 (ChatGPT P1)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "news_article_id",
+            "type": "INTEGER",
+            "nullable": true,
+            "foreign_key": "news_articles.id",
+            "on_delete": "SET NULL",
+            "description": "뉴스 기사 ID"
+        },
+        {
+            "name": "short_term",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "단기 (1~5일) 해석"
+        },
+        {
+            "name": "mid_term",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "중기 (2~6주) 해석"
+        },
+        {
+            "name": "long_term",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "장기 (6~18개월) 해석"
+        },
+        {
+            "name": "recommended_horizon",
+            "type": "VARCHAR(10)",
+            "nullable": true,
+            "description": "추천 투자 기간",
+            "example": "SHORT, MEDIUM, LONG"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_horizon_tags_article_id",
+            "columns": ["news_article_id"],
+            "unique": false,
+            "description": "뉴스별 조회"
+        },
+        {
+            "name": "idx_horizon_tags_horizon",
+            "columns": ["recommended_horizon"],
+            "unique": false,
+            "description": "추천 기간별 조회"
+        },
+        {
+            "name": "idx_horizon_tags_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "Real-time",
+        "data_source": "HorizonTagger",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/ai/intelligence/horizon_tagger.py"
+        ],
+        "notes": "ChatGPT P1: 동일 인사이트를 시간축별로 재해석",
+        "market_intelligence_v2": true,
+        "phase": "Phase 1"
+    }
+}

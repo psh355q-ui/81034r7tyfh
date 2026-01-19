@@ -1,0 +1,90 @@
+{
+    "table_name": "generated_charts",
+    "description": "생성된 차트 로그 - 시각화 자동 생성 추적 (Gemini P1)",
+    "primary_key": "id",
+    "columns": [
+        {
+            "name": "id",
+            "type": "SERIAL",
+            "nullable": false,
+            "auto_increment": true,
+            "description": "고유 ID"
+        },
+        {
+            "name": "chart_type",
+            "type": "VARCHAR(50)",
+            "nullable": true,
+            "description": "차트 유형",
+            "example": "theme_bubble, geopolitics_timeline, sector_performance"
+        },
+        {
+            "name": "chart_title",
+            "type": "VARCHAR(255)",
+            "nullable": true,
+            "description": "차트 제목"
+        },
+        {
+            "name": "parameters",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "차트 생성 파라미터"
+        },
+        {
+            "name": "file_path",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "파일 경로"
+        },
+        {
+            "name": "thumbnail_path",
+            "type": "TEXT",
+            "nullable": true,
+            "description": "썸네일 경로"
+        },
+        {
+            "name": "metadata",
+            "type": "JSONB",
+            "nullable": true,
+            "default": "'{}'::jsonb",
+            "description": "추가 메타데이터"
+        },
+        {
+            "name": "created_at",
+            "type": "TIMESTAMP",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "description": "생성 시각"
+        }
+    ],
+    "indexes": [
+        {
+            "name": "idx_generated_charts_type",
+            "columns": ["chart_type"],
+            "unique": false,
+            "description": "차트 유형별 조회"
+        },
+        {
+            "name": "idx_generated_charts_created_at",
+            "columns": ["created_at"],
+            "unique": false,
+            "description": "시간순 조회"
+        }
+    ],
+    "metadata": {
+        "category": "intelligence",
+        "repository": "IntelligenceRepository",
+        "module": "Market Intelligence v2.0",
+        "created": "2026-01-18",
+        "last_updated": "2026-01-18",
+        "update_frequency": "On-demand",
+        "data_source": "ChartGenerator",
+        "related_files": [
+            "backend/database/models.py",
+            "backend/visualization/chart_generator.py"
+        ],
+        "notes": "Gemini P1: 소수몽키 스타일 시각 자료 자동 생성",
+        "market_intelligence_v2": true,
+        "phase": "Phase 1"
+    }
+}
