@@ -61,59 +61,76 @@ class ReportOrchestrator:
         self.model_name = "gemini-2.0-flash-exp"
         self.notifier = create_telegram_notifier()
         
-    async def generate_daily_briefing(self, date_str: str = None) -> str:
+    async def generate_daily_briefing(self, date_str: str = None, use_enhanced: bool = True) -> str:
         """
         Generates the Daily Briefing markdown report.
+
+        Args:
+            date_str: 날짜 (YYYY-MM-DD)
+            use_enhanced: True면 개선된 버전 사용 (기본값)
         """
         if not date_str:
             date_str = datetime.now().strftime("%Y-%m-%d")
-            
-        logger.info(f"📝 Generating Daily Briefing for {date_str}...")
-        
-        async with DatabaseSession() as session:
-            # 1. Collect Data
-            # A. Shadow Trading Stats
-            portfolio_summary = await self._get_portfolio_summary(session)
-            
-            # B. Critical News (The Watchtower)
-            news_summary = await self._get_news_summary(session)
-            
-            # C. Deep Reasoning / Macro Insights
-            deep_insights = await self._get_deep_insights(session)
-            
-            # 2. Synthesize via LLM
-            report_content = await self._synthesize_report(date_str, portfolio_summary, news_summary, deep_insights)
-            
-            # 3. Save Markdown
-            md_filename = f"docs/Daily_Briefing_{date_str.replace('-','')}.md"
-            with open(md_filename, "w", encoding="utf-8") as f:
-                f.write(report_content)
-                
-            # 4. Generate PDF
+
+        logger.info(f"📝 Generating Daily Briefing for {date_str}... (Enhanced={use_enhanced})")
+
+        # 개선된 버전 사용
+        if use_enhanced:
             try:
-                pdf_bytes = self._create_pdf_report(date_str, portfolio_summary, report_content)
-                pdf_filename = f"docs/Daily_Briefing_{date_str.replace('-','')}.pdf"
-                with open(pdf_filename, "wb") as f:
-                    f.write(pdf_bytes)
-                logger.info(f"✅ PDF Generated: {pdf_filename}")
-                
-                # 5. Notify via Telegram (PDF)
-                if self.notifier:
-                    await self.notifier.send_file(
-                        pdf_filename, 
-                        caption=f"📢 **Daily Briefing** ({date_str})\n\nAttached is the daily AI trading report."
-                    )
-                
-                return pdf_filename
+                from backend.ai.reporters.enhanced_daily_reporter import EnhancedDailyReporter
+                enhanced_reporter = EnhancedDailyReporter()
+                return await enhanced_reporter.generate_enhanced_briefing(date_str)
             except Exception as e:
-                logger.error(f"Failed to generate PDF: {e}")
-                # Fallback to sending MD if PDF fails
-                if self.notifier:
-                    await self.notifier.send_file(
-                        md_filename,
-                        caption=f"📢 **Daily Briefing** ({date_str})\n\n(PDF Generation Failed, sending Markdown)"
-                    )
-                return md_filename
+                logger.error(f"Enhanced reporter failed, falling back to basic: {e}")
+                # 실패 시 기본 버전으로 폴백
+                use_enhanced = False
+
+        # 기본 버전
+        if not use_enhanced:
+            async with DatabaseSession() as session:
+                # 1. Collect Data
+                # A. Shadow Trading Stats
+                portfolio_summary = await self._get_portfolio_summary(session)
+
+                # B. Critical News (The Watchtower)
+                news_summary = await self._get_news_summary(session)
+
+                # C. Deep Reasoning / Macro Insights
+                deep_insights = await self._get_deep_insights(session)
+
+                # 2. Synthesize via LLM
+                report_content = await self._synthesize_report(date_str, portfolio_summary, news_summary, deep_insights)
+
+                # 3. Save Markdown
+                md_filename = f"docs/Daily_Briefing_{date_str.replace('-','')}.md"
+                with open(md_filename, "w", encoding="utf-8") as f:
+                    f.write(report_content)
+
+                # 4. Generate PDF
+                try:
+                    pdf_bytes = self._create_pdf_report(date_str, portfolio_summary, report_content)
+                    pdf_filename = f"docs/Daily_Briefing_{date_str.replace('-','')}.pdf"
+                    with open(pdf_filename, "wb") as f:
+                        f.write(pdf_bytes)
+                    logger.info(f"✅ PDF Generated: {pdf_filename}")
+
+                    # 5. Notify via Telegram (PDF)
+                    if self.notifier:
+                        await self.notifier.send_file(
+                            pdf_filename,
+                            caption=f"📢 **Daily Briefing** ({date_str})\n\nAttached is the daily AI trading report."
+                        )
+
+                    return pdf_filename
+                except Exception as e:
+                    logger.error(f"Failed to generate PDF: {e}")
+                    # Fallback to sending MD if PDF fails
+                    if self.notifier:
+                        await self.notifier.send_file(
+                            md_filename,
+                            caption=f"📢 **Daily Briefing** ({date_str})\n\n(PDF Generation Failed, sending Markdown)"
+                        )
+                    return md_filename
 
     def _create_pdf_report(self, date_str: str, portfolio: Dict, narrative: str) -> bytes:
         """Create DailyReport object and render to PDF."""

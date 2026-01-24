@@ -23,6 +23,8 @@ import SignalDetail from './pages/SignalDetail';
 import BacktestDashboard from './pages/BacktestDashboard';
 
 import WarRoomPage from './pages/WarRoomPage';
+import IntelligenceDashboard from './pages/IntelligenceDashboard';
+import { VideoIntelligence } from './pages/VideoIntelligence';
 import SignalConsolidationPage from './pages/SignalConsolidationPage';
 import { CostReport } from './pages/CostReport';
 import DataBackfill from './pages/DataBackfill';
@@ -85,6 +87,8 @@ const App: React.FC = () => {
               <Route path="/feedback" element={<FeedbackDashboard />} />  {/* 🆕 Phase 6 */}
               <Route path="/strategies" element={<StrategyDashboard />} />  {/* 🆕 Phase 5 Multi-Strategy Orchestration */}
 
+              <Route path="/intelligence" element={<IntelligenceDashboard />} />  {/* 🆕 Market Intelligence v2.0 */}
+              <Route path="/video-intelligence" element={<VideoIntelligence />} />  {/* 🆕 Video Thinking Layer */}
               <Route path="/war-room" element={<WarRoomPage />} />
               <Route path="/signal-consolidation" element={<SignalConsolidationPage />} />
               <Route path="/cost-report" element={<CostReport />} />

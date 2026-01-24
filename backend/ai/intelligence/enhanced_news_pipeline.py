@@ -362,40 +362,110 @@ class EnhancedNewsProcessingPipeline(BaseIntelligence):
         )
 
     async def _generate_final_insight(self, stages: Dict[str, IntelligenceResult]) -> str:
-        """Generate final comprehensive insight"""
+        """
+        Generate final comprehensive insight with market-moving detection
+        
+        Key Question: Is this news a market-moving signal or just noise?
+        
+        Analysis criteria:
+        1. Fact verification status (hallucination = noise)
+        2. Market confirmation (contradicted = noise, confirmed = signal)
+        3. Narrative phase (emerging/consensus = signal, fatigued = noise)  
+        4. Policy impact probability (high = signal)
+        """
         try:
-            # Build insight from all stages
-            insight_parts = []
-
-            # Narrative phase
-            if "narrative" in stages:
-                narrative_data = stages["narrative"].data
-                phase = narrative_data.get("narrative_phase", "UNKNOWN")
-                insight_parts.append(f"Narrative: {phase}")
-
-            # Market confirmation
+            # Calculate market-moving score (0-100)
+            market_moving_score = 0
+            signal_factors = []
+            noise_factors = []
+            
+            # Factor 1: Fact Check (30 points)
+            if "fact_check" in stages:
+                fact_data = stages["fact_check"].data
+                verification = fact_data.get("verification_status", "UNKNOWN")
+                if verification == "VERIFIED":
+                    market_moving_score += 30
+                    signal_factors.append("✅ Verified facts")
+                elif verification == "HALLUCINATION":
+                    noise_factors.append("❌ Potential hallucination detected")
+            
+            # Factor 2: Market Confirmation (40 points)
             if "market_confirm" in stages:
                 confirm_data = stages["market_confirm"].data
                 status = confirm_data.get("confirmation_status", "NEUTRAL")
-                insight_parts.append(f"Market: {status}")
-
-            # Horizon
-            if "horizon" in stages:
-                horizon_data = stages["horizon"].data
-                horizons = horizon_data.get("horizons", [])
-                insight_parts.append(f"Horizon: {', '.join(horizons)}")
-
-            # Use LLM to generate final insight if available
+                if status == "CONFIRMED":
+                    market_moving_score += 40
+                    signal_factors.append("✅ Price confirms narrative")
+                elif status == "CONTRADICTED":
+                    noise_factors.append("❌ Price contradicts narrative")
+                elif status == "NEUTRAL":
+                    market_moving_score += 15
+            
+            # Factor 3: Narrative Phase (20 points)
+            if "narrative" in stages:
+                narrative_data = stages["narrative"].data
+                phase = narrative_data.get("narrative_phase", "UNKNOWN")
+                if phase == "EMERGING":
+                    market_moving_score += 20
+                    signal_factors.append("🆕 Emerging narrative")
+                elif phase == "CONSENSUS":
+                    market_moving_score += 15
+                    signal_factors.append("📊 Market consensus forming")
+                elif phase == "FATIGUED":
+                    noise_factors.append("😴 Narrative fatigue - overplayed story")
+            
+            # Factor 4: Policy Impact (10 points)
+            if "policy" in stages:
+                policy_data = stages["policy"].data
+                probability = policy_data.get("realization_probability", 0)
+                if probability > 0.7:
+                    market_moving_score += 10
+                    signal_factors.append("⚖️ High policy impact probability")
+            
+            # Determine signal vs noise
+            if market_moving_score >= 70:
+                classification = "🎯 MARKET-MOVING SIGNAL"
+            elif market_moving_score >= 40:
+                classification = "⚠️ POTENTIAL SIGNAL (Monitor)"
+            else:
+                classification = "🔇 NOISE (Ignore)"
+            
+            # Build comprehensive prompt for LLM
             if self.llm:
-                prompt = self._build_insight_prompt(stages)
+                prompt = self._build_enhanced_insight_prompt(
+                    stages, 
+                    market_moving_score, 
+                    signal_factors, 
+                    noise_factors,
+                    classification
+                )
+                
+                system_prompt = """You are an elite market analyst specializing in separating signal from noise.
+
+Your task: Generate a concise trading insight (3-4 sentences) that:
+1. States whether this is a market-moving signal or noise
+2. Explains the key reason (fact verification, market confirmation, or narrative phase)  
+3. Provides actionable recommendation (trade, monitor, or ignore)
+
+Be direct and decisive. Traders need clear signals, not hedged language."""
+                
                 llm_result = await self.llm.complete_with_system(
-                    system_prompt="You are a market analyst. Generate a concise trading insight (2-3 sentences).",
+                    system_prompt=system_prompt,
                     user_prompt=prompt,
                 )
-                return llm_result.content
-
-            return " | ".join(insight_parts)
-
+                
+                # Prepend classification for clarity
+                return f"{classification}\n\n{llm_result.content}"
+            
+            # Fallback if no LLM
+            insight_parts = [classification]
+            if signal_factors:
+                insight_parts.append(f"Signals: {', '.join(signal_factors)}")
+            if noise_factors:
+                insight_parts.append(f"Noise: {', '.join(noise_factors)}")
+            
+            return "\n".join(insight_parts)
+            
         except Exception as e:
             logger.error(f"Insight generation error: {e}")
             return "Generated insight unavailable"
@@ -409,6 +479,51 @@ class EnhancedNewsProcessingPipeline(BaseIntelligence):
                 sections.append(f"{stage_name.upper()}: {result.reasoning}")
 
         return "\n\n".join(sections)
+    
+    def _build_enhanced_insight_prompt(
+        self, 
+        stages: Dict[str, IntelligenceResult],
+        market_moving_score: int,
+        signal_factors: List[str],
+        noise_factors: List[str],
+        classification: str
+    ) -> str:
+        """
+        Build enhanced prompt for market-moving detection
+        
+        Includes:
+        - Market-moving score and classification
+        - Signal vs noise factors
+        - Stage-by-stage analysis
+        """
+        prompt_parts = []
+        
+        # Header with classification
+        prompt_parts.append(f"CLASSIFICATION: {classification}")
+        prompt_parts.append(f"Market-Moving Score: {market_moving_score}/100")
+        prompt_parts.append("")
+        
+        # Signal factors
+        if signal_factors:
+            prompt_parts.append("SIGNAL FACTORS:")
+            for factor in signal_factors:
+                prompt_parts.append(f"  {factor}")
+            prompt_parts.append("")
+        
+        # Noise factors
+        if noise_factors:
+            prompt_parts.append("NOISE FACTORS:")
+            for factor in noise_factors:
+                prompt_parts.append(f"  {factor}")
+            prompt_parts.append("")
+        
+        # Stage analysis
+        prompt_parts.append("STAGE ANALYSIS:")
+        for stage_name, result in stages.items():
+            if result.reasoning:
+                prompt_parts.append(f"  {stage_name.upper()}: {result.reasoning}")
+        
+        return "\n".join(prompt_parts)
 
     async def _generate_contrarian_view(self, stages: Dict[str, IntelligenceResult]) -> ContrarianView:
         """
@@ -427,11 +542,16 @@ class EnhancedNewsProcessingPipeline(BaseIntelligence):
             key_risks = []
             confidence = 0.7
 
-            # Check narrative phase
-            if "narrative" in stages:
-                narrative_data = stages["narrative"].data
-                phase = narrative_data.get("narrative_phase", "")
+            # Check narrative phase (try both keys)
+            narrative_phase_key = None
+            for key in ["narrative", "narrative_engine"]:
+                if key in stages:
+                    narrative_phase_key = key
+                    narrative_data = stages[key].data
+                    phase = narrative_data.get("narrative_phase", "")
+                    break
 
+            if narrative_phase_key and narrative_data:
                 if phase == "FATIGUED":
                     bull_case = "Narrative fatigue suggests taking profits on recent winners"
                     key_risks.append("Late-stage narrative with low new information")
@@ -442,11 +562,16 @@ class EnhancedNewsProcessingPipeline(BaseIntelligence):
                     bear_case = "Emerging narrative - wait for confirmation before entering"
                     key_risks.append("Early-stage narrative with high uncertainty")
 
-            # Check market confirmation
-            if "market_confirm" in stages:
-                confirm_data = stages["market_confirm"].data
-                status = confirm_data.get("confirmation_status", "")
+            # Check market confirmation (try both keys)
+            market_confirm_key = None
+            for key in ["market_confirm", "market_confirmation"]:
+                if key in stages:
+                    market_confirm_key = key
+                    confirm_data = stages[key].data
+                    status = confirm_data.get("confirmation_status", "")
+                    break
 
+            if market_confirm_key and confirm_data:
                 if status == "CONTRADICTED":
                     bull_case = "Price contradicts narrative - high conviction short opportunity"
                     key_risks.append("Divergence between story and price")
@@ -465,7 +590,7 @@ class EnhancedNewsProcessingPipeline(BaseIntelligence):
             return ContrarianView(
                 bull_case=bull_case,
                 bear_case=bear_case,
-                key_risks=key_risks,
+                key_risks=key_risks if key_risks else ["Unable to determine risks"],
                 confidence=confidence,
             )
 

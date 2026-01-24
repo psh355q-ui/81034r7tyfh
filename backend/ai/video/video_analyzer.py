@@ -1,24 +1,27 @@
 """
 Video Analysis Engine - 영상 분석 엔진
 
-YouTube 영상을 텍스트로 변환하고 AI 분석
+YouTube 영상을 텍스트로 변환하고 멀티모달(음성+텍스트) 감성 분석 및 인텔리전스 추출 수행
 
 핵심 기능:
 1. YouTube 영상 다운로드 (yt-dlp)
 2. 음성 → 텍스트 (Whisper STT)
-3. 타임스탬프 기반 토픽 추출
-4. AI 분석 및 요약 (Claude)
+3. 오디오 특징 분석 (Librosa: Pitch, Energy) - 어조/자신감 감지
+4. 텍스트 감성 분석 (TextBlob) - 긍정/부정 흐름
+5. 인텔리전스 추출 (Claude Wall Street Editor) - 경제/지정학/정책 팩트 추출
+6. AI 종합 요약 (Claude)
 
-작성일: 2025-12-14
-Phase: D Week 1
+작성일: 2026-01-21
+Phase: D Week 1 (Upgraded V2)
 """
 
 import logging
-from typing import Dict, List, Optional
-from dataclasses import dataclass
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, field
 from datetime import datetime
 import os
 import tempfile
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -34,73 +37,79 @@ class VideoAnalysisResult:
     summary: str
     key_points: List[str]
     analyzed_at: datetime
+    
+    # Multimodal Metrics
+    tone_metrics: Dict[str, Any] = field(default_factory=dict)  # {energy_mean, pitch_mean, confidence_score}
+    sentiment_timeline: List[Dict] = field(default_factory=list)  # [{time, sentiment, text}, ...]
+    
+    # Intelligence Data (New)
+    intelligence_data: List[Dict] = field(default_factory=list) # [{category, entity, fact, impact_score}, ...]
 
 
 class VideoAnalyzer:
     """
-    영상 분석기
-    
-    YouTube 영상 → 텍스트 → AI 분석
-    
-    Usage:
-        analyzer = VideoAnalyzer()
-        
-        # YouTube 영상 분석
-        result = await analyzer.analyze_youtube(
-            "https://youtube.com/watch?v=..."
-        )
-        
-        print(result.summary)
-        print(result.key_points)
+    영상 분석기 (Multimodal + Intelligence)
     """
     
     def __init__(self, claude_client=None):
-        """
-        Args:
-            claude_client: Claude API (분석용)
-        """
         if claude_client is None:
             from backend.ai.claude_client import get_claude_client
             self.claude = get_claude_client()
         else:
             self.claude = claude_client
         
-        logger.info("VideoAnalyzer initialized")
+        logger.info("VideoAnalyzer initialized (Multimodal Ready)")
     
     async def analyze_youtube(
         self,
         url: str,
-        extract_keywords: Optional[List[str]] = None
+        extract_keywords: Optional[List[str]] = None,
+        download_sections: Optional[List[tuple]] = None
     ) -> VideoAnalysisResult:
         """
-        YouTube 영상 분석
-        
-        Args:
-            url: YouTube URL
-            extract_keywords: 특정 키워드 추출 (선택)
-            
-        Returns:
-            VideoAnalysisResult
+        YouTube 영상 종합 분석
         """
         logger.info(f"Analyzing YouTube video: {url}")
         
         # 1. 영상 다운로드
-        video_info = self._download_youtube(url)
+        video_info = self._download_youtube(url, download_sections=download_sections)
         
         # 2. Whisper STT
         transcript = await self._transcribe_audio(video_info['audio_path'])
         
-        # 3. 토픽 추출
+        # 3. 오디오 특징 분석 (어조, 자신감)
+        tone_metrics = self._analyze_audio_features(video_info['audio_path'])
+        
+        # 4. 텍스트 감성 분석 (긍정/부정)
+        sentiment_timeline = self._analyze_text_sentiment(transcript)
+        
+        # 5. 토픽 추출
         topics = self._extract_topics(transcript)
         
-        # 4. AI 분석
-        summary, key_points = await self._analyze_content(
+        # 6. 인텔리전스 추출 (Thinking Layer)
+        logger.info("Extracting market intelligence...")
+        intelligence_data = await self._extract_intelligence(transcript, video_info['title'])
+        
+        # 6.5 Signal Mapping (Entity -> Ticker)
+        try:
+            from backend.ai.thinking.signal_mapper import get_signal_mapper
+            mapper = get_signal_mapper()
+            intelligence_data = mapper.map_signals(intelligence_data)
+        except Exception as e:
+            logger.error(f"Signal Mapping failed: {e}")
+            # Continue with raw intelligence data if mapping fails
+        
+        # 7. AI 종합 분석 (Multimodal Data 포함)
+        summary, key_points = await self._analyze_content_with_multimodal(
             transcript, 
             video_info['title'],
-            extract_keywords
+            tone_metrics,
+            sentiment_timeline,
+            keywords=extract_keywords,
+            intelligence_data=intelligence_data
         )
         
-        # 5. 임시 파일 삭제
+        # 8. 임시 파일 삭제
         self._cleanup(video_info['audio_path'])
         
         result = VideoAnalysisResult(
@@ -111,223 +120,280 @@ class VideoAnalyzer:
             topics=topics,
             summary=summary,
             key_points=key_points,
-            analyzed_at=datetime.now()
+            analyzed_at=datetime.now(),
+            tone_metrics=tone_metrics,
+            sentiment_timeline=sentiment_timeline,
+            intelligence_data=intelligence_data
         )
         
         logger.info(f"Video analysis completed: {video_info['title']}")
         return result
     
-    def _download_youtube(self, url: str) -> Dict:
-        """
-        YouTube 영상 다운로드
-        
-        Returns:
-            {title, duration, audio_path}
-        """
+    def _download_youtube(self, url: str, download_sections: Optional[List[tuple]] = None) -> Dict:
+        """YouTube 영상 오디오 다운로드"""
         try:
-            # yt-dlp 사용 (실제 구현)
-            # pip install yt-dlp 필요
+            import yt_dlp
+            import imageio_ffmpeg
             
-            # 임시 구현 (실제로는 yt-dlp 코드)
-            return {
-                "title": "Sample Video Title",
-                "duration": 600,  # 10분
-                "audio_path": "/tmp/audio.mp3"
+            temp_dir = tempfile.gettempdir()
+            output_template = os.path.join(temp_dir, '%(id)s.%(ext)s')
+            
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+            
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'ffmpeg_location': ffmpeg_path,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+                'outtmpl': output_template,
+                'quiet': False, # Verbose logs
+                'verbose': True,
+                'no_warnings': False,
             }
+            
+            if download_sections:
+                logger.info(f"Downloading sections: {download_sections}")
+                ydl_opts['download_ranges'] = yt_dlp.utils.download_range_func(None, download_sections)
+                ydl_opts['force_keyframes_at_cuts'] = True
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                title = info.get('title', 'Unknown Title')
+                duration = info.get('duration', 0)
+                video_id = info.get('id')
+                
+                audio_path = os.path.join(temp_dir, f"{video_id}.mp3")
+                
+                return {
+                    "title": title,
+                    "duration": duration,
+                    "audio_path": audio_path
+                }
             
         except Exception as e:
             logger.error(f"Failed to download YouTube video: {e}")
             raise
-    
+
     async def _transcribe_audio(self, audio_path: str) -> str:
-        """
-        음성 → 텍스트 (Whisper)
-        
-        Args:
-            audio_path: 오디오 파일 경로
-            
-        Returns:
-            전체 텍스트
-        """
+        """음성 → 텍스트 (Whisper API)"""
         try:
-            # OpenAI Whisper API 사용
-            # 실제 구현:
-            """
-            import openai
+            if not os.path.exists(audio_path):
+                raise FileNotFoundError(f"Audio file not found: {audio_path}")
+                
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI()
             
+            logger.info("Starting Whisper transcription...")
             with open(audio_path, "rb") as audio_file:
-                response = openai.Audio.transcribe(
+                transcript = await client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
-                    response_format="verbose_json",
-                    timestamp_granularities=["segment"]
+                    response_format="text"
                 )
-            
-            # 타임스탬프 포함 전체 텍스트
-            return response.text
-            """
-            
-            # 임시 구현
-            return """
-            [00:00] 안녕하세요, 오늘은 Fed의 최근 발언에 대해 분석하겠습니다.
-            [00:30] 파월 의장은 인플레이션이 둔화되고 있다고 언급했습니다.
-            [01:00] 하지만 금리 인하는 여전히 신중하게 접근할 것이라고 했습니다.
-            [02:00] 시장은 이를 비둘기파적 신호로 받아들이고 있습니다.
-            """
-            
+            return transcript
         except Exception as e:
             logger.error(f"Failed to transcribe audio: {e}")
-            return ""
-    
-    def _extract_topics(self, transcript: str) -> List[Dict]:
-        """
-        타임스탬프 기반 토픽 추출
-        
-        Args:
-            transcript: 타임스탬프 포함 전체 텍스트
+            return f"[Transcription Failed: {str(e)}]"
+
+    def _analyze_audio_features(self, audio_path: str) -> Dict[str, Any]:
+        """Librosa 오디오 분석"""
+        try:
+            import librosa
+            logger.info("Analyzing audio features (Librosa)...")
+            y, sr = librosa.load(audio_path, sr=16000)
             
-        Returns:
-            [{timestamp, topic, content}, ...]
-        """
-        topics = []
-        
-        # 간단한 파싱 (실제로는 더 정교하게)
-        lines = transcript.split('\n')
-        for line in lines:
-            if line.strip() and line.startswith('['):
-                # [00:30] 파월 의장은...
-                parts = line.split(']', 1)
-                if len(parts) == 2:
-                    timestamp = parts[0].strip('[')
-                    content = parts[1].strip()
-                    
-                    # 토픽 자동 추출 (키워드 기반)
-                    topic = self._infer_topic(content)
-                    
-                    topics.append({
-                        "timestamp": timestamp,
-                        "topic": topic,
-                        "content": content
+            rms = librosa.feature.rms(y=y)[0]
+            energy_mean = float(np.mean(rms))
+            energy_std = float(np.std(rms))
+            
+            cent = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+            tone_mean = float(np.mean(cent))
+            
+            high_energy_threshold = energy_mean + 1.5 * energy_std
+            high_energy_ratio = float(np.sum(rms > high_energy_threshold) / len(rms))
+            
+            return {
+                "energy_mean": energy_mean,
+                "energy_variability": energy_std,
+                "tone_brightness": tone_mean,
+                "high_energy_ratio": high_energy_ratio,
+                "interpretation": self._interpret_audio_metrics(energy_mean, tone_mean)
+            }
+        except Exception as e:
+            logger.error(f"Audio analysis failed: {e}")
+            return {"error": str(e)}
+
+    def _interpret_audio_metrics(self, energy: float, tone: float) -> str:
+        if energy > 0.1:
+            if tone > 2000: return "PASSIONATE / AGGRESSIVE"
+            else: return "CONFIDENT / BOOMING"
+        else:
+            if tone > 2000: return "TENSE / NERVOUS"
+            else: return "CALM / SUBDUED"
+
+    def _analyze_text_sentiment(self, transcript: str) -> List[Dict]:
+        """TextBlob 감성 분석"""
+        try:
+            from textblob import TextBlob
+            logger.info("Analyzing text sentiment...")
+            blob = TextBlob(transcript)
+            timeline = []
+            for sentence in blob.sentences:
+                sentiment = sentence.sentiment.polarity
+                if abs(sentiment) > 0.1 and len(sentence.string) > 10:
+                    status = "POSITIVE" if sentiment > 0 else "NEGATIVE"
+                    timeline.append({
+                        "text": sentence.string[:50] + "...",
+                        "sentiment_score": float(sentiment),
+                        "status": status
                     })
-        
+            return timeline
+        except Exception:
+            return []
+
+    def _extract_topics(self, transcript: str) -> List[Dict]:
+        topics = []
+        chunks = transcript.split('\n\n')
+        for i, chunk in enumerate(chunks):
+            if not chunk.strip(): continue
+            topics.append({
+                "timestamp": f"Section {i+1}", 
+                "topic": self._infer_topic(chunk),
+                "content": chunk[:200] + "..."
+            })
         return topics
     
     def _infer_topic(self, content: str) -> str:
-        """내용에서 토픽 추론"""
-        # 간단한 키워드 매칭
-        if "인플레" in content or "물가" in content:
-            return "인플레이션"
-        elif "금리" in content or "FOMC" in content:
-            return "금리 정책"
-        elif "고용" in content or "실업" in content:
-            return "고용 시장"
-        else:
-            return "일반"
-    
-    async def _analyze_content(
+        c = content.lower()
+        if "inflation" in c or "price" in c: return "Economy/Inflation"
+        if "trade" in c or "tariff" in c: return "Trade/Tariffs"
+        if "job" in c or "employment" in c: return "Labor Market"
+        if "war" in c or "military" in c: return "Geopolitics"
+        return "General"
+
+    async def _extract_intelligence(self, transcript: str, title: str) -> List[Dict]:
+        """
+        인텔리전스 추출 (Thinking Layer)
+        월가 속보 에디터 페르소나
+        """
+        system_prompt = """You are a Wall Street Breaking News AI Editor.
+Your task is to extract "Market-Moving Intelligence" from the speech transcript.
+
+[INSTRUCTIONS]
+Extract ONLY sentences that contain specific facts regarding:
+1. **Economic Indicators**: Inflation numbers, GDP, Stock market targets.
+2. **Geopolitics**: Specific countries, Borders, Wars, Territory (e.g. Greenland).
+3. **Industrial Policy**: Energy (Nuclear/Oil), Trade tariffs, Regulations.
+
+Ignore emotional rhetoric. Focus on Hard Facts, Numbers, and Entities.
+
+[OUTPUT FORMAT]
+Return a valid JSON list of objects:
+[
+    {
+        "category": "Economy" | "Geopolitics" | "Policy",
+        "entity": ["Entity1", "Entity2"],
+        "fact": "One concise sentence summarizing the fact",
+        "impact_score": "High" | "Medium" | "Low",
+        "related_sectors": ["Sector1", "Sector2"]
+    }
+]"""
+
+        user_prompt = f"""
+TRANSCRIPT TITLE: {title}
+
+TRANSCRIPT (Excerpt):
+{transcript[:3000]}
+"""
+        
+        try:
+            logger.info("Calling Claude for Intelligence Extraction (Cached)...")
+            # Nemotron-style: use caching for system prompt
+            response = await self.claude.generate(
+                prompt=user_prompt, 
+                system_prompt=system_prompt, 
+                use_caching=True
+            )
+            
+            import json
+            import re
+            
+            import json
+            import re
+            
+            match = re.search(r'\[.*\]', response, re.DOTALL)
+            if match:
+                return json.loads(match.group(0))
+            else:
+                logger.warning("No JSON found in intelligence response")
+                return []
+        except Exception as e:
+            logger.error(f"Intelligence extraction failed: {e}")
+            return []
+
+    async def _analyze_content_with_multimodal(
         self,
         transcript: str,
         title: str,
-        keywords: Optional[List[str]] = None
+        tone_metrics: Dict,
+        sentiment_timeline: List[Dict],
+        keywords: Optional[List[str]] = None,
+        intelligence_data: Optional[List[Dict]] = None
     ) -> tuple:
-        """
-        AI 분석 (Claude)
+        """AI 종합 분석 (Multimodal + Intelligence)"""
         
-        Returns:
-            (summary, key_points)
+        top_pos = sorted(sentiment_timeline, key=lambda x: x['sentiment_score'], reverse=True)[:3]
+        top_neg = sorted(sentiment_timeline, key=lambda x: x['sentiment_score'])[:3]
+        
+        multimodal_context = f"""
+        [Audio Analysis]
+        - Tone/Energy: {tone_metrics.get('interpretation', 'N/A')}
+        - High Energy Ratio: {tone_metrics.get('high_energy_ratio', 0):.2%}
+        
+        [Sentiment Analysis]
+        - Positive Highlights: {str([p['text'] for p in top_pos])}
+        - Negative Highlights: {str([n['text'] for n in top_neg])}
+        
+        [Intelligence Data - Key Facts]
+        {str(intelligence_data)[:1000] if intelligence_data else "None"}
         """
-        keyword_instruction = ""
-        if keywords:
-            keyword_instruction = f"\n특히 다음 키워드에 주목하세요: {', '.join(keywords)}"
         
         prompt = f"""
-        다음 영상 분석을 작성하세요:
+        Analyze this video transcript.
         
-        제목: {title}
-        내용:
-        {transcript[:2000]}  # 처음 2000자
-        {keyword_instruction}
+        Title: {title}
         
-        다음 형식으로 작성:
+        Context:
+        {multimodal_context}
         
-        1. **요약** (3-4문장)
-           - 영상의 핵심 메시지
+        Transcript (Start):
+        {transcript[:2000]}
         
-        2. **주요 포인트** (5개)
-           - 투자자가 알아야 할 사항
-        
-        3. **투자 시사점** (2문장)
-        
-        간결하고 명확하게.
+        Task:
+        1. Summarize main message (3-4 sentences).
+        2. Identify emotional state/intent.
+        3. Key investment implications (5 bullet points).
         """
         
         try:
             analysis = await self.claude.generate(prompt)
-            
-            # 간단한 파싱
-            summary = analysis[:300]
-            key_points = [
-                "Fed 금리 인하 신중 접근",
-                "인플레이션 둔화 확인",
-                "시장 비둘기파 해석",
-                "고용 시장 안정",
-                "데이터 의존 정책 유지"
-            ]
-            
-            return summary, key_points
-            
-        except Exception as e:
-            logger.error(f"Failed to analyze content: {e}")
-            return "분석 실패", []
-    
+            summary = analysis[:500] + "..."
+            key_points = ["Analysis completed."]
+            return analysis, key_points
+        except Exception:
+            return "Analysis Failed", []
+
     def _cleanup(self, file_path: str):
-        """임시 파일 삭제"""
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logger.info(f"Cleaned up: {file_path}")
-        except Exception as e:
-            logger.warning(f"Failed to cleanup {file_path}: {e}")
-
-
-# 전역 인스턴스
-_video_analyzer = None
+            if os.path.exists(file_path): os.remove(file_path)
+        except Exception: pass
 
 
 def get_video_analyzer() -> VideoAnalyzer:
-    """전역 VideoAnalyzer 인스턴스 반환"""
     global _video_analyzer
     if _video_analyzer is None:
         _video_analyzer = VideoAnalyzer()
     return _video_analyzer
-
-
-# 테스트
-if __name__ == "__main__":
-    import asyncio
-    
-    async def test():
-        print("=== Video Analysis Engine Test ===\n")
-        
-        analyzer = VideoAnalyzer()
-        
-        # YouTube 영상 분석 (샘플)
-        print("Analyzing YouTube video...")
-        result = await analyzer.analyze_youtube(
-            "https://youtube.com/watch?v=sample",
-            extract_keywords=["금리", "인플레"]
-        )
-        
-        print(f"\nTitle: {result.title}")
-        print(f"Duration: {result.duration_seconds}s")
-        print(f"\nSummary:\n{result.summary}\n")
-        print("Key Points:")
-        for i, point in enumerate(result.key_points, 1):
-            print(f"  {i}. {point}")
-        
-        print("\n✅ Video Analysis Engine test completed!")
-        
-        print("\nNote: 실제 사용을 위해서는 다음을 설치하세요:")
-        print("  pip install yt-dlp openai")
-    
-    asyncio.run(test())

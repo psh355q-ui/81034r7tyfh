@@ -29,11 +29,11 @@ except ImportError:
     import os
 
     class MockSettings:
-        timescale_host = os.getenv("TIMESCALE_HOST", "localhost")
-        timescale_port = int(os.getenv("TIMESCALE_PORT", "5432"))
-        timescale_user = os.getenv("POSTGRES_USER", "postgres")
-        timescale_password = os.getenv("POSTGRES_PASSWORD", "")  # Must be set in .env
-        timescale_database = os.getenv("TIMESCALE_DATABASE", "ai_trading")
+        timescale_host = os.getenv("DB_HOST", "localhost")
+        timescale_port = int(os.getenv("DB_PORT", "5433"))
+        timescale_user = os.getenv("DB_USER", "postgres")
+        timescale_password = os.getenv("DB_PASSWORD", "")  # Must be set in .env
+        timescale_database = os.getenv("DB_NAME", "ai_trading")
 
     def get_settings():
         return MockSettings()

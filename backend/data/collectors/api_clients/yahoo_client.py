@@ -281,7 +281,150 @@ class YahooFinanceClient:
             
         except Exception as e:
             logger.error(f"Failed to get insider trades for {ticker}: {e}")
+            logger.error(f"Failed to get insider trades for {ticker}: {e}")
             return []
+
+    # Market Data Proxy Methods for Contrarian Signal Detection
+    def get_etf_flows(self, ticker: str, period: str = "1mo") -> List[Dict[str, float]]:
+        """
+        Get ETF fund flows proxy using volume changes
+        
+        Since Yahoo Finance doesn't provide direct fund flow data,
+        we use volume changes as a proxy indicator:
+        - Positive: increasing volume (money flowing in)
+        - Negative: decreasing volume (money flowing out)
+        
+        Returns: List of 5 flow data dictionaries with 'flow' key (-100 to +100)
+        """
+        try:
+            data = self.get_etf_data(ticker, period=period)
+            if not data or 'volume' not in data:
+                logger.warning(f"No volume data for {ticker}, returning neutral flows")
+                return [{"flow": 0.0} for _ in range(5)]
+            
+            volumes = data['volume']
+            if len(volumes) < 2:
+                return [{"flow": 0.0} for _ in range(5)]
+            
+            # Calculate volume changes (percentage)
+            flows = []
+            for i in range(1, min(6, len(volumes))):
+                if volumes[-i-1] > 0:
+                    pct_change = ((volumes[-i] - volumes[-i-1]) / volumes[-i-1]) * 100
+                    # Normalize to -100 to +100 range
+                    flows.append({"flow": max(-100, min(100, pct_change))})
+                else:
+                    flows.append({"flow": 0.0})
+            
+            # Reverse to chronological order
+            flows.reverse()
+            
+            # Pad if needed
+            while len(flows) < 5:
+                flows.append({"flow": 0.0})
+            
+            logger.info(f"ETF flows proxy for {ticker}: {[f['flow'] for f in flows[:5]]}")
+            return flows[:5]
+            
+        except Exception as e:
+            logger.error(f"Failed to calculate ETF flows for {ticker}: {e}")
+            return [{"flow": 0.0} for _ in range(5)]
+
+    def get_sentiment_history(self, ticker: str, period: str = "1mo") -> List[float]:
+        """
+        Get sentiment proxy using price volatility
+        
+        High volatility = extreme sentiment (fear or greed)
+        Low volatility = neutral sentiment
+        
+        Returns: List of 5 sentiment scores (0.0 to 1.0)
+        0.5 = neutral, 0.0 = extreme bearish, 1.0 = extreme bullish
+        """
+        try:
+            data = self.get_etf_data(ticker, period=period)
+            if not data or 'price' not in data:
+                logger.warning(f"No price data for {ticker}, returning neutral sentiment")
+                return [0.5] * 5
+            
+            prices = data['price']
+            if len(prices) < 2:
+                return [0.5] * 5
+            
+            sentiments = []
+            for i in range(1, min(6, len(prices))):
+                if prices[-i-1] > 0:
+                    # Price change percentage
+                    pct_change = ((prices[-i] - prices[-i-1]) / prices[-i-1])
+                    
+                    # Convert to sentiment: positive change = bullish, negative = bearish
+                    # Map -5% to +5% range to 0.0 to 1.0
+                    sentiment = 0.5 + (pct_change * 10)
+                    sentiment = max(0.0, min(1.0, sentiment))
+                    sentiments.append(sentiment)
+                else:
+                    sentiments.append(0.5)
+            
+            # Reverse to chronological order
+            sentiments.reverse()
+            
+            # Pad if needed
+            while len(sentiments) < 5:
+                sentiments.append(0.5)
+            
+            logger.info(f"Sentiment history for {ticker}: {sentiments[:5]}")
+            return sentiments[:5]
+            
+        except Exception as e:
+            logger.error(f"Failed to calculate sentiment for {ticker}: {e}")
+            return [0.5] * 5
+
+    def get_position_data(self, ticker: str) -> Dict[str, float]:
+        """
+        Get positioning data from institutional holders
+        
+        Returns:
+            long_positions: estimated long positions (0-100)
+            short_positions: estimated short positions (0-100)
+            total_positions: total positions (100)
+        """
+        try:
+            stock = yf.Ticker(ticker)
+            holders = stock.institutional_holders
+            
+            if holders is None or holders.empty:
+                logger.warning(f"No institutional holder data for {ticker}")
+                return {"long_positions": 50, "short_positions": 50, "total_positions": 100}
+            
+            # Calculate skew based on shares held
+            # If top holders are increasing positions = bullish skew
+            total_shares = holders['Shares'].sum()
+            top_5_shares = holders.head(5)['Shares'].sum()
+            
+            # More concentrated = higher skew (assuming accumulation)
+            concentration = top_5_shares / total_shares if total_shares > 0 else 0.5
+            
+            # Convert concentration to long/short split
+            # High concentration (>0.5) = more longs
+            # Low concentration (<0.5) = more shorts
+            if concentration > 0.5:
+                long_positions = 50 + (concentration - 0.5) * 100
+                short_positions = 100 - long_positions
+            else:
+                short_positions = 50 + (0.5 - concentration) * 100
+                long_positions = 100 - short_positions
+            
+            result = {
+                "long_positions": float(long_positions),
+                "short_positions": float(short_positions),
+                "total_positions": 100.0
+            }
+            
+            logger.info(f"Position data for {ticker}: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get position data for {ticker}: {e}")
+            return {"long_positions": 50, "short_positions": 50, "total_positions": 100}
 
 
 # 전역 인스턴스

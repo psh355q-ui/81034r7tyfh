@@ -5,7 +5,7 @@ import {
   FileSearch, Settings, X, MessageSquare, TrendingDown, BarChart3,
   LineChart, Brain, Zap, PieChart, TestTube2, Wallet, Globe,
   ChevronDown, ChevronRight, DollarSign, Database, Target, Coins, GraduationCap,
-  Network, Users
+  Network, Users, Video
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,6 +50,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
     {
       title: 'Intelligence',
       items: [
+        { path: '/video-intelligence', icon: Video, label: 'Video Signals' }, // 🆕
+        { path: '/intelligence', icon: Brain, label: 'Market Intelligence v2.0' },
         { path: '/analysis', icon: TrendingUp, label: 'Analysis' },
         { path: '/deep-reasoning', icon: Brain, label: 'Deep Reasoning' },
         { path: '/advanced-analytics', icon: LineChart, label: 'Analytics' },

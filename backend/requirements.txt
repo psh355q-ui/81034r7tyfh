@@ -44,6 +44,9 @@ tiktoken==0.5.2  # Token counting for embeddings
 scikit-learn==1.3.2  # K-means clustering for risk patterns
 scipy==1.11.4  # Scientific computing (used by ensemble optimizer)
 sentence-transformers>=2.2.2  # ✨ NEW - Local Embeddings
+yt-dlp>=2023.11.16  # Video Download for Analysis
+librosa>=0.10.0     # Audio Feature Extraction (Pitch, Tone)
+textblob>=0.17.1    # Text Sentiment Analysis
 
 # Media Generation (Phase 10 - YouTube Automation)
 moviepy==1.0.3  # Video editing
@@ -76,3 +79,8 @@ google-generativeai>=0.3.0  # Phase 5: Gemini for risk screening
 # Phase 1: Cost Optimization (Ideas Integration)
 llmlingua>=0.2.0  # LLMLingua-2 prompt compression
 redisvl>=0.1.0  # RedisVL semantic caching
+
+# Phase 2: Web Dashboard
+streamlit>=1.30.0
+plotly>=5.18.0
+watchdog>=3.0.0 # Auto-reload for streamlit

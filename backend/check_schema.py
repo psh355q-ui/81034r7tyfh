@@ -11,11 +11,11 @@ load_dotenv()
 async def check_schema():
     # Connect to database
     conn = await asyncpg.connect(
-        host=os.getenv('POSTGRES_HOST', 'localhost'),
-        port=int(os.getenv('POSTGRES_PORT', '5432')),
-        user=os.getenv('POSTGRES_USER', 'postgres'),
-        password=os.getenv('POSTGRES_PASSWORD'),  # Must be set in .env
-        database=os.getenv('POSTGRES_DB', 'ai_trading')
+        host=os.getenv('DB_HOST', 'localhost'),
+        port=int(os.getenv('DB_PORT', '5433')),
+        user=os.getenv('DB_USER', 'postgres'),
+        password=os.getenv('DB_PASSWORD'),  # Must be set in .env
+        database=os.getenv('DB_NAME', 'ai_trading')
     )
 
     try:

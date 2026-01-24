@@ -299,7 +299,6 @@ Recent News:
         prompt += """
 TASK:
 Evaluate the risk and provide assessment in JSON format:
-
 ```json
 {
     "risk_score": 0.0-1.0,
@@ -321,13 +320,14 @@ Return ONLY valid JSON.
 
         return prompt
 
-    async def _call_api(self, prompt: str, use_caching: bool = True) -> str:
+    async def _call_api(self, prompt: str, use_caching: bool = True, system_prompt: Optional[str] = None) -> str:
         """
         Call Claude API with retry logic and optional prompt caching.
 
         Args:
             prompt: The prompt to send
             use_caching: Whether to use prompt caching (default: True)
+            system_prompt: Optional custom system prompt (overrides default constitution)
 
         Returns:
             Response text from Claude
@@ -335,6 +335,8 @@ Return ONLY valid JSON.
         Raises:
             Exception: If all retries fail
         """
+        effective_system_prompt = system_prompt if system_prompt else self.CONSTITUTION_SYSTEM_PROMPT
+        
         for attempt in range(self.max_retries):
             try:
                 start_time = time.time()
@@ -352,7 +354,7 @@ Return ONLY valid JSON.
                         system=[
                             {
                                 "type": "text",
-                                "text": self.CONSTITUTION_SYSTEM_PROMPT,
+                                "text": effective_system_prompt,
                                 "cache_control": {"type": "ephemeral"}
                             }
                         ],
@@ -360,12 +362,17 @@ Return ONLY valid JSON.
                     )
                 else:
                     # Standard call without caching
-                    response = self.client.messages.create(
-                        model=self.model,
-                        max_tokens=self.max_tokens,
-                        temperature=self.temperature,
-                        messages=[{"role": "user", "content": prompt}],
-                    )
+                    # Pass system prompt as string if provided
+                    response_kwargs = {
+                        "model": self.model,
+                        "max_tokens": self.max_tokens,
+                        "temperature": self.temperature,
+                        "messages": [{"role": "user", "content": prompt}],
+                    }
+                    if effective_system_prompt:
+                         response_kwargs["system"] = effective_system_prompt
+                    
+                    response = self.client.messages.create(**response_kwargs)
 
                 latency_ms = (time.time() - start_time) * 1000
 
@@ -538,6 +545,20 @@ Return ONLY valid JSON.
                 "requires_human_review": True,
             }
 
+    async def generate(self, prompt: str, system_prompt: Optional[str] = None, use_caching: bool = False) -> str:
+        """
+        Generic text generation (for non-trading tasks like video analysis).
+        
+        Args:
+            prompt: Input prompt
+            system_prompt: Optional system prompt to override default
+            use_caching: Whether to use prompt caching
+            
+        Returns:
+            Generated text
+        """
+        return await self._call_api(prompt, use_caching=use_caching, system_prompt=system_prompt)
+
     def get_metrics(self) -> dict:
         """Get API usage metrics including cache statistics."""
         # Calculate cost without caching (for comparison)
@@ -655,6 +676,20 @@ class MockClaudeClient:
             "requires_human_review": False,
         }
 
+    async def generate(self, prompt: str, system_prompt: Optional[str] = None, use_caching: bool = False) -> str:
+        """
+        Generic text generation (for non-trading tasks like video analysis).
+        
+        Args:
+            prompt: Input prompt
+            system_prompt: Optional system prompt to override default
+            use_caching: Whether to use prompt caching
+            
+        Returns:
+            Generated text
+        """
+        return "Mock generated response for: " + prompt[:50] + "..."
+
     def get_metrics(self) -> dict:
         """Get mock metrics."""
         return {
@@ -668,3 +703,18 @@ class MockClaudeClient:
                 else 0.0
             ),
         }
+
+
+# Global instance
+_claude_client = None
+
+def get_claude_client() -> ClaudeClient:
+    """Get or create global ClaudeClient instance."""
+    global _claude_client
+    if _claude_client is None:
+        try:
+            _claude_client = ClaudeClient()
+        except Exception as e:
+            logger.warning(f"Failed to initialize ClaudeClient: {e}. Using Mock.")
+            _claude_client = MockClaudeClient()
+    return _claude_client

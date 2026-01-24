@@ -136,7 +136,7 @@ Your task is to analyze news articles and extract:
 - FATIGUED: Overplayed, losing impact, saturation
 - REVERSING: Breaking down, contradictory evidence
 
-**Format**: Respond in JSON format:
+**Format**: Respond in JSON format ONLY. No additional text:
 {
     "fact_layer": "Concrete facts...",
     "narrative_layer": "Market interpretation...",
@@ -144,6 +144,8 @@ Your task is to analyze news articles and extract:
     "confidence": 0.85,
     "evidence": ["evidence1", "evidence2", "evidence3"]
 }
+
+IMPORTANT: The phase field must be one of: EMERGING, ACCELERATING, CONSENSUS, FATIGUED, REVERSING
 
 **Examples**:
 

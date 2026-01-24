@@ -488,6 +488,11 @@ class RSSFeed(Base):
         return f"<RSSFeed(id={self.id}, name='{self.name}', category='{self.category}', enabled={self.enabled})>"
 
 
+# MacroSnapshot은 MacroContextSnapshot의 별칭 (호환성 유지)
+# 실제 클래스는 아래 Accountability System Models 섹션에 정의됨
+# MacroSnapshot = MacroContextSnapshot (런타임에 할당됨)
+
+
 class Order(Base):
     """실제 주문 실행 기록 (KIS Broker)"""
     __tablename__ = 'orders'
@@ -598,6 +603,65 @@ class DividendAristocrat(Base):
     # 메타데이터
     is_sp500 = Column(Integer, default=0)  # S&P 500 포함 여부 (boolean)
     is_reit = Column(Integer, default=0)   # REIT 여부 (boolean)
+
+
+class EconomicEvent(Base):
+    """
+    경제 지표 이벤트 (v2.2)
+    
+    Phase 3.5: Real-time Economic Watcher
+    
+    Data Sources:
+        - Investing.com Economic Calendar 크롤링
+        - FMP API 백업 (선택적)
+    
+    Features:
+        - 발표 시간까지 대기 (asyncio.sleep)
+        - 발표 +10초 후 Actual 값 수집
+        - 예상(Forecast) vs 실제(Actual) 괴리(Surprise) 계산
+        - 즉시 알림 + 브리핑 Context 주입
+    
+    Importance Levels:
+        - ★★★: GDP, PCE, CPI, 고용지표, FOMC 회의록
+        - ★★: EIA 재고, 주택지표, PMI
+        - ★: 기타 참고 지표
+    """
+    __tablename__ = "economic_events"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_name = Column(String(200), nullable=False)  # 예: "미국 3분기 실질 GDP"
+    country = Column(String(10), nullable=False)      # US, KR, EU, CN, JP
+    category = Column(String(50), nullable=False)     # GDP, Inflation, Employment, etc.
+    
+    event_time = Column(DateTime, nullable=False, index=True)  # 발표 예정 시간 (KST)
+    importance = Column(Integer, nullable=False)      # 1=★, 2=★★, 3=★★★
+    
+    # 데이터 값
+    forecast = Column(String(50), nullable=True)      # 예상치 (4.3%)
+    actual = Column(String(50), nullable=True)        # 실제치 (발표 후 업데이트)
+    previous = Column(String(50), nullable=True)      # 이전치
+    
+    # Surprise 분석
+    surprise_pct = Column(Float, nullable=True)      # (실제-예상)/예상 * 100
+    impact_direction = Column(String(20), nullable=True)  # Bullish/Bearish/Neutral
+    impact_score = Column(Integer, nullable=True)        # 영향도 점수 (0-100)
+    
+    # 처리 상태
+    is_processed = Column(Boolean, default=False)    # 처리 완료 여부
+    processed_at = Column(DateTime, nullable=True)      # 처리 완료 시간
+    created_at = Column(DateTime, default=datetime.utcnow)
+    notes = Column(Text, nullable=True)              # 추가 메모
+    updated_at = Column(DateTime, nullable=True)       # 업데이트 시간
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_economic_event_time', 'event_time'),
+        Index('idx_economic_importance', 'importance'),
+        Index('idx_economic_processed', 'is_processed'),
+    )
+    
+    def __repr__(self):
+        return f"<EconomicEvent(id={self.id}, name='{self.event_name}', time={self.event_time}, importance={self.importance})>"
     notes = Column(Text)  # 특이사항
     
     created_at = Column(DateTime, default=datetime.now)
@@ -1101,15 +1165,81 @@ class DailyBriefing(Base):
     #   "vix_close": 18.5
     # }
     
+    # v2.2: Caching Fields (70% API Cost Reduction)
+    cache_key = Column(String(200), nullable=True)  # Cache key (e.g., "briefing_2026-01-23")
+    cache_hit = Column(Boolean, default=False)  # Cache hit (true if cached, false if regenerated)
+    cache_ttl = Column(Integer, default=86400)  # Cache TTL in seconds (24 hours)
+    importance_score = Column(Integer, nullable=True)  # Importance score (0-100) based on market volatility
+    economic_events_count = Column(Integer, default=0)  # Number of economic events included
+    sector_rotation_score = Column(Float, nullable=True)  # Sector rotation score (-1.0 to 1.0)
+    
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     
     __table_args__ = (
         Index('idx_daily_briefing_date', 'date'),
+        Index('idx_daily_briefing_cache_key', 'cache_key'),
+        Index('idx_daily_briefing_cache_hit', 'cache_hit'),
     )
     
     def __repr__(self):
         return f"<DailyBriefing(date={self.date}, id={self.id})>"
+
+
+class WeeklyReport(Base):
+    """
+    Weekly Report - AI Generated Weekly Market Analysis
+    
+    Generates a weekly market analysis including:
+    - Weekly performance summary
+    - Sector rotation analysis
+    - Economic events impact
+    - Market sentiment trends
+    - Trading signal performance
+    
+    Used by:
+    - WeeklyReportService
+    - Frontend Dashboard (Weekly Tab)
+    """
+    __tablename__ = "weekly_reports"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    week_start = Column(Date, nullable=False, index=True)  # Week start date (Monday)
+    week_end = Column(Date, nullable=False, index=True)    # Week end date (Sunday)
+    content = Column(Text, nullable=False)  # Markdown content
+    
+    # Structured Data for Charts/Analytics
+    metrics = Column(JSONB, nullable=True)
+    # Expected structure:
+    # {
+    #   "weekly_return": 2.5,
+    #   "best_performing_sector": "Technology",
+    #   "worst_performing_sector": "Energy",
+    #   "economic_events_count": 5,
+    #   "high_importance_events_count": 2,
+    #   "market_sentiment_trend": "Improving",
+    #   "signals_generated": 12,
+    #   "signals_won": 7,
+    #   "signals_lost": 5
+    # }
+    
+    # v2.2: Caching Fields (70% API Cost Reduction)
+    cache_key = Column(String(200), nullable=True)  # Cache key (e.g., "weekly_report_2026-W03")
+    cache_hit = Column(Boolean, default=False)  # Cache hit (true if cached, false if regenerated)
+    cache_ttl = Column(Integer, default=604800)  # Cache TTL in seconds (7 days)
+    
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    
+    __table_args__ = (
+        Index('idx_weekly_report_week_start', 'week_start'),
+        Index('idx_weekly_report_week_end', 'week_end'),
+        Index('idx_weekly_report_cache_key', 'cache_key'),
+        Index('idx_weekly_report_cache_hit', 'cache_hit'),
+    )
+    
+    def __repr__(self):
+        return f"<WeeklyReport(week_start={self.week_start}, id={self.id})>"
 
 
 class UserFeedback(Base):
@@ -1478,3 +1608,72 @@ class GeneratedChart(Base):
     def __repr__(self):
         return f"<GeneratedChart(id={self.id}, type='{self.chart_type}', title='{self.chart_title}')>"
 
+
+# ====================================
+# AI Trade Decisions (v2.3)
+# ====================================
+
+class AITradeDecision(Base):
+    """
+    AI 트레이딩 프로토콜 결정 - v2.3
+
+    ChatGPT/Gemini 합의 기반 JSON 프로토콜 저장
+    - Closing/Morning 모드 지원
+    - 자동매매/백테스트 연동
+    - Human-in-the-loop 체크포인트
+    """
+    __tablename__ = "ai_trade_decisions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+    # 핵심 메타데이터 (인덱싱용)
+    mode = Column(String(20), nullable=False, index=True)  # CLOSING, MORNING, INTRADAY, KOREAN
+    execution_intent = Column(String(20), nullable=False, index=True)  # AUTO, HUMAN_APPROVAL
+    market_trend = Column(String(10), nullable=True, index=True)  # UP, SIDE, DOWN
+    risk_level = Column(String(10), nullable=True, index=True)  # LOW, MEDIUM, HIGH
+    risk_score = Column(Integer, nullable=True)  # 0-100
+
+    # 전체 JSON 데이터
+    full_report_json = Column(JSONB, nullable=False)
+
+    # 백테스트용 (JSON에서 추출)
+    target_asset = Column(String(50), nullable=True, index=True)
+    suggested_action = Column(String(20), nullable=True)
+    suggested_size_pct = Column(Numeric(5, 4), nullable=True)  # -1.0000 ~ 1.0000
+    expected_rr_ratio = Column(Numeric(5, 2), nullable=True)  # 기대 손익비
+
+    # 사후 검증용 (트레이딩 후 업데이트)
+    actual_profit_loss = Column(Numeric(12, 2), nullable=True)
+    is_strategy_correct = Column(Boolean, nullable=True)
+    validated_at = Column(DateTime, nullable=True)
+    validation_notes = Column(Text, nullable=True)
+
+    # 버전 관리
+    model_version = Column(String(100), nullable=True)
+    prompt_version = Column(String(50), nullable=True, default='v2.3')
+
+    # 연관 브리핑
+    briefing_file_path = Column(String(255), nullable=True)
+
+    # 감사
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        Index('idx_ai_decisions_created_at', 'created_at'),
+        Index('idx_ai_decisions_mode', 'mode'),
+        Index('idx_ai_decisions_intent', 'execution_intent'),
+        Index('idx_ai_decisions_risk', 'risk_level'),
+        Index('idx_ai_decisions_trend', 'market_trend'),
+        Index('idx_ai_decisions_asset', 'target_asset'),
+    )
+
+    def __repr__(self):
+        return f"<AITradeDecision(id={self.id}, mode='{self.mode}', intent='{self.execution_intent}', risk='{self.risk_level}')>"
+
+
+# ====================================
+# Aliases for backward compatibility
+# ====================================
+# MacroSnapshot은 MacroContextSnapshot의 별칭 (기존 코드 호환성 유지)
+MacroSnapshot = MacroContextSnapshot

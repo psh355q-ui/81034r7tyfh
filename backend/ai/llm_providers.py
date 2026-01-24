@@ -432,7 +432,7 @@ class GLMClient(BaseLLMClient):
     Docs: https://open.bigmodel.cn/dev/api
     """
 
-    BASE_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    BASE_URL = os.getenv("ZAI_API_URL", "https://open.bigmodel.cn/api/paas/v4/chat/completions")
 
     def __init__(self, api_key: str):
         """
@@ -532,8 +532,10 @@ class LLMProvider:
             default_config: 기본 모델 설정
         """
         self.default_config = default_config or ModelConfig(
-            model="gpt-4o-mini",
-            provider=ModelProvider.OPENAI,
+            model="GLM-4.7",  # GLM-4.7 reasoning model (consistent with glm_client.py)
+            provider=ModelProvider.GLM,
+            max_tokens=1000,  # Conservative limit to avoid rate issues
+            temperature=0.7,
         )
 
         # API 키 로드

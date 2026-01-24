@@ -22,6 +22,10 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse
@@ -421,14 +425,13 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 app = FastAPI(
     title="AI Trading System",
-    description="AI-Powered Stock Trading System with Multi-AI Ensemble",
+    description="Multi-Agent Trading System with AI-powered decision making",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
     lifespan=lifespan,
 )
 
 # CORS middleware configuration
+from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -436,6 +439,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for chart images
+from fastapi.staticfiles import StaticFiles
+import os
+
+charts_dir = os.path.join(os.getcwd(), "tmp", "charts")
+os.makedirs(charts_dir, exist_ok=True)
+app.mount("/tmp/charts", StaticFiles(directory=charts_dir), name="charts")
+logger.info(f"✅ Static files mounted: /tmp/charts -> {charts_dir}")
 
 # WebSocket Endpoint (Explicitly mounted here to avoid router prefix issues)
 from fastapi import WebSocket, WebSocketDisconnect
@@ -746,6 +758,14 @@ try:
     logger.info("✅ Conflict WebSocket endpoint mounted at /api/conflicts/ws")
 except Exception as e:
     logger.warning(f"Multi-Strategy Orchestration routers not available: {e}")
+
+# Intelligence Router (Market Intelligence v2.0)=========================================
+try:
+    from backend.api.intelligence_router import router as intelligence_router
+    app.include_router(intelligence_router)
+    logger.info("✅ Intelligence router registered (Market Intelligence v2.0)")
+except Exception as e:
+    logger.warning(f"Intelligence router not available: {e}")
 
 # System/Mock routers (no prefix)=============================================================================
 

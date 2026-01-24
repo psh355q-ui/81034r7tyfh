@@ -209,7 +209,9 @@ class ContrarySignal(BaseIntelligence):
             flow_z_score = 0.0
             if self.market_data_client:
                 try:
-                    flow_data = await self.market_data_client.get_etf_flows(symbol, days)
+                    # Convert days to period format (e.g., "1mo", "5d")
+                    period = f"{days}d" if days < 30 else "1mo"
+                    flow_data = self.market_data_client.get_etf_flows(symbol, period)
                     if flow_data:
                         flow_z_score = self._calculate_flow_z_score(flow_data)
                 except Exception as e:
@@ -220,7 +222,9 @@ class ContrarySignal(BaseIntelligence):
             sentiment_direction = "NEUTRAL"
             if self.market_data_client:
                 try:
-                    sentiment_data = await self.market_data_client.get_sentiment_history(symbol, days)
+                    # Convert days to period format
+                    period = f"{days}d" if days < 30 else "1mo"
+                    sentiment_data = self.market_data_client.get_sentiment_history(symbol, period)
                     if sentiment_data:
                         extreme_result = self._detect_sentiment_extreme(sentiment_data)
                         sentiment_extreme = extreme_result["is_extreme"]
@@ -232,7 +236,7 @@ class ContrarySignal(BaseIntelligence):
             position_skew = 0.0
             if self.market_data_client:
                 try:
-                    position_data = await self.market_data_client.get_position_data(symbol)
+                    position_data = self.market_data_client.get_position_data(symbol)
                     if position_data:
                         position_skew = self._calculate_position_skew(position_data)
                 except Exception as e:

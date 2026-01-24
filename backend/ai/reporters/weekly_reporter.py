@@ -48,12 +48,21 @@ class WeeklyReporter:
         
         # 2. Synthesis
         report_content = await self._synthesize_report(date_str, portfolio_summary, nia_stats, key_news)
-        
-        # 3. Save
+
+        # 3. 면책 조항 래핑
+        from backend.utils.disclaimer import wrap_briefing_with_disclaimer
+        content_with_disclaimer = wrap_briefing_with_disclaimer(
+            content=report_content,
+            briefing_type="weekly_review",
+            include_header=True,
+            include_footer=True
+        )
+
+        # 4. Save
         filename = f"docs/Weekly_Report_{date_str.replace('-','')}.md"
         with open(filename, "w", encoding="utf-8") as f:
-            f.write(report_content)
-            
+            f.write(content_with_disclaimer)
+
         logger.info(f"✅ Weekly Report saved to {filename}")
         return filename
 
@@ -204,7 +213,378 @@ class WeeklyReporter:
         
         return await call_gemini_api(prompt, self.model_name)
 
+    # ==========================================
+    # v2.2 NEW: 토요일 주간 리뷰 (14:00 KST)
+    # ==========================================
+    async def generate_weekly_review(self, date_str: str = None) -> str:
+        """
+        토요일 14:00 - 주간 리뷰 (v2.2)
+
+        Features:
+        - 이번 주 브리핑 요약
+        - 포트폴리오 주간 성과
+        - 경제지표 정확도 분석
+        - 브리핑 적중률 분석
+        """
+        if not date_str:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+
+        logger.info(f"📊 Generating Weekly Review for {date_str}...")
+
+        # 1. 데이터 수집
+        portfolio_summary = await self._get_portfolio_summary()
+        nia_stats = await self._get_weekly_nia_stats()
+        economic_accuracy = await self._get_economic_accuracy()
+        weekly_briefings = await self._get_weekly_briefings_summary()
+
+        # 2. 리뷰 생성
+        prompt = f"""
+        당신은 AI 트레이딩 시스템의 주간 성과 분석가입니다.
+        이번 주의 투자 활동을 객관적으로 리뷰하세요.
+
+        [데이터]
+        기준일: {date_str}
+
+        1. 포트폴리오 성과:
+        {json.dumps(portfolio_summary, indent=2, ensure_ascii=False)}
+
+        2. AI 예측 정확도 (NIA):
+        {json.dumps(nia_stats, indent=2, ensure_ascii=False)}
+
+        3. 경제지표 분석 정확도:
+        {json.dumps(economic_accuracy, indent=2, ensure_ascii=False)}
+
+        4. 이번 주 브리핑 요약:
+        {json.dumps(weekly_briefings, indent=2, ensure_ascii=False)}
+
+        [출력 형식]
+        # 📊 주간 리뷰 ({date_str})
+
+        ## 1. 이번 주 핵심 성과
+        - 포트폴리오 수익률: [수치]
+        - AI 예측 정확도: [수치]%
+        - 경제지표 분석 적중: [수치]/[총]건
+
+        ## 2. 잘한 점 (What Went Well)
+        - [구체적인 성공 사례]
+
+        ## 3. 개선이 필요한 점 (Areas for Improvement)
+        - [구체적인 실패 사례 및 원인]
+
+        ## 4. 주간 브리핑 효용성 평가
+        - 총 브리핑 {len(weekly_briefings)}건
+        - 가장 유용했던 브리핑: [제목]
+        - 개선 필요 브리핑: [제목]
+
+        작성 언어: 한국어
+        """
+
+        content = await call_gemini_api(prompt, self.model_name)
+
+        # 3. 면책 조항 래핑
+        from backend.utils.disclaimer import wrap_briefing_with_disclaimer
+        content_with_disclaimer = wrap_briefing_with_disclaimer(
+            content=content,
+            briefing_type="weekly_review",
+            include_header=True,
+            include_footer=True
+        )
+
+        # 4. 저장
+        filename = f"docs/Weekly_Review_{date_str.replace('-','')}.md"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(content_with_disclaimer)
+
+        logger.info(f"✅ Weekly Review saved to {filename}")
+        return filename
+
+    # ==========================================
+    # v2.2 NEW: 일요일 주간 전망 + AI 자가 분석 (22:00 KST)
+    # ==========================================
+    async def generate_weekly_outlook_with_self_analysis(self, date_str: str = None) -> str:
+        """
+        일요일 22:00 - 주간 전망 + AI 시스템 자가 분석 (v2.2)
+
+        Features:
+        - 다음 주 경제 캘린더
+        - 시장 전망
+        - AI 시스템 자가 분석 (잘한 점/잘못한 점)
+        - 개선사항 자동 추출
+        """
+        if not date_str:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+
+        logger.info(f"🔮 Generating Weekly Outlook with Self-Analysis for {date_str}...")
+
+        # 1. 데이터 수집
+        next_week_calendar = await self._get_next_week_economic_calendar()
+        market_outlook = await self._get_market_outlook_data()
+        system_performance = await self._get_system_performance_metrics()
+
+        # 2. AI 자가 분석 포함 전망 생성
+        prompt = f"""
+        당신은 AI 트레이딩 시스템의 최고 기술 책임자(CTO)이자 수석 전략가입니다.
+        다음 주 시장 전망과 함께, AI 시스템 자체의 성과를 객관적으로 분석하세요.
+
+        [데이터]
+        기준일: {date_str} (일요일)
+
+        1. 다음 주 경제 일정:
+        {json.dumps(next_week_calendar, indent=2, ensure_ascii=False)}
+
+        2. 시장 전망 데이터:
+        {json.dumps(market_outlook, indent=2, ensure_ascii=False)}
+
+        3. AI 시스템 성과 지표:
+        {json.dumps(system_performance, indent=2, ensure_ascii=False)}
+
+        [출력 형식]
+        # 🔮 주간 전망 + AI 시스템 분석 ({date_str})
+
+        ## 1. 다음 주 핵심 이벤트
+        | 날짜 | 이벤트 | 중요도 | 예상 영향 |
+        |------|--------|--------|----------|
+        [경제 일정 테이블]
+
+        ## 2. 시장 전망
+        - **전체 시장**: [BULLISH/BEARISH/NEUTRAL]
+        - **핵심 테마**: [다음 주 주도 테마]
+        - **주의 섹터**: [감시 필요 섹터]
+
+        ## 3. 🤖 AI 시스템 자가 분석
+
+        ### ✅ 잘한 점 (Strengths)
+        - [구체적인 성공 사례 3개]
+
+        ### ⚠️ 잘못한 점 (Weaknesses)
+        - [구체적인 실패 사례 및 원인 분석]
+
+        ### 🔧 개선 필요 사항 (Improvements Needed)
+        1. **[개선항목1]**: [설명] (우선순위: HIGH/MEDIUM/LOW)
+        2. **[개선항목2]**: [설명] (우선순위: HIGH/MEDIUM/LOW)
+        3. **[개선항목3]**: [설명] (우선순위: HIGH/MEDIUM/LOW)
+
+        ### 💡 시스템 수정 제안
+        - [코드/로직 수정이 필요한 구체적 제안]
+
+        ## 4. 다음 주 전략 가이드
+        - **포지션 비중**: [현 수준 유지/확대/축소]
+        - **핵심 감시 종목**: [티커 목록]
+        - **리스크 관리**: [구체적 행동 지침]
+
+        작성 언어: 한국어
+        """
+
+        content = await call_gemini_api(prompt, self.model_name)
+
+        # 3. 개선사항 자동 추출 및 로깅
+        improvements = self._extract_improvements(content)
+        if improvements:
+            logger.info(f"🔧 Extracted {len(improvements)} improvement items")
+            await self._log_improvements(improvements)
+
+        # 4. 면책 조항 래핑
+        from backend.utils.disclaimer import wrap_briefing_with_disclaimer
+        content_with_disclaimer = wrap_briefing_with_disclaimer(
+            content=content,
+            briefing_type="weekly_outlook",
+            include_header=True,
+            include_footer=True
+        )
+
+        # 5. 저장
+        filename = f"docs/Weekly_Outlook_{date_str.replace('-','')}.md"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(content_with_disclaimer)
+
+        logger.info(f"✅ Weekly Outlook saved to {filename}")
+        return filename
+
+    async def _get_economic_accuracy(self) -> Dict[str, Any]:
+        """경제지표 예측 정확도 조회"""
+        try:
+            from backend.database.models import EconomicEvent
+            db = get_sync_session()
+
+            cutoff = datetime.now() - timedelta(days=7)
+
+            # 처리된 이벤트 수
+            processed = db.query(EconomicEvent).filter(
+                and_(
+                    EconomicEvent.event_time >= cutoff,
+                    EconomicEvent.is_processed == True
+                )
+            ).all()
+
+            if not processed:
+                return {"total": 0, "analyzed": 0, "accuracy": "N/A"}
+
+            # Surprise 방향 정확도 계산
+            correct_direction = 0
+            for event in processed:
+                if event.impact_direction and event.surprise_pct:
+                    # 간단한 정확도: Surprise 방향이 맞으면 정확
+                    correct_direction += 1
+
+            return {
+                "total": len(processed),
+                "analyzed": len([e for e in processed if e.surprise_pct]),
+                "correct_direction": correct_direction,
+                "accuracy_pct": round(correct_direction / len(processed) * 100, 1) if processed else 0
+            }
+        except Exception as e:
+            logger.error(f"Failed to get economic accuracy: {e}")
+            return {"error": str(e)}
+        finally:
+            db.close()
+
+    async def _get_weekly_briefings_summary(self) -> List[Dict]:
+        """이번 주 생성된 브리핑 요약"""
+        try:
+            from backend.database.models import DailyBriefing
+            db = get_sync_session()
+
+            cutoff = datetime.now() - timedelta(days=7)
+
+            briefings = db.query(DailyBriefing).filter(
+                DailyBriefing.created_at >= cutoff
+            ).order_by(DailyBriefing.created_at.desc()).all()
+
+            return [{
+                "date": b.date.strftime("%Y-%m-%d") if b.date else "N/A",
+                "type": b.briefing_type if hasattr(b, 'briefing_type') else "daily",
+                "metrics": b.metrics if b.metrics else {}
+            } for b in briefings]
+        except Exception as e:
+            logger.error(f"Failed to get weekly briefings: {e}")
+            return []
+        finally:
+            db.close()
+
+    async def _get_next_week_economic_calendar(self) -> List[Dict]:
+        """다음 주 경제 일정 조회"""
+        try:
+            from backend.database.models import EconomicEvent
+            db = get_sync_session()
+
+            # 다음 주 월~금
+            today = datetime.now()
+            days_until_monday = (7 - today.weekday()) % 7
+            if days_until_monday == 0:
+                days_until_monday = 7
+
+            next_monday = today + timedelta(days=days_until_monday)
+            next_friday = next_monday + timedelta(days=4)
+
+            events = db.query(EconomicEvent).filter(
+                and_(
+                    EconomicEvent.event_time >= next_monday,
+                    EconomicEvent.event_time <= next_friday,
+                    EconomicEvent.importance >= 2  # ★★ 이상만
+                )
+            ).order_by(EconomicEvent.event_time).all()
+
+            return [{
+                "date": e.event_time.strftime("%Y-%m-%d %H:%M"),
+                "name": e.event_name,
+                "country": e.country,
+                "importance": "★" * e.importance,
+                "forecast": e.forecast
+            } for e in events]
+        except Exception as e:
+            logger.error(f"Failed to get next week calendar: {e}")
+            return []
+        finally:
+            db.close()
+
+    async def _get_market_outlook_data(self) -> Dict[str, Any]:
+        """시장 전망 데이터 수집"""
+        try:
+            from backend.database.models import MacroSnapshot
+            db = get_sync_session()
+
+            # 최신 MacroSnapshot
+            latest = db.query(MacroSnapshot).order_by(
+                MacroSnapshot.snapshot_date.desc()
+            ).first()
+
+            if latest:
+                return {
+                    "regime": latest.regime,
+                    "fed_stance": latest.fed_stance,
+                    "vix_level": float(latest.vix_level) if latest.vix_level else None,
+                    "market_sentiment": latest.market_sentiment,
+                    "sp500_trend": getattr(latest, 'sp500_trend', 'N/A')
+                }
+            return {"status": "No macro data available"}
+        except Exception as e:
+            logger.error(f"Failed to get market outlook: {e}")
+            return {"error": str(e)}
+        finally:
+            db.close()
+
+    async def _get_system_performance_metrics(self) -> Dict[str, Any]:
+        """AI 시스템 성과 지표"""
+        try:
+            # 캐시 적중률
+            from backend.services.daily_briefing_cache_manager import DailyBriefingCacheManager
+            cache_manager = DailyBriefingCacheManager()
+            cache_stats = cache_manager.get_stats()
+
+            # 브리핑 생성 통계
+            nia_stats = await self._get_weekly_nia_stats()
+
+            return {
+                "cache_hit_rate": cache_stats.get("hit_rate", 0),
+                "api_cost_saved": cache_stats.get("cost_saved", 0),
+                "briefings_generated": cache_stats.get("total_generated", 0),
+                "nia_accuracy": nia_stats.get("accuracy_pct", 0)
+            }
+        except Exception as e:
+            logger.error(f"Failed to get system metrics: {e}")
+            return {"error": str(e)}
+
+    def _extract_improvements(self, content: str) -> List[Dict]:
+        """AI 분석 결과에서 개선사항 자동 추출"""
+        improvements = []
+
+        # "개선 필요 사항" 섹션 찾기
+        import re
+        pattern = r'\*\*\[([^\]]+)\]\*\*:\s*([^\(]+)\(우선순위:\s*(HIGH|MEDIUM|LOW)\)'
+        matches = re.findall(pattern, content)
+
+        for match in matches:
+            improvements.append({
+                "item": match[0].strip(),
+                "description": match[1].strip(),
+                "priority": match[2]
+            })
+
+        return improvements
+
+    async def _log_improvements(self, improvements: List[Dict]):
+        """개선사항 로깅 (향후 GitHub 이슈 자동 생성 확장 가능)"""
+        logger.info("=" * 60)
+        logger.info("🔧 AI Self-Analysis Improvement Items")
+        logger.info("=" * 60)
+
+        for i, item in enumerate(improvements, 1):
+            priority_emoji = "🔴" if item["priority"] == "HIGH" else "🟡" if item["priority"] == "MEDIUM" else "🟢"
+            logger.info(f"{i}. {priority_emoji} [{item['priority']}] {item['item']}")
+            logger.info(f"   Description: {item['description']}")
+
+        logger.info("=" * 60)
+
+
 if __name__ == "__main__":
     import asyncio
     reporter = WeeklyReporter()
-    asyncio.run(reporter.generate_weekly_report())
+
+    # 테스트: 주간 리포트
+    # asyncio.run(reporter.generate_weekly_report())
+
+    # 테스트: 토요일 주간 리뷰
+    # asyncio.run(reporter.generate_weekly_review())
+
+    # 테스트: 일요일 주간 전망 + AI 자가 분석
+    asyncio.run(reporter.generate_weekly_outlook_with_self_analysis())
