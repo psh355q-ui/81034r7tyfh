@@ -1,0 +1,239 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ultra-Thin Orchestrate State",
+  "description": "상태 파일 스키마 - .claude/orchestrate-state.json",
+  "type": "object",
+  "required": ["version", "mode", "project", "started_at", "execution", "tasks", "stats"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0",
+      "description": "상태 파일 버전"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["ultra-thin", "normal", "ralph"],
+      "description": "실행 모드"
+    },
+    "project": {
+      "type": "string",
+      "description": "프로젝트 이름"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "실행 시작 시간 (ISO 8601)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "마지막 업데이트 시간"
+    },
+    "execution": {
+      "type": "object",
+      "required": ["current_phase"],
+      "properties": {
+        "current_phase": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "현재 실행 중인 Phase 번호"
+        },
+        "worktree": {
+          "type": "string",
+          "description": "현재 Git Worktree 경로"
+        },
+        "parallel_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "최대 병렬 실행 수"
+        }
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "required": ["pending", "ready", "in_progress", "completed", "failed"],
+      "properties": {
+        "pending": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "대기 중인 태스크 ID 목록"
+        },
+        "ready": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "실행 준비된 태스크 ID 목록 (의존성 충족)"
+        },
+        "in_progress": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "실행 중인 태스크 ID 목록"
+        },
+        "completed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "완료된 태스크 ID 목록"
+        },
+        "failed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "실패한 태스크 ID 목록 (10회 재시도 후)"
+        }
+      }
+    },
+    "task_details": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "integer",
+            "description": "태스크가 속한 Phase"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "의존하는 태스크 ID 목록"
+          },
+          "parallel_with": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "병렬 실행 가능한 태스크 ID 목록"
+          },
+          "specialist": {
+            "type": "string",
+            "description": "담당 전문가 에이전트 타입"
+          }
+        }
+      },
+      "description": "태스크별 상세 정보 (최소한만 유지)"
+    },
+    "retry_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10
+      },
+      "description": "태스크별 재시도 횟수"
+    },
+    "error_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "error_summary": { "type": "string", "maxLength": 100 },
+          "retry_number": { "type": "integer" }
+        }
+      },
+      "maxItems": 50,
+      "description": "최근 에러 로그 (최대 50개, 요약만)"
+    },
+    "stats": {
+      "type": "object",
+      "required": ["total", "completed", "failed"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "description": "전체 태스크 수"
+        },
+        "completed": {
+          "type": "integer",
+          "description": "완료된 태스크 수"
+        },
+        "failed": {
+          "type": "integer",
+          "description": "실패한 태스크 수"
+        },
+        "success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "성공률 (0.0 ~ 1.0)"
+        },
+        "phases_completed": {
+          "type": "integer",
+          "description": "완료된 Phase 수"
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "resume": {
+          "type": "boolean",
+          "default": false,
+          "description": "--resume 옵션 사용 여부"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "--dry-run 옵션 사용 여부"
+        },
+        "target_phase": {
+          "type": "integer",
+          "description": "--phase N 옵션으로 지정된 Phase"
+        },
+        "slack_webhook": {
+          "type": "string",
+          "format": "uri",
+          "description": "슬랙 웹훅 URL"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "version": "2.0",
+      "mode": "ultra-thin",
+      "project": "my-awesome-app",
+      "started_at": "2026-01-25T10:00:00Z",
+      "updated_at": "2026-01-25T11:30:00Z",
+      "execution": {
+        "current_phase": 1,
+        "worktree": "worktree/phase-1-auth",
+        "parallel_limit": 3
+      },
+      "tasks": {
+        "pending": ["T1.5", "T1.6"],
+        "ready": ["T1.4"],
+        "in_progress": ["T1.3"],
+        "completed": ["T0.1", "T0.2", "T1.1", "T1.2"],
+        "failed": []
+      },
+      "task_details": {
+        "T1.3": {
+          "phase": 1,
+          "depends_on": ["T1.1", "T1.2"],
+          "parallel_with": ["T1.4"],
+          "specialist": "backend-specialist"
+        }
+      },
+      "retry_counts": {
+        "T1.3": 1
+      },
+      "error_log": [
+        {
+          "task_id": "T1.3",
+          "timestamp": "2026-01-25T11:15:00Z",
+          "error_summary": "TypeError: undefined is not a function",
+          "retry_number": 1
+        }
+      ],
+      "stats": {
+        "total": 75,
+        "completed": 4,
+        "failed": 0,
+        "success_rate": 1.0,
+        "phases_completed": 1
+      },
+      "options": {
+        "resume": false,
+        "dry_run": false,
+        "parallel_limit": 3
+      }
+    }
+  ]
+}

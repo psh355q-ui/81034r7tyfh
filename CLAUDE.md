@@ -333,7 +333,29 @@ git diff --stat
 ### 문서화 표준
 - **파일 명명**: `YYMMDD_Category_Description.md` (예: `260114_Implementation_Feature.md`)
 - **위치**: 적절한 하위 폴더와 함께 `docs/`
-- **구조 맵**: 개발 전 `python backend/utils/structure_mapper.py` 실행
+
+### 구조 맵 업데이트 (ZERO TOLERANCE)
+
+**절대 허용하지 않는 규칙:**
+
+모든 개발 작업 시 `structure-map.md` 업데이트 **필수**:
+
+```bash
+python backend/utils/structure_mapper.py
+```
+
+**업데이트 시점:**
+1. **개발 시작 전**: 현재 구조 파악
+2. **개발 완료 후**: 변경사항 반영 (커밋 전 필수!)
+3. **파일/폴더 추가/삭제 시**: 즉시 업데이트
+
+**워크플로우:**
+```
+개발 시작 → structure_mapper.py 실행 → 코드 작업 → structure_mapper.py 실행 → 커밋
+```
+
+**Note**: `docs/architecture/structure-map.md`는 자동 생성 파일입니다.
+직접 수정하지 말고 항상 스크립트로 업데이트하세요.
 
 ### Git 커밋 (`/github-commit` 사용)
 초급자(Main만)부터 고급(GitFlow)까지 수준별 가이드 제공

@@ -4,7 +4,15 @@
 **기반 문서**: ChatGPT + Gemini 피드백 종합
 **핵심 목표**: "읽는 리포트" → "실행하는 프로토콜" 전환
 
----
+<!-- 
+✅ 구현 완료 (2026-01-24)
+- Briefing Mode System: backend/ai/reporters/briefing_mode.py
+- Prompt Builder: backend/ai/reporters/prompt_builder.py
+- Trading Protocol Schema: backend/ai/reporters/schemas/trading_protocol.py
+- Market Moving Score: backend/ai/intelligence/market_moving_score.py
+- Conflict Resolver: backend/ai/mvp/conflict_resolver.py
+- Funnel Generator: backend/ai/reporters/funnel_generator.py
+-->
 
 ## 📋 목차
 

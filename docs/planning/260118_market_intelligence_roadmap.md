@@ -4,7 +4,19 @@
 **버전**: 1.0
 **참고**: docs/discussions/260118/ (Claude, ChatGPT, Gemini 토론 기반)
 
----
+<!-- 
+✅ 구현 완료 (2026-01-24)
+- NewsFilter (2-Stage): backend/ai/intelligence/news_filter.py
+- NarrativeStateEngine: backend/ai/intelligence/narrative_state_engine.py
+- FactChecker: backend/ai/intelligence/fact_checker.py
+- MarketConfirmation: backend/ai/intelligence/market_confirmation.py
+- NarrativeFatigue: backend/ai/intelligence/narrative_fatigue.py
+- ContrarySignal: backend/ai/intelligence/contrary_signal.py
+- PolicyFeasibility: backend/ai/intelligence/policy_feasibility.py
+- RegimeGuard: backend/ai/intelligence/regime_guard.py
+- SemanticWeightAdjuster: backend/ai/intelligence/semantic_weight_adjuster.py
+- InsightPostmortem: backend/ai/intelligence/insight_postmortem.py
+-->
 
 ## 1. 개요
 

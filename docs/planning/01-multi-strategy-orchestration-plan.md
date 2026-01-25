@@ -4,7 +4,14 @@
 **Date**: 2026-01-11
 **Status**: Planning Complete
 
----
+<!-- 
+✅ 구현 완료 (2026-01-24)
+- Conflict Detector: backend/ai/skills/system/conflict_detector.py
+- Strategy Registry: backend/database/models.py (Strategy)
+- Position Ownership: backend/database/models.py (PositionOwnership)
+- Strategy Manager: backend/strategies/ensemble_strategy.py
+- Adaptive Strategy Manager: backend/strategies/adaptive_strategy.py
+-->
 
 ## MVP 캡슐
 

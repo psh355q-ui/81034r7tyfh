@@ -5,7 +5,13 @@
 **검토**: Claude Code + ChatGPT + Gemini + Claude Opus 통합 검토  
 **시스템**: Antigravity AI Trading System  
 
----
+<!-- 
+✅ 구현 완료 (2026-01-24)
+- Basic Briefing System: backend/ai/reporters/
+- Briefing Mode System: backend/ai/reporters/briefing_mode.py
+- Prompt Builder: backend/ai/reporters/prompt_builder.py
+- News Intelligence: backend/ai/intelligence/
+-->
 
 ## 📋 목차
 

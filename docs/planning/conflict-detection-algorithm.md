@@ -1,5 +1,13 @@
 # Conflict Detection Algorithm
 
+<!-- 
+✅ 구현 완료 (2026-01-24)
+- Conflict Detector: backend/ai/skills/system/conflict_detector.py
+- Strategy Registry: backend/database/models.py (Strategy)
+- Position Ownership: backend/database/models.py (PositionOwnership)
+- Conflict Log: backend/database/models.py (ConflictLog)
+-->
+
 ## Overview
 This document outlines the decision logic for the `ConflictDetector` engine, which arbitrates access to trading resources (Tickers) among multiple strategies.
 
