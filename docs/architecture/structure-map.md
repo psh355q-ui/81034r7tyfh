@@ -1,5 +1,5 @@
 # System Structure Map
-Auto-generated: 2026-01-14 21:09:31
+Auto-generated: 2026-01-25 13:54:41
 
 ## 1. Directory Structure
 
@@ -70,6 +70,29 @@ backend/
 │   ├── 📄 ensemble_optimizer.py
 │   ├── 📄 failover_manager.py
 │   ├── 📄 gemini_client.py
+│   ├── 📄 glm_client.py
+│   ├── 📄 glm_client_v2.py
+│   ├── 📂 intelligence/
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 base.py
+│   │   ├── 📄 chart_generator.py
+│   │   ├── 📄 contrary_signal.py
+│   │   ├── 📄 enhanced_news_pipeline.py
+│   │   ├── 📄 fact_checker.py
+│   │   ├── 📄 horizon_tagger.py
+│   │   ├── 📄 insight_postmortem.py
+│   │   ├── 📄 market_confirmation.py
+│   │   ├── 📄 market_moving_score.py
+│   │   ├── 📄 narrative_fatigue.py
+│   │   ├── 📄 narrative_state_engine.py
+│   │   ├── 📄 news_filter.py
+│   │   ├── 📄 policy_feasibility.py
+│   │   ├── 📂 prompts/
+│   │   │   ├── 📄 __init__.py
+│   │   │   └── 📄 persona_tuned_prompts.py
+│   │   ├── 📄 regime_guard.py
+│   │   ├── 📄 semantic_weight_adjuster.py
+│   │   └── 📄 test_phase3.py
 │   ├── 📂 learning/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 agent_alert_system.py
@@ -87,26 +110,12 @@ backend/
 │   │   ├── 📄 trader_agent_learning.py
 │   │   └── 📄 walk_forward_validator.py
 │   ├── 📂 legacy/
-│   │   ├── 📄 README.md
-│   │   └── 📂 debate/
-│   │       ├── 📄 __init__.py
-│   │       ├── 📄 ai_debate_engine.py
-│   │       ├── 📄 analyst_agent.py
-│   │       ├── 📄 chip_war_agent.py
-│   │       ├── 📄 chip_war_agent_helpers.py
-│   │       ├── 📄 constitutional_debate_engine.py
-│   │       ├── 📄 institutional_agent.py
-│   │       ├── 📄 macro_agent.py
-│   │       ├── 📄 news_agent.py
-│   │       ├── 📄 priority_calculator.py
-│   │       ├── 📄 risk_agent.py
-│   │       ├── 📄 sentiment_agent.py
-│   │       ├── 📄 skeptic_agent.py
-│   │       └── 📄 trader_agent.py
+│   │   └── 📄 README.md
 │   ├── 📂 llm/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 local_embeddings.py
 │   │   └── 📄 ollama_client.py
+│   ├── 📄 llm_providers.py
 │   ├── 📂 macro/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 country_risk_engine.py
@@ -135,14 +144,25 @@ backend/
 │   ├── 📂 mvp/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 analyst_agent_mvp.py
+│   │   ├── 📄 conflict_resolver.py
 │   │   ├── 📄 data_helper.py
+│   │   ├── 📂 deprecated/
+│   │   │   ├── 📄 analyst_agent_mvp.py
+│   │   │   ├── 📄 risk_agent_mvp.py
+│   │   │   ├── 📄 trader_agent_mvp.py
+│   │   │   └── 📄 war_room_mvp.py
 │   │   ├── 📄 enhanced_data_provider.py
+│   │   ├── 📄 gemini_reasoning_agent_base.py
+│   │   ├── 📄 gemini_structuring_agent.py
 │   │   ├── 📄 pm_agent_mvp.py
+│   │   ├── 📄 reasoning_agent_base.py
 │   │   ├── 📄 risk_agent_mvp.py
 │   │   ├── 📂 stock_specific/
 │   │   │   ├── 📄 base_analyzer.py
 │   │   │   ├── 📄 nvda_analyzer.py
 │   │   │   └── 📄 tsla_analyzer.py
+│   │   ├── 📄 structuring_agent.py
+│   │   ├── 📄 test_phase4.py
 │   │   ├── 📄 ticker_mappings.py
 │   │   ├── 📄 trader_agent_mvp.py
 │   │   └── 📄 war_room_mvp.py
@@ -187,9 +207,19 @@ backend/
 │   ├── 📂 reporters/
 │   │   ├── 📄 ai_market_reporter.py
 │   │   ├── 📄 annual_reporter.py
+│   │   ├── 📄 briefing_mode.py
+│   │   ├── 📄 enhanced_daily_reporter.py
+│   │   ├── 📄 funnel_generator.py
 │   │   ├── 📄 monthly_reporter.py
+│   │   ├── 📄 prompt_builder.py
 │   │   ├── 📄 quarterly_reporter.py
 │   │   ├── 📄 report_orchestrator.py
+│   │   ├── 📂 schemas/
+│   │   │   ├── 📄 __init__.py
+│   │   │   └── 📄 trading_protocol.py
+│   │   ├── 📄 test_phase5.py
+│   │   ├── 📄 trending_news_detector.py
+│   │   ├── 📄 us_market_close_reporter.py
 │   │   └── 📄 weekly_reporter.py
 │   ├── 📂 risk/
 │   │   ├── 📄 __init__.py
@@ -353,10 +383,18 @@ backend/
 │   │   │   │   ├── 📂 gemini-news/
 │   │   │   │   ├── 📂 news/
 │   │   │   │   └── 📂 news-analyzer/
+│   │   │   ├── 📂 checkpoint/
+│   │   │   │   └── 📂 reports/
 │   │   │   ├── 📂 debugging-agent/
 │   │   │   │   └── 📂 proposals/
+│   │   │   ├── 📂 economic/
+│   │   │   │   └── 📂 reports/
 │   │   │   ├── 📂 generate/
 │   │   │   │   └── 📂 briefing/
+│   │   │   ├── 📂 korean-market/
+│   │   │   │   └── 📂 reports/
+│   │   │   ├── 📂 premarket/
+│   │   │   │   └── 📂 reports/
 │   │   │   ├── 📂 read/
 │   │   │   │   └── 📂 briefing/
 │   │   │   ├── 📂 system/
@@ -387,14 +425,19 @@ backend/
 │   │   │   │   ├── 📂 reports/
 │   │   │   │   ├── 📂 signal-consolidation/
 │   │   │   │   ├── 📂 signal-generator-agent/
+│   │   │   │   ├── 📂 stock_prices/
 │   │   │   │   ├── 📂 unknown/
 │   │   │   │   └── 📂 weights/
 │   │   │   ├── 📂 trading/
 │   │   │   │   ├── 📂 ai_signals/
 │   │   │   │   ├── 📂 auto_trade/
 │   │   │   │   └── 📂 signals/
-│   │   │   └── 📂 war-room/
-│   │   │       └── 📂 war-room-debate/
+│   │   │   ├── 📂 trigger/
+│   │   │   │   └── 📂 reports/
+│   │   │   ├── 📂 war-room/
+│   │   │   │   └── 📂 war-room-debate/
+│   │   │   └── 📂 weekly/
+│   │   │       └── 📂 reports/
 │   │   ├── 📂 reporting/
 │   │   │   ├── 📂 failure-learning-agent/
 │   │   │   │   ├── 📄 SKILL.md
@@ -474,6 +517,8 @@ backend/
 │   │   └── 📄 global_macro_strategy.py
 │   ├── 📄 test_caching.py
 │   ├── 📄 test_caching_simple.py
+│   ├── 📂 thinking/
+│   │   └── 📄 signal_mapper.py
 │   ├── 📂 tools/
 │   │   └── 📄 search_grounding.py
 │   ├── 📂 trading/
@@ -483,6 +528,7 @@ backend/
 │   ├── 📄 trading_terms_parser.py
 │   ├── 📄 vector_search.py
 │   ├── 📂 video/
+│   │   ├── 📄 verify_real.py
 │   │   └── 📄 video_analyzer.py
 │   └── 📂 war_room/
 │       ├── 📄 debate_visualizer.py
@@ -529,6 +575,7 @@ backend/
 │   ├── 📄 backtest_router.py
 │   ├── 📄 briefing_router.py
 │   ├── 📄 ceo_analysis_router.py
+│   ├── 📄 chart_router.py
 │   ├── 📄 consensus_router.py
 │   ├── 📄 correlation_router.py
 │   ├── 📄 cost_monitoring.py
@@ -546,6 +593,7 @@ backend/
 │   ├── 📄 gemini_news_router.py
 │   ├── 📄 global_macro_router.py
 │   ├── 📄 incremental_router.py
+│   ├── 📄 intelligence_router.py
 │   ├── 📄 journey_router.py
 │   ├── 📄 kis_integration_router.py
 │   ├── 📄 kis_sync_router.py
@@ -571,6 +619,8 @@ backend/
 │   ├── 📄 reasoning_api.py
 │   ├── 📄 reasoning_router.py
 │   ├── 📄 reports_router.py
+│   ├── 📂 routers/
+│   │   └── 📄 shadow.py
 │   ├── 📂 schemas/
 │   │   └── 📄 strategy_schemas.py
 │   ├── 📄 screener_router.py
@@ -603,6 +653,7 @@ backend/
 │   ├── 📄 kis_auto_scheduler.py
 │   ├── 📄 kis_portfolio_scheduler.py
 │   ├── 📄 macro_context_updater.py
+│   ├── 📄 ollama_scheduler.py
 │   ├── 📄 price_tracking_scheduler.py
 │   ├── 📄 price_tracking_verifier.py
 │   ├── 📄 scheduler.py
@@ -718,7 +769,9 @@ backend/
 │   │   ├── 📄 etf_flow_tracker.py
 │   │   ├── 📄 finviz_collector.py
 │   │   ├── 📄 fred_collector.py
+│   │   ├── 📄 free_news_monitor.py
 │   │   ├── 📄 smart_money_collector.py
+│   │   ├── 📄 stealth_web_crawler.py
 │   │   ├── 📄 stock_price_collector.py
 │   │   ├── 📄 wall_street_intel.py
 │   │   └── 📄 yahoo_collector.py
@@ -802,10 +855,13 @@ backend/
 ├── 📂 database/
 │   ├── 📄 __init__.py
 │   ├── 📄 db_service.py
+│   ├── 📂 igrations/
 │   ├── 📂 migrations/
+│   │   ├── 📄 add_ai_trade_decisions_table.py
 │   │   ├── 📄 add_backfill_columns.py
 │   │   ├── 📄 add_debate_id_migration.py
 │   │   ├── 📄 add_debate_transcript.py
+│   │   ├── 📄 add_v2_2_caching_fields.py
 │   │   ├── 📄 analyze_actual_schema.py
 │   │   ├── 📄 analyze_storage.py
 │   │   ├── 📄 apply_migration.py
@@ -815,11 +871,14 @@ backend/
 │   │   ├── 📄 check_stock_prices_schema.py
 │   │   ├── 📄 check_table_structure.py
 │   │   ├── 📄 create_all_tables.py
+│   │   ├── 📄 create_economic_events_table.py
 │   │   ├── 📄 create_grounding_table.py
 │   │   ├── 📄 create_missing_tables_5541.py
+│   │   ├── 📄 create_rss_feeds_table.py
 │   │   ├── 📄 create_sample_signals.py
 │   │   ├── 📄 create_shadow_trading_tables.py
 │   │   ├── 📄 create_simple_signals.py
+│   │   ├── 📄 drop_and_recreate_economic_events_table.py
 │   │   ├── 📄 final_test.py
 │   │   ├── 📄 quick_env_test.py
 │   │   ├── 📄 recreate_postgres_container.md
@@ -862,6 +921,9 @@ backend/
 ├── 📂 execution/
 │   ├── 📄 README.md
 │   ├── 📄 __init__.py
+│   ├── 📂 data/
+│   │   ├── 📄 tick_flow.py
+│   │   └── 📄 vwap.py
 │   ├── 📄 execution_engine.py
 │   ├── 📄 execution_router.py
 │   ├── 📄 executors.py
@@ -870,10 +932,31 @@ backend/
 │   ├── 📄 order_manager.py
 │   ├── 📄 order_validator.py
 │   ├── 📄 recovery.py
+│   ├── 📂 rl/
+│   │   ├── 📄 agent.py
+│   │   ├── 📄 env.py
+│   │   └── 📄 train.py
+│   ├── 📂 safety/
+│   │   └── 📄 watchdog.py
 │   ├── 📄 safety_guard.py
 │   ├── 📄 shadow_trading_mvp.py
 │   ├── 📄 smart_executor.py
 │   └── 📄 state_machine.py
+├── 📂 external_apis/
+│   ├── 📄 __init__.py
+│   ├── 📄 fred_client.py
+│   ├── 📄 sec_client.py
+│   └── 📄 yfinance_client.py
+├── 📂 fusion/
+│   ├── 📄 engine.py
+│   ├── 📂 gates/
+│   │   ├── 📄 event_priority.py
+│   │   └── 📄 liquidity.py
+│   └── 📄 normalizer.py
+├── 📂 gnn/
+│   ├── 📄 builder.py
+│   ├── 📄 gate.py
+│   └── 📄 propagator.py
 ├── 📂 graphrag/
 │   ├── 📄 graphrag_optimizer.py
 │   └── 📄 query_complexity_analyzer.py
@@ -959,6 +1042,7 @@ backend/
 │   ├── 📄 realtime_notifier.py
 │   ├── 📄 sec_alerts.py
 │   ├── 📄 slack_notifier.py
+│   ├── 📄 telegram_command_bot.py
 │   ├── 📄 telegram_commander_bot.py
 │   ├── 📄 telegram_notifier.py
 │   ├── 📄 test_chatgpt_completion.py
@@ -1001,6 +1085,8 @@ backend/
 ├── 📄 run_live_trading.py
 ├── 📄 run_news_crawler.py
 ├── 📄 run_paper_trading.py
+├── 📂 runners/
+│   └── 📄 shadow_runner.py
 ├── 📂 schedulers/
 │   ├── 📄 chip_intelligence_updater.py
 │   ├── 📄 correlation_scheduler.py
@@ -1047,6 +1133,8 @@ backend/
 │   ├── 📄 migrate_dividend_aristocrats.py
 │   ├── 📄 migrate_news_to_postgres.py
 │   ├── 📄 monitor_collection.py
+│   ├── 📄 monitor_free_news.py
+│   ├── 📄 monitor_ft.py
 │   ├── 📄 performance_benchmark.py
 │   ├── 📄 reset_database.py
 │   ├── 📄 restore_nke_position.py
@@ -1096,13 +1184,18 @@ backend/
 │   ├── 📄 complete_5page_report_generator.py
 │   ├── 📄 complete_korean_report_generator.py
 │   ├── 📄 complete_report_generator.py
+│   ├── 📄 daily_briefing_cache_manager.py
 │   ├── 📄 daily_briefing_service.py
 │   ├── 📄 daily_price_sync.py
 │   ├── 📄 daily_report_scheduler.py
 │   ├── 📄 earnings_calendar_service.py
+│   ├── 📄 economic_calendar_fetcher.py
+│   ├── 📄 economic_calendar_manager.py
 │   ├── 📄 economic_calendar_service.py
+│   ├── 📄 economic_watcher.py
 │   ├── 📄 fast_polling_service.py
 │   ├── 📄 final_korean_report_generator.py
+│   ├── 📄 fred_economic_calendar.py
 │   ├── 📄 korean_font_setup.py
 │   ├── 📄 market_data.py
 │   ├── 📄 market_language_templates.py
@@ -1122,6 +1215,7 @@ backend/
 │   ├── 📄 news_poller.py
 │   ├── 📂 notifiers/
 │   │   └── 📄 telegram_notifier.py
+│   ├── 📄 ollama_cache_service.py
 │   ├── 📄 optimized_signal_pipeline.py
 │   ├── 📄 ownership_service.py
 │   ├── 📄 page1_generator.py
@@ -1130,8 +1224,10 @@ backend/
 │   ├── 📄 page3_generator.py
 │   ├── 📄 page3_generator_korean.py
 │   ├── 📄 page5_generator_korean.py
+│   ├── 📄 portfolio_analyzer.py
 │   ├── 📄 portfolio_optimizer.py
 │   ├── 📄 sample_report_generator.py
+│   ├── 📄 setup_free_proxy.py
 │   ├── 📄 signal_executor.py
 │   ├── 📄 signal_pipeline.py
 │   ├── 📄 skeptic_performance_tracker.py
@@ -1179,8 +1275,19 @@ backend/
 ├── 📄 test_backfill.py
 ├── 📄 test_cache_warming.py
 ├── 📄 test_compression.py
+├── 📄 test_enhanced_pipeline.py
+├── 📄 test_exact_glm_models.py
 ├── 📄 test_feature_calculations.py
 ├── 📄 test_feature_store_full.py
+├── 📄 test_glm_45.py
+├── 📄 test_glm_4_air.py
+├── 📄 test_glm_all_components.py
+├── 📄 test_glm_api.py
+├── 📄 test_glm_config.py
+├── 📄 test_glm_full_pipeline.py
+├── 📄 test_glm_intelligence.py
+├── 📄 test_glm_json_response.py
+├── 📄 test_glm_models.py
 ├── 📄 test_kis.py
 ├── 📄 test_mvp_standalone.py
 ├── 📄 test_mvp_system.py
@@ -1188,15 +1295,23 @@ backend/
 ├── 📄 test_newsapi_crawler_logic.py
 ├── 📄 test_newsapi_direct.py
 ├── 📄 test_ollama.py
+├── 📄 test_openai_api.py
 ├── 📄 test_paper_trading.py
 ├── 📄 test_redis_caching.py
 ├── 📄 test_trading_agent.py
 ├── 📄 test_unified_processor.py
+├── 📄 test_us_market_briefing.py
 ├── 📂 tests/
 │   ├── 📄 __init__.py
 │   ├── 📂 ab_test_quick/
 │   ├── 📂 backtest_results/
 │   ├── 📄 conftest.py
+│   ├── 📄 debug_glm_47_response.py
+│   ├── 📄 debug_glm_response.py
+│   ├── 📄 debug_response_text.py
+│   ├── 📄 debug_risk_analyst.py
+│   ├── 📂 diagnostic/
+│   │   └── 📄 glm_connectivity_check.py
 │   ├── 📂 integration/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 test_agents_simple.py
@@ -1213,6 +1328,7 @@ backend/
 │   ├── 📄 load_test.py
 │   ├── 📂 mocks/
 │   │   ├── 📄 __init__.py
+│   │   ├── 📄 glm_mocks.py
 │   │   └── 📄 strategy_mocks.py
 │   ├── 📄 quick_test_chatgpt.py
 │   ├── 📄 quick_test_phase6.py
@@ -1238,6 +1354,8 @@ backend/
 │   ├── 📄 test_event_subscribers.py
 │   ├── 📄 test_fle_calculator.py
 │   ├── 📄 test_gemini_client.py
+│   ├── 📄 test_glm_client.py
+│   ├── 📄 test_glm_integration.py
 │   ├── 📄 test_health.py
 │   ├── 📄 test_integration.py
 │   ├── 📄 test_integration_check.py
@@ -1275,10 +1393,17 @@ backend/
 │   ├── 📄 test_telegram_alerts.py
 │   ├── 📄 test_trading_agent_with_mgmt.py
 │   ├── 📄 test_trading_tendency.py
+│   ├── 📄 test_twostage_all_agents.py
+│   ├── 📄 test_twostage_e2e.py
+│   ├── 📄 test_twostage_e2e_latency.py
+│   ├── 📄 test_twostage_simple.py
+│   ├── 📄 test_twostage_trader_agent.py
 │   ├── 📄 test_war_room_api_dual_mode.py
 │   ├── 📄 test_war_room_e2e.py
 │   ├── 📄 test_war_room_mvp_handlers.py
 │   ├── 📄 test_war_room_with_sec.py
+│   ├── 📄 test_warroom_twostage.py
+│   ├── 📄 test_warroom_twostage_final.py
 │   └── 📂 unit/
 │       ├── 📄 __init__.py
 │       ├── 📄 run_macro_tests.py
@@ -1293,9 +1418,12 @@ backend/
 │   ├── 📄 signal_executor.py
 │   └── 📄 war_room_executor.py
 ├── 📂 utils/
+│   ├── 📄 backend_update_manager.py
+│   ├── 📄 disclaimer.py
 │   ├── 📄 elk_logger.py
 │   ├── 📄 retry.py
 │   ├── 📄 structure_mapper.py
+│   ├── 📄 timezone_manager.py
 │   └── 📄 tool_cache.py
 └── 📄 warm_cache.py
 
@@ -1334,6 +1462,7 @@ graph TD
         ai_debate_skeptic_agent[skeptic_agent]
         ai_economics_chip_efficiency_comparator[chip_efficiency_comparator]
         ai_economics_unit_economics_engine[unit_economics_engine]
+        ai_intelligence_test_phase3[test_phase3]
         ai_learning_agent_alert_system[agent_alert_system]
         ai_learning_agent_weight_adjuster[agent_weight_adjuster]
         ai_learning_daily_learning_scheduler[daily_learning_scheduler]
@@ -1342,12 +1471,6 @@ graph TD
         ai_learning_remaining_agents_learning[remaining_agents_learning]
         ai_learning_risk_agent_learning[risk_agent_learning]
         ai_learning_trader_agent_learning[trader_agent_learning]
-        ai_legacy_debate_ai_debate_engine[ai_debate_engine]
-        ai_legacy_debate_chip_war_agent[chip_war_agent]
-        ai_legacy_debate_constitutional_debate_engine[constitutional_debate_engine]
-        ai_legacy_debate_institutional_agent[institutional_agent]
-        ai_legacy_debate_news_agent[news_agent]
-        ai_legacy_debate_skeptic_agent[skeptic_agent]
         ai_macro___init__[__init__]
         ai_memory___init__[__init__]
         ai_meta___init__[__init__]
@@ -1356,8 +1479,13 @@ graph TD
         ai_mvp_data_helper[data_helper]
         ai_mvp_pm_agent_mvp[pm_agent_mvp]
         ai_mvp_risk_agent_mvp[risk_agent_mvp]
+        ai_mvp_test_phase4[test_phase4]
         ai_mvp_trader_agent_mvp[trader_agent_mvp]
         ai_mvp_war_room_mvp[war_room_mvp]
+        ai_mvp_deprecated_analyst_agent_mvp[analyst_agent_mvp]
+        ai_mvp_deprecated_risk_agent_mvp[risk_agent_mvp]
+        ai_mvp_deprecated_trader_agent_mvp[trader_agent_mvp]
+        ai_mvp_deprecated_war_room_mvp[war_room_mvp]
         ai_news_news_segment_classifier[news_segment_classifier]
         ai_order_execution_shadow_order_executor[shadow_order_executor]
         ai_portfolio___init__[__init__]
@@ -1368,9 +1496,13 @@ graph TD
         ai_reasoning_heuristics[heuristics]
         ai_reasoning_rag_deep_reasoning[rag_deep_reasoning]
         ai_reporters_annual_reporter[annual_reporter]
+        ai_reporters_enhanced_daily_reporter[enhanced_daily_reporter]
         ai_reporters_monthly_reporter[monthly_reporter]
         ai_reporters_quarterly_reporter[quarterly_reporter]
         ai_reporters_report_orchestrator[report_orchestrator]
+        ai_reporters_test_phase5[test_phase5]
+        ai_reporters_trending_news_detector[trending_news_detector]
+        ai_reporters_us_market_close_reporter[us_market_close_reporter]
         ai_reporters_weekly_reporter[weekly_reporter]
         ai_risk___init__[__init__]
         ai_router___init__[__init__]
@@ -1393,6 +1525,7 @@ graph TD
         ai_strategies_global_macro_strategy[global_macro_strategy]
         ai_trading_shadow_trader[shadow_trader]
         ai_trading_shadow_trading_agent[shadow_trading_agent]
+        ai_video_verify_real[verify_real]
         ai_war_room_shadow_trading_tracker[shadow_trading_tracker]
     end
     subgraph ALERTS [ALERTS]
@@ -1436,6 +1569,7 @@ graph TD
         api_gemini_news_router[gemini_news_router]
         api_global_macro_router[global_macro_router]
         api_incremental_router[incremental_router]
+        api_intelligence_router[intelligence_router]
         api_journey_router[journey_router]
         api_kis_integration_router[kis_integration_router]
         api_kis_sync_router[kis_sync_router]
@@ -1487,6 +1621,7 @@ graph TD
         automation_create_test_interpretations[create_test_interpretations]
         automation_kis_portfolio_scheduler[kis_portfolio_scheduler]
         automation_macro_context_updater[macro_context_updater]
+        automation_ollama_scheduler[ollama_scheduler]
         automation_price_tracking_scheduler[price_tracking_scheduler]
         automation_price_tracking_verifier[price_tracking_verifier]
         automation_scheduler[scheduler]
@@ -1537,7 +1672,9 @@ graph TD
         data_calendar_test_realtime_news[test_realtime_news]
         data_calendar_test_williams_speech[test_williams_speech]
         data_collectors_finviz_collector[finviz_collector]
+        data_collectors_free_news_monitor[free_news_monitor]
         data_collectors_smart_money_collector[smart_money_collector]
+        data_collectors_stealth_web_crawler[stealth_web_crawler]
         data_feature_store_store[store]
         data_knowledge_ai_value_chain[ai_value_chain]
         data_knowledge_memory_builder[memory_builder]
@@ -1552,9 +1689,14 @@ graph TD
         database_repository_multi_strategy[repository_multi_strategy]
         database_vector_models[vector_models]
         database___init__[__init__]
+        database_migrations_add_ai_trade_decisions_table[add_ai_trade_decisions_table]
+        database_migrations_add_v2_2_caching_fields[add_v2_2_caching_fields]
         database_migrations_apply_migration[apply_migration]
         database_migrations_check_table_structure[check_table_structure]
         database_migrations_create_all_tables[create_all_tables]
+        database_migrations_create_economic_events_table[create_economic_events_table]
+        database_migrations_create_rss_feeds_table[create_rss_feeds_table]
+        database_migrations_drop_and_recreate_economic_events_table[drop_and_recreate_economic_events_table]
         database_migrations_run_migration[run_migration]
         database_schemas_constitutional_validation_schema[constitutional_validation_schema]
     end
@@ -1572,6 +1714,12 @@ graph TD
         execution_kis_broker_adapter[kis_broker_adapter]
         execution_order_manager[order_manager]
         execution_safety_guard[safety_guard]
+        execution_rl_train[train]
+    end
+    subgraph FUSION [FUSION]
+        fusion_engine[engine]
+        fusion_gates_event_priority[event_priority]
+        fusion_gates_liquidity[liquidity]
     end
     subgraph INTELLIGENCE [INTELLIGENCE]
         intelligence_news_agent[news_agent]
@@ -1618,6 +1766,9 @@ graph TD
         routing_tool_selector[tool_selector]
         routing___init__[__init__]
     end
+    subgraph RUNNERS [RUNNERS]
+        runners_shadow_runner[shadow_runner]
+    end
     subgraph SCHEDULERS [SCHEDULERS]
         schedulers_chip_intelligence_updater[chip_intelligence_updater]
         schedulers_correlation_scheduler[correlation_scheduler]
@@ -1646,6 +1797,8 @@ graph TD
         scripts_init_vector_db[init_vector_db]
         scripts_migrate_dividend_aristocrats[migrate_dividend_aristocrats]
         scripts_migrate_news_to_postgres[migrate_news_to_postgres]
+        scripts_monitor_free_news[monitor_free_news]
+        scripts_monitor_ft[monitor_ft]
         scripts_reset_database[reset_database]
         scripts_seed_strategies[seed_strategies]
         scripts_seed_test_data[seed_test_data]
@@ -1672,10 +1825,15 @@ graph TD
         services_complete_5page_report_generator[complete_5page_report_generator]
         services_complete_korean_report_generator[complete_korean_report_generator]
         services_complete_report_generator[complete_report_generator]
+        services_daily_briefing_cache_manager[daily_briefing_cache_manager]
         services_daily_briefing_service[daily_briefing_service]
         services_daily_price_sync[daily_price_sync]
         services_daily_report_scheduler[daily_report_scheduler]
+        services_economic_calendar_fetcher[economic_calendar_fetcher]
+        services_economic_calendar_manager[economic_calendar_manager]
+        services_economic_watcher[economic_watcher]
         services_final_korean_report_generator[final_korean_report_generator]
+        services_fred_economic_calendar[fred_economic_calendar]
         services_news_event_handler[news_event_handler]
         services_news_poller[news_poller]
         services_optimized_signal_pipeline[optimized_signal_pipeline]
@@ -1711,6 +1869,10 @@ graph TD
     end
     subgraph TESTS [TESTS]
         tests_conftest[conftest]
+        tests_debug_glm_47_response[debug_glm_47_response]
+        tests_debug_glm_response[debug_glm_response]
+        tests_debug_response_text[debug_response_text]
+        tests_debug_risk_analyst[debug_risk_analyst]
         tests_test_13f_validation[test_13f_validation]
         tests_test_approval_system[test_approval_system]
         tests_test_chip_war_agent[test_chip_war_agent]
@@ -1721,6 +1883,8 @@ graph TD
         tests_test_data_backfill_router[test_data_backfill_router]
         tests_test_event_subscribers[test_event_subscribers]
         tests_test_fle_calculator[test_fle_calculator]
+        tests_test_glm_client[test_glm_client]
+        tests_test_glm_integration[test_glm_integration]
         tests_test_kill_switch_integration[test_kill_switch_integration]
         tests_test_models[test_models]
         tests_test_orders_api_conflict[test_orders_api_conflict]
@@ -1736,6 +1900,7 @@ graph TD
         tests_test_tax_loss_harvesting[test_tax_loss_harvesting]
         tests_test_telegram_alerts[test_telegram_alerts]
         tests_test_trading_tendency[test_trading_tendency]
+        tests_test_twostage_e2e_latency[test_twostage_e2e_latency]
         tests_test_war_room_e2e[test_war_room_e2e]
         tests_test_war_room_with_sec[test_war_room_with_sec]
         tests_integration_test_end_to_end[test_end_to_end]
@@ -1758,14 +1923,38 @@ graph TD
     run_news_crawler --> services_news_poller
     run_news_crawler --> database_models
     test_compression --> ai_compression
+    test_enhanced_pipeline --> api_intelligence_router
+    test_exact_glm_models --> ai_llm_providers
+    test_glm_45 --> ai_llm_providers
+    test_glm_4_air --> ai_llm_providers
+    test_glm_all_components --> ai_llm_providers
+    test_glm_all_components --> ai_intelligence_news_filter
+    test_glm_all_components --> ai_intelligence_narrative_state_engine
+    test_glm_api --> ai_llm_providers
+    test_glm_config --> ai_glm_client
+    test_glm_config --> ai_llm_providers
+    test_glm_full_pipeline --> ai_llm_providers
+    test_glm_full_pipeline --> ai_intelligence_news_filter
+    test_glm_full_pipeline --> ai_intelligence_narrative_state_engine
+    test_glm_full_pipeline --> ai_intelligence_fact_checker
+    test_glm_full_pipeline --> ai_intelligence_market_confirmation
+    test_glm_full_pipeline --> ai_intelligence_horizon_tagger
+    test_glm_full_pipeline --> ai_intelligence_enhanced_news_pipeline
+    test_glm_intelligence --> ai_llm_providers
+    test_glm_intelligence --> ai_intelligence_news_filter
+    test_glm_json_response --> ai_llm_providers
+    test_glm_models --> ai_llm_providers
     test_news_analyzer --> database_repository
     test_news_analyzer --> database_models
     test_news_analyzer --> data_news_analyzer
     test_ollama --> ai_llm
     test_ollama --> data_processors_news_processor
-    test_unified_processor --> data_news_models
+    test_openai_api --> ai_llm_providers
+    test_unified_processor --> database_repository
     test_unified_processor --> data_rss_crawler
     test_unified_processor --> data_processors_unified_news_processor
+    test_us_market_briefing --> ai_reporters_enhanced_daily_reporter
+    test_us_market_briefing --> notifications_telegram_notifier
     ai_claude_client --> config_settings
     ai_embedding_engine --> core_models_embedding_models
     ai_enhanced_analysis_cache --> config_storage_config
@@ -1831,6 +2020,7 @@ graph TD
     ai_economics_chip_efficiency_comparator --> schemas_base_schema
     ai_economics_chip_efficiency_comparator --> ai_economics_unit_economics_engine
     ai_economics_unit_economics_engine --> schemas_base_schema
+    ai_intelligence_test_phase3 --> ai_intelligence_market_moving_score
     ai_learning_agent_alert_system --> database_repository
     ai_learning_agent_weight_adjuster --> database_repository
     ai_learning_daily_learning_scheduler --> ai_learning_learning_orchestrator
@@ -1845,21 +2035,6 @@ graph TD
     ai_learning_risk_agent_learning --> ai_learning_hallucination_detector
     ai_learning_trader_agent_learning --> ai_learning_hallucination_detector
     ai_learning_trader_agent_learning --> ai_learning_walk_forward_validator
-    ai_legacy_debate_ai_debate_engine --> schemas_base_schema
-    ai_legacy_debate_chip_war_agent --> ai_economics_chip_war_simulator
-    ai_legacy_debate_chip_war_agent --> ai_economics_chip_war_simulator_v2
-    ai_legacy_debate_chip_war_agent --> ai_economics_chip_intelligence_engine
-    ai_legacy_debate_chip_war_agent --> ai_debate_chip_war_agent_helpers
-    ai_legacy_debate_constitutional_debate_engine --> ai_debate_ai_debate_engine
-    ai_legacy_debate_constitutional_debate_engine --> constitution
-    ai_legacy_debate_constitutional_debate_engine --> backtest_shadow_trade_tracker
-    ai_legacy_debate_constitutional_debate_engine --> schemas_base_schema
-    ai_legacy_debate_institutional_agent --> schemas_base_schema
-    ai_legacy_debate_institutional_agent --> data_collectors_smart_money_collector
-    ai_legacy_debate_news_agent --> database_models
-    ai_legacy_debate_news_agent --> database_repository
-    ai_legacy_debate_news_agent --> ai_gemini_client
-    ai_legacy_debate_skeptic_agent --> schemas_base_schema
     ai_macro___init__ --> ai_macro_global_market_map
     ai_macro___init__ --> ai_macro_country_risk_engine
     ai_macro___init__ --> ai_macro_macro_data_collector
@@ -1868,24 +2043,38 @@ graph TD
     ai_meta___init__ --> ai_meta_agent_weight_trainer
     ai_meta___init__ --> ai_meta_strategy_refiner
     ai_monitoring_bias_monitor --> schemas_base_schema
+    ai_mvp_analyst_agent_mvp --> ai_mvp_gemini_reasoning_agent_base
+    ai_mvp_analyst_agent_mvp --> ai_mvp_gemini_structuring_agent
     ai_mvp_analyst_agent_mvp --> ai_schemas_war_room_schemas
-    ai_mvp_analyst_agent_mvp --> ai_debate_news_agent
-    ai_mvp_analyst_agent_mvp --> ai_reasoning_deep_reasoning_agent
-    ai_mvp_analyst_agent_mvp --> ai_mvp_stock_specific_tsla_analyzer
-    ai_mvp_analyst_agent_mvp --> ai_mvp_stock_specific_nvda_analyzer
-    ai_mvp_data_helper --> data_news_models
+    ai_mvp_data_helper --> database_models
+    ai_mvp_data_helper --> database_repository
     ai_mvp_data_helper --> data_rss_crawler
-    ai_mvp_data_helper --> data_news_analyzer
     ai_mvp_data_helper --> ai_mvp_ticker_mappings
     ai_mvp_pm_agent_mvp --> ai_schemas_war_room_schemas
     ai_mvp_pm_agent_mvp --> ai_safety_leverage_guardian
     ai_mvp_pm_agent_mvp --> ai_router_persona_router
+    ai_mvp_risk_agent_mvp --> ai_mvp_gemini_reasoning_agent_base
+    ai_mvp_risk_agent_mvp --> ai_mvp_gemini_structuring_agent
     ai_mvp_risk_agent_mvp --> ai_schemas_war_room_schemas
+    ai_mvp_test_phase4 --> ai_mvp_conflict_resolver
+    ai_mvp_trader_agent_mvp --> ai_mvp_gemini_reasoning_agent_base
+    ai_mvp_trader_agent_mvp --> ai_mvp_gemini_structuring_agent
     ai_mvp_trader_agent_mvp --> ai_schemas_war_room_schemas
     ai_mvp_war_room_mvp --> execution_execution_router
     ai_mvp_war_room_mvp --> execution_order_validator
     ai_mvp_war_room_mvp --> monitoring_performance_monitor
     ai_mvp_war_room_mvp --> ai_router_persona_router
+    ai_mvp_deprecated_analyst_agent_mvp --> ai_schemas_war_room_schemas
+    ai_mvp_deprecated_analyst_agent_mvp --> ai_debate_news_agent
+    ai_mvp_deprecated_analyst_agent_mvp --> ai_reasoning_deep_reasoning_agent
+    ai_mvp_deprecated_analyst_agent_mvp --> ai_mvp_stock_specific_tsla_analyzer
+    ai_mvp_deprecated_analyst_agent_mvp --> ai_mvp_stock_specific_nvda_analyzer
+    ai_mvp_deprecated_risk_agent_mvp --> ai_schemas_war_room_schemas
+    ai_mvp_deprecated_trader_agent_mvp --> ai_schemas_war_room_schemas
+    ai_mvp_deprecated_war_room_mvp --> execution_execution_router
+    ai_mvp_deprecated_war_room_mvp --> execution_order_validator
+    ai_mvp_deprecated_war_room_mvp --> monitoring_performance_monitor
+    ai_mvp_deprecated_war_room_mvp --> ai_router_persona_router
     ai_news_news_segment_classifier --> schemas_base_schema
     ai_news_news_segment_classifier --> data_knowledge_ai_value_chain
     ai_order_execution_shadow_order_executor --> database_models
@@ -1910,6 +2099,9 @@ graph TD
     ai_reporters_annual_reporter --> ai_portfolio_account_partitioning
     ai_reporters_annual_reporter --> database_repository
     ai_reporters_annual_reporter --> database_models
+    ai_reporters_enhanced_daily_reporter --> ai_gemini_client
+    ai_reporters_enhanced_daily_reporter --> core_database
+    ai_reporters_enhanced_daily_reporter --> database_models
     ai_reporters_monthly_reporter --> ai_gemini_client
     ai_reporters_monthly_reporter --> ai_portfolio_account_partitioning
     ai_reporters_monthly_reporter --> database_repository
@@ -1920,33 +2112,21 @@ graph TD
     ai_reporters_quarterly_reporter --> database_models
     ai_reporters_report_orchestrator --> ai_debate_news_agent
     ai_reporters_report_orchestrator --> ai_market_regime
-    ai_reporters_report_orchestrator --> ai_gemini_client
-    ai_reporters_report_orchestrator --> ai_portfolio_account_partitioning
-    ai_reporters_report_orchestrator --> core_database
-    ai_reporters_report_orchestrator --> notifications_telegram_notifier
-    ai_reporters_report_orchestrator --> database_models
-    ai_reporters_report_orchestrator --> reporting_report_templates
-    ai_reporters_report_orchestrator --> reporting_pdf_renderer
+    ai_reporters_test_phase5 --> ai_reporters_funnel_generator
+    ai_reporters_trending_news_detector --> ai_gemini_client
+    ai_reporters_us_market_close_reporter --> ai_gemini_client
     ai_reporters_weekly_reporter --> ai_gemini_client
-    ai_reporters_weekly_reporter --> ai_portfolio_account_partitioning
-    ai_reporters_weekly_reporter --> database_repository
-    ai_reporters_weekly_reporter --> database_models
     ai_risk___init__ --> ai_risk_theme_risk_detector
     ai_router___init__ --> ai_router_persona_router
     ai_safety___init__ --> ai_safety_leverage_guardian
     ai_skills_base_agent --> ai_skills_skill_loader
     ai_skills_common_logging_decorator --> ai_skills_common_agent_logger
-    ai_skills_common_logging_decorator --> ai_skills_common_log_schema
     ai_skills_common_test_logging --> ai_skills_common_agent_logger
-    ai_skills_common_test_logging --> ai_skills_common_log_schema
     ai_skills_reporting_failure-learning-agent_failure_analyzer --> database_repository
-    ai_skills_reporting_failure-learning-agent_failure_analyzer --> database_models
     ai_skills_reporting_failure-learning-agent___init__ --> ai_skills_reporting_failure_learning_agent_failure_analyzer
     ai_skills_reporting_report-orchestrator-agent_report_orchestrator --> database_repository
     ai_skills_reporting_report-orchestrator-agent___init__ --> ai_skills_reporting_report_orchestrator_agent_report_orchestrator
     ai_skills_system_conflict_detector --> database_repository_multi_strategy
-    ai_skills_system_conflict_detector --> api_schemas_strategy_schemas
-    ai_skills_system_conflict_detector --> database_models
     ai_skills_war_room_mvp_analyst_agent_mvp_handler --> ai_mvp_analyst_agent_mvp
     ai_skills_war_room_mvp_orchestrator_mvp_handler --> ai_mvp_war_room_mvp
     ai_skills_war_room_mvp_pm_agent_mvp_handler --> ai_mvp_pm_agent_mvp
@@ -1955,8 +2135,9 @@ graph TD
     ai_strategies_dca_strategy --> schemas_base_schema
     ai_strategies_deep_reasoning_strategy --> schemas_base_schema
     ai_strategies_global_macro_strategy --> ai_macro_global_market_map
-    ai_trading_shadow_trader --> data_news_models
+    ai_trading_shadow_trader --> database_repository
     ai_trading_shadow_trading_agent --> database_models
+    ai_video_verify_real --> ai_video_video_analyzer
     ai_war_room_shadow_trading_tracker --> data_models_shadow_trade
     alerts___init__ --> alerts_alert_system
     analysis_ceo_news_analyzer --> services_fast_polling_service
@@ -1992,6 +2173,7 @@ graph TD
     api_gemini_news_router --> data_gemini_news_fetcher
     api_global_macro_router --> ai_skills_common_logging_decorator
     api_incremental_router --> core_database
+    api_intelligence_router --> ai_intelligence_contrary_signal
     api_journey_router --> ai_memory_investment_journey_memory
     api_kis_integration_router --> api_phase_integration_router
     api_kis_sync_router --> database_models
@@ -2002,7 +2184,7 @@ graph TD
     api_news_analysis_router --> data_news_models
     api_news_filter --> core_database
     api_news_processing_router --> data_news_models
-    api_news_router --> data_news_models
+    api_news_router --> database_models
     api_notifications_router --> notifications_notification_manager
     api_options_flow_router --> ai_skills_common_logging_decorator
     api_orders_router --> database_models
@@ -2039,6 +2221,7 @@ graph TD
     automation_create_test_interpretations --> database_repository
     automation_kis_portfolio_scheduler --> database_repository
     automation_macro_context_updater --> database_repository
+    automation_ollama_scheduler --> news_rss_crawler
     automation_price_tracking_scheduler --> database_repository
     automation_price_tracking_verifier --> database_repository
     automation_scheduler --> automation_macro_context_updater
@@ -2062,7 +2245,7 @@ graph TD
     data_decision_store --> models_trading_decision
     data_deep_reasoning_store --> ai_reasoning_models
     data_news_analyzer --> database_models
-    data_rss_crawler --> data_news_models
+    data_rss_crawler --> database_models
     data_rss_feed_discovery --> data_news_models
     data_sec_analysis_cache --> core_models_sec_analysis_models
     data_sec_client --> core_models_sec_models
@@ -2075,22 +2258,29 @@ graph TD
     data_calendar_test_realtime_news --> data_calendar_google_news_collector
     data_calendar_test_williams_speech --> config_settings
     data_collectors_finviz_collector --> database_repository
+    data_collectors_free_news_monitor --> data_collectors_stealth_web_crawler
     data_collectors_smart_money_collector --> data_collectors_api_clients_yahoo_client
+    data_collectors_stealth_web_crawler --> database_repository
     data_feature_store_store --> data_feature_store_cache_layer
     data_knowledge_ai_value_chain --> schemas_base_schema
     data_knowledge_memory_builder --> data_vector_store_store
     data_knowledge_graph_knowledge_graph --> database_models
     data_models_proposal --> core_models_base
     data_models_shadow_trade --> core_models_base
-    data_processors_unified_news_processor --> data_news_models
+    data_processors_unified_news_processor --> database_models
     database_models_assets --> database_models
     database_repository --> database_models
     database_repository_multi_strategy --> database_models
     database_vector_models --> database_vector_db
     database___init__ --> database_models
+    database_migrations_add_ai_trade_decisions_table --> database_repository
+    database_migrations_add_v2_2_caching_fields --> database_db_service
     database_migrations_apply_migration --> database_repository
     database_migrations_check_table_structure --> config_settings
     database_migrations_create_all_tables --> database_models
+    database_migrations_create_economic_events_table --> database_db_service
+    database_migrations_create_rss_feeds_table --> database_models
+    database_migrations_drop_and_recreate_economic_events_table --> database_db_service
     database_migrations_run_migration --> config_settings
     database_schemas_constitutional_validation_schema --> database_models
     demos_phase1_demo --> ai_compression
@@ -2100,6 +2290,10 @@ graph TD
     execution_kis_broker_adapter --> execution_executors
     execution_order_manager --> events
     execution_safety_guard --> execution_kill_switch
+    execution_rl_train --> execution_rl_env
+    fusion_engine --> fusion_normalizer
+    fusion_gates_event_priority --> fusion_normalizer
+    fusion_gates_liquidity --> fusion_normalizer
     intelligence_news_agent --> database_models
     market_data_price_scheduler --> database_repository
     monitoring_data_quality_metrics --> database_repository
@@ -2118,13 +2312,14 @@ graph TD
     reporting_report_generator --> core_models_analytics_models
     reporting_shield_report_generator --> reporting_shield_metrics
     routers_kill_switch_router --> execution_kill_switch
-    routers_war_room_mvp_router --> data_news_models
+    routers_war_room_mvp_router --> database_repository
     routing_model_selector --> routing_intent_classifier
     routing_semantic_router --> routing_intent_classifier
     routing_skill_router_integration --> skills_skill_initializer
     routing_test_semantic_router --> routing_semantic_router
     routing_tool_selector --> routing_intent_classifier
     routing___init__ --> routing_semantic_router
+    runners_shadow_runner --> fusion_engine
     schedulers_chip_intelligence_updater --> ai_economics_chip_intelligence_engine
     schedulers_correlation_scheduler --> database_repository
     schedulers_failure_learning_scheduler --> database_repository
@@ -2150,6 +2345,8 @@ graph TD
     scripts_init_vector_db --> database_vector_db
     scripts_migrate_dividend_aristocrats --> database_models
     scripts_migrate_news_to_postgres --> core_database
+    scripts_monitor_free_news --> data_collectors_free_news_monitor
+    scripts_monitor_ft --> data_collectors_stealth_web_crawler
     scripts_reset_database --> database_models
     scripts_seed_strategies --> database
     scripts_seed_test_data --> database_models
@@ -2174,10 +2371,15 @@ graph TD
     services_complete_5page_report_generator --> services_page1_generator_korean
     services_complete_korean_report_generator --> services_page1_generator_korean
     services_complete_report_generator --> services_page1_generator
+    services_daily_briefing_cache_manager --> database_models
     services_daily_briefing_service --> database_repository
     services_daily_price_sync --> core_database
     services_daily_report_scheduler --> reporting_report_generator
+    services_economic_calendar_fetcher --> core_database
+    services_economic_calendar_manager --> services_fred_economic_calendar
+    services_economic_watcher --> services_economic_calendar_manager
     services_final_korean_report_generator --> services_page1_generator_korean
+    services_fred_economic_calendar --> database_models
     services_news_event_handler --> schemas_base_schema
     services_news_poller --> data_rss_crawler
     services_optimized_signal_pipeline --> data_news_models
@@ -2209,6 +2411,10 @@ graph TD
     skills_trading_risk_skill --> skills_base_skill
     skills_trading___init__ --> skills_trading_kis_skill
     tests_conftest --> main
+    tests_debug_glm_47_response --> ai_glm_client
+    tests_debug_glm_response --> ai_glm_client
+    tests_debug_response_text --> ai_glm_client
+    tests_debug_risk_analyst --> ai_glm_client
     tests_test_13f_validation --> data_collectors_smart_money_collector
     tests_test_approval_system --> approval_approval_models
     tests_test_chip_war_agent --> ai_debate_chip_war_agent
@@ -2219,6 +2425,8 @@ graph TD
     tests_test_data_backfill_router --> main
     tests_test_event_subscribers --> events
     tests_test_fle_calculator --> metrics_fle_calculator
+    tests_test_glm_client --> ai_glm_client
+    tests_test_glm_integration --> ai_glm_client
     tests_test_kill_switch_integration --> main
     tests_test_models --> ai_reasoning_models
     tests_test_orders_api_conflict --> database_repository
@@ -2234,6 +2442,7 @@ graph TD
     tests_test_tax_loss_harvesting --> tax
     tests_test_telegram_alerts --> services_alert_manager
     tests_test_trading_tendency --> metrics_trading_tendency_analyzer
+    tests_test_twostage_e2e_latency --> ai_mvp_trader_agent_mvp
     tests_test_war_room_e2e --> api_war_room_router
     tests_test_war_room_with_sec --> api_war_room_router
     tests_integration_test_end_to_end --> main
