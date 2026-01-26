@@ -194,8 +194,14 @@ export const warRoomApi = {
      * Get War Room information (including dynamic agent weights)
      * GET /api/war-room-mvp/info
      */
-    getInfo: async (): Promise<WarRoomInfo> => {
-        const response = await fetch(`${API_BASE_URL}/info`);
+    getInfo: async (personaMode?: string): Promise<WarRoomInfo> => {
+        const queryParams = new URLSearchParams();
+        if (personaMode) {
+            queryParams.append('persona_mode', personaMode);
+        }
+
+        const url = `${API_BASE_URL}/info${queryParams.toString() ? `?${queryParams}` : ''}`;
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error(`Failed to fetch War Room info: ${response.statusText}`);

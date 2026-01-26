@@ -1,6 +1,7 @@
 """Alembic migration environment configuration."""
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool, create_engine
@@ -24,11 +25,21 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Override database URL from environment variable for security
+# This prevents hardcoding credentials in alembic.ini
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    config.set_main_option('sqlalchemy.url', database_url)
+
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
+# Import your models here for autogenerate to work
+try:
+    from backend.database.models import Base
+    target_metadata = Base.metadata
+except ImportError:
+    # Fallback if import fails
+    target_metadata = None
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

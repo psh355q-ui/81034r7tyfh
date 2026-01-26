@@ -104,65 +104,89 @@ export default function TradingDashboard() {
 
   // ...
 
-  // WebSocket
+  // WebSocket with Auto-Reconnection
   useEffect(() => {
-    const ws = new WebSocket(WS_URL);
+    let ws: WebSocket | null = null;
+    let reconnectTimer: number;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 10;
 
-    ws.onopen = () => {
-      console.log('[WebSocket] Connected to signal stream');
-      setConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log('[WebSocket] Message:', data);
-
-      if (data.type === 'new_signal') {
-        // Add new signal to top of list
-        setSignals((prev) => [data.data, ...prev]);
-        notification.info({
-          message: 'New Signal Generated',
-          description: `${data.data.ticker} ${data.data.action} (Confidence: ${(data.data.confidence * 100).toFixed(0)}%)`,
-          placement: 'topRight',
-          duration: 5,
-        });
-      } else if (data.type === 'order_filled') {
-        const order = data.data;
-        notification.success({
-          message: 'Order Filled',
-          description: `${order.side} ${order.quantity} ${order.ticker} @ $${order.avg_price}`,
-          placement: 'topRight',
-          duration: 8,
-        });
-      } else if (data.type === 'order_sent') {
-        notification.info({
-          message: 'Order Sent to Broker',
-          description: `Sending order for ${data.data.ticker}...`,
-          placement: 'topRight',
-          duration: 3,
-        });
-      } else if (data.type === 'order_rejected' || data.type === 'order_failed') {
+    const connect = () => {
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error('[WebSocket] Max reconnection attempts reached. Please refresh the page.');
         notification.error({
-          message: 'Order Failed',
-          description: `Order for ${data.data.ticker} failed: ${data.data.reason || 'Unknown error'}`,
+          message: 'WebSocket Connection Failed',
+          description: 'Unable to connect to real-time signal stream. Please refresh the page.',
           placement: 'topRight',
-          duration: 10,
+          duration: 0, // Don't auto-close
         });
+        return;
       }
+
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        console.log('[WebSocket] Connected to signal stream');
+        setConnected(true);
+        reconnectAttempts = 0; // Reset counter on successful connection
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('[WebSocket] Message:', data);
+
+        if (data.type === 'new_signal') {
+          // Add new signal to top of list
+          setSignals((prev) => [data.data, ...prev]);
+          notification.info({
+            message: 'New Signal Generated',
+            description: `${data.data.ticker} ${data.data.action} (Confidence: ${(data.data.confidence * 100).toFixed(0)}%)`,
+            placement: 'topRight',
+            duration: 5,
+          });
+        } else if (data.type === 'order_filled') {
+          const order = data.data;
+          notification.success({
+            message: 'Order Filled',
+            description: `${order.side} ${order.quantity} ${order.ticker} @ $${order.avg_price}`,
+            placement: 'topRight',
+            duration: 8,
+          });
+        } else if (data.type === 'order_sent') {
+          notification.info({
+            message: 'Order Sent to Broker',
+            description: `Sending order for ${data.data.ticker}...`,
+            placement: 'topRight',
+            duration: 3,
+          });
+        } else if (data.type === 'order_rejected' || data.type === 'order_failed') {
+          notification.error({
+            message: 'Order Failed',
+            description: `Order for ${data.data.ticker} failed: ${data.data.reason || 'Unknown error'}`,
+            placement: 'topRight',
+            duration: 10,
+          });
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.warn('[WebSocket] Connection error, will retry...', error);
+        setConnected(false);
+      };
+
+      ws.onclose = () => {
+        console.log(`[WebSocket] Disconnected, reconnecting in 3s... (attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+        setConnected(false);
+        reconnectAttempts++;
+        reconnectTimer = setTimeout(connect, 3000); // Reconnect after 3 seconds
+      };
     };
 
-    ws.onerror = (error) => {
-      console.error('[WebSocket] Error:', error);
-      setConnected(false);
-    };
-
-    ws.onclose = () => {
-      console.log('[WebSocket] Disconnected');
-      setConnected(false);
-    };
+    connect();
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
+      clearTimeout(reconnectTimer);
     };
   }, []);
 

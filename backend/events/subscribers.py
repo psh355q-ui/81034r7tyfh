@@ -59,6 +59,34 @@ class ConflictEventSubscriber:
             except Exception as e:
                 logger.error(f"Failed to broadcast conflict: {e}")
 
+        # Send push notification
+        if _push_notification_service and _push_notification_service.is_enabled():
+            try:
+                # Get user tokens from database (placeholder - implement based on your DB schema)
+                user_tokens = self._get_user_fcm_tokens()
+
+                if user_tokens:
+                    conflict_data = {
+                        'ticker': ticker,
+                        'conflicting_strategy': detail.get('conflicting_strategy', 'Unknown'),
+                        'owning_strategy': detail.get('owning_strategy', 'Unknown'),
+                        'message': detail.get('message', '전략 충돌 발생'),
+                        'resolution': detail.get('resolution', '자동 해결')
+                    }
+
+                    # Run async push notification in event loop
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(
+                            _push_notification_service.send_conflict_alert(user_tokens, conflict_data)
+                        )
+                    else:
+                        loop.run_until_complete(
+                            _push_notification_service.send_conflict_alert(user_tokens, conflict_data)
+                        )
+            except Exception as e:
+                logger.error(f"Failed to send push notification for conflict: {e}")
+
     @retry(max_retries=3, delay=1)
     def handle_order_blocked(self, data: Dict[str, Any]):
         """
@@ -67,9 +95,36 @@ class ConflictEventSubscriber:
         """
         ticker = data.get('ticker')
         reason = data.get('reason')
-        
+
         logger.error(f"🚫 [ORDER_BLOCKED] {ticker}: {reason}")
         # TODO: Create UserFeedback entry or similar for UI display
+
+        # Send push notification
+        if _push_notification_service and _push_notification_service.is_enabled():
+            try:
+                user_tokens = self._get_user_fcm_tokens()
+
+                if user_tokens:
+                    # Send conflict alert for blocked order
+                    conflict_data = {
+                        'ticker': ticker,
+                        'conflicting_strategy': 'Unknown',
+                        'owning_strategy': 'Unknown',
+                        'message': f"주문 차단됨: {reason}",
+                        'resolution': '수동 확인 필요'
+                    }
+
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(
+                            _push_notification_service.send_conflict_alert(user_tokens, conflict_data)
+                        )
+                    else:
+                        loop.run_until_complete(
+                            _push_notification_service.send_conflict_alert(user_tokens, conflict_data)
+                        )
+            except Exception as e:
+                logger.error(f"Failed to send push notification for blocked order: {e}")
 
     @retry(max_retries=3, delay=1)
     def handle_priority_override(self, data: Dict[str, Any]):
@@ -81,6 +136,28 @@ class ConflictEventSubscriber:
         strategy_id = data.get('strategy_id')
         
         logger.info(f"⚡ [PRIORITY_OVERRIDE] {ticker} taken by {strategy_id}")
+
+    def _get_user_fcm_tokens(self) -> list:
+        """
+        사용자 FCM 토큰 목록 조회
+
+        Returns:
+            사용자 FCM 토큰 목록
+        """
+        try:
+            if not self.db:
+                from backend.database.repository import get_sync_session
+                self.db = get_sync_session()
+            
+            from backend.database.models import UserFCMToken
+            tokens = self.db.query(UserFCMToken).filter(
+                UserFCMToken.is_active == True
+            ).all()
+            
+            return [token.token for token in tokens]
+        except Exception as e:
+            logger.error(f"Failed to fetch FCM tokens: {e}")
+            return []
 
 
 class PortfolioEventSubscriber:
@@ -102,14 +179,83 @@ class PortfolioEventSubscriber:
         # optimizer.rebalance_strategy(new_owner)
 
 
+class TradingSignalEventSubscriber:
+    """트레이딩 시그널 관련 이벤트 구독자"""
+
+    @retry(max_retries=3, delay=1)
+    def handle_signal_generated(self, data: Dict[str, Any]):
+        """
+        TRADING_SIGNAL_GENERATED 처리
+        - 목표: 푸시 알림 전송
+        """
+        ticker = data.get('ticker')
+        action = data.get('action')
+        confidence = data.get('confidence')
+        reasoning = data.get('reasoning')
+
+        logger.info(f"🚀 [SIGNAL_GENERATED] {action} {ticker} (confidence: {confidence:.2%})")
+
+        # Send push notification
+        if _push_notification_service and _push_notification_service.is_enabled():
+            try:
+                user_tokens = self._get_user_fcm_tokens()
+
+                if user_tokens:
+                    signal_data = {
+                        'ticker': ticker,
+                        'action': action,
+                        'confidence': confidence,
+                        'reasoning': reasoning,
+                        'timestamp': data.get('timestamp')
+                    }
+
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(
+                            _push_notification_service.send_signal_alert(user_tokens, signal_data)
+                        )
+                    else:
+                        loop.run_until_complete(
+                            _push_notification_service.send_signal_alert(user_tokens, signal_data)
+                        )
+            except Exception as e:
+                logger.error(f"Failed to send push notification for signal: {e}")
+
+    def _get_user_fcm_tokens(self) -> list:
+        """
+        사용자 FCM 토큰 목록 조회
+
+        Returns:
+            사용자 FCM 토큰 목록
+        """
+        try:
+            from backend.database.repository import get_sync_session
+            from backend.database.models import UserFCMToken
+            
+            db = get_sync_session()
+            tokens = db.query(UserFCMToken).filter(
+                UserFCMToken.is_active == True
+            ).all()
+            
+            return [token.token for token in tokens]
+        except Exception as e:
+            logger.error(f"Failed to fetch FCM tokens: {e}")
+            return []
+
+
 def register_subscribers():
     """모든 구독자 등록 (App Startup 시 호출)"""
     conflict_sub = ConflictEventSubscriber()
     portfolio_sub = PortfolioEventSubscriber()
+    signal_sub = TradingSignalEventSubscriber()
 
     event_bus.subscribe(EventType.CONFLICT_DETECTED, conflict_sub.handle_conflict_detected)
     event_bus.subscribe(EventType.ORDER_BLOCKED_BY_CONFLICT, conflict_sub.handle_order_blocked)
     event_bus.subscribe(EventType.PRIORITY_OVERRIDE, conflict_sub.handle_priority_override)
     event_bus.subscribe(EventType.OWNERSHIP_TRANSFERRED, portfolio_sub.handle_ownership_transferred)
+
+    # 트레이딩 시그널 이벤트 등록 (이벤트 타입이 있는 경우)
+    if hasattr(EventType, 'TRADING_SIGNAL_GENERATED'):
+        event_bus.subscribe(EventType.TRADING_SIGNAL_GENERATED, signal_sub.handle_signal_generated)
 
     logger.info("✅ Event Subscribers Registered")

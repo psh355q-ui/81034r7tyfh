@@ -12,10 +12,12 @@ import { warRoomApi, DebateSession as ApiDebateSession } from '../../services/wa
 import WarRoomCard from './WarRoomCard';
 import { Card } from '../common/Card';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { usePersona } from '../../contexts/PersonaContext';
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'pending';
 
 const WarRoomList: React.FC = () => {
+    const { currentMode } = usePersona();
     // State for new debate
     const [newDebateTicker, setNewDebateTicker] = useState('');
     const [isRunningDebate, setIsRunningDebate] = useState(false);
@@ -30,9 +32,9 @@ const WarRoomList: React.FC = () => {
 
     // Fetch War Room info (including dynamic weights)
     const { data: warRoomInfo } = useQuery({
-        queryKey: ['war-room-info'],
-        queryFn: () => warRoomApi.getInfo(),
-        refetchInterval: 5000, // Refresh every 5 seconds to catch persona changes
+        queryKey: ['war-room-info', currentMode], // Add dependency
+        queryFn: () => warRoomApi.getInfo(currentMode), // Pass current mode
+        refetchInterval: 1000, // Faster refresh for UX responsiveness
     });
 
     // Transform API response to match MockDebateSession interface

@@ -37,6 +37,7 @@ import FailureLearningDashboard from './pages/FailureLearningDashboard';  // �
 import MultiAssetDashboard from './pages/MultiAssetDashboard';  // 🆕 Phase 30 (multi-asset support)
 import PortfolioOptimizationPage from './pages/PortfolioOptimizationPage';  // 🆕 Phase 31 (portfolio optimization)
 import CorrelationDashboard from './pages/CorrelationDashboard';  // 🆕 Phase 32 (asset correlation)
+import LiveDashboard from './pages/LiveDashboard'; // 🆕 Phase 4 (real-time execution)
 
 import Performance from './pages/Performance';  // 🆕 Phase 25.2 (performance dashboard)
 import FeedbackDashboard from './pages/FeedbackDashboard'; // 🆕 Phase 6
@@ -93,6 +94,7 @@ const App: React.FC = () => {
               <Route path="/signal-consolidation" element={<SignalConsolidationPage />} />
               <Route path="/cost-report" element={<CostReport />} />
               <Route path="/data-backfill" element={<DataBackfill />} />
+              <Route path="/live-dashboard" element={<LiveDashboard />} />  {/* 🆕 Phase 4 Real-time Dashboard */}
               <Route path="/logs" element={<Logs />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

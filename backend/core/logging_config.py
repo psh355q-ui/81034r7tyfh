@@ -68,10 +68,15 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
+        
+        # Use KST (Korea Standard Time) instead of UTC
+        from datetime import timezone, timedelta
+        kst = timezone(timedelta(hours=9))
+        timestamp_kst = datetime.now(kst).isoformat()
 
         # Base log structure
         log_data: Dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": timestamp_kst,
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

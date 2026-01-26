@@ -269,4 +269,37 @@ export const getCountryRisks = async (): Promise<any> => {
   return response.data;
 };
 
+// --- Market Indicators API (Phase 9) ---
+
+export interface MarketIndicator {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  change_pct?: number;
+  change_bp?: number;  // For US10Y (basis points)
+  error?: string;
+}
+
+export interface MarketIndicators {
+  sp500: MarketIndicator;
+  nasdaq: MarketIndicator;
+  vix: MarketIndicator;
+  us10y: MarketIndicator;
+  dxy: MarketIndicator;
+  krw: MarketIndicator;
+  jpy: MarketIndicator;
+  eur: MarketIndicator;
+  cny: MarketIndicator;
+}
+
+export const getMarketIndicators = async (): Promise<{
+  success: boolean;
+  data: MarketIndicators;
+  timestamp: string;
+}> => {
+  const response = await apiClient.get('/market/indicators');
+  return response.data;
+};
+
 export default apiClient;

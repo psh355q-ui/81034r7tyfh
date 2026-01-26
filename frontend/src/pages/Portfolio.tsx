@@ -459,9 +459,9 @@ const Portfolio: React.FC = () => {
     if (error) return <div className="p-6 text-red-600">Error loading portfolio.</div>;
     if (!portfolio) return null;
 
-    // Helper functions
-    const allocation_pct = (portfolio.invested / portfolio.total_value) * 100;
-    const cash_pct = (portfolio.cash / portfolio.total_value) * 100;
+    // Helper functions (with null safety)
+    const allocation_pct = ((portfolio.invested ?? 0) / (portfolio.total_value || 1)) * 100;
+    const cash_pct = ((portfolio.cash ?? 0) / (portfolio.total_value || 1)) * 100;
 
     const getActionIcon = (action: string) => {
         switch (action) {
@@ -571,7 +571,7 @@ const Portfolio: React.FC = () => {
                         <div>
                             <p className="text-sm font-medium text-gray-500">Invested</p>
                             <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                                ${portfolio.invested.toLocaleString()}
+                                ${(portfolio.invested ?? 0).toLocaleString()}
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">{allocation_pct.toFixed(1)}% of total</p>
                         </div>
@@ -583,7 +583,7 @@ const Portfolio: React.FC = () => {
                         <div>
                             <p className="text-sm font-medium text-gray-500">Cash</p>
                             <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                                ${portfolio.cash.toLocaleString()}
+                                ${(portfolio.cash ?? 0).toLocaleString()}
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">{cash_pct.toFixed(1)}% available</p>
                         </div>

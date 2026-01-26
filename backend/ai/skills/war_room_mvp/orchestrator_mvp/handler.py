@@ -123,10 +123,10 @@ def invoke_legacy_war_room(symbol: str, context: Dict[str, Any]) -> Dict[str, An
     }
 
 
-def get_info() -> Dict[str, Any]:
+def get_info(persona_mode: Optional[str] = None) -> Dict[str, Any]:
     """Get War Room MVP information"""
     war_room = get_war_room()
-    return war_room.get_war_room_info()
+    return war_room.get_war_room_info(persona_mode=persona_mode)
 
 
 def get_history(limit: int = 20) -> Dict[str, Any]:

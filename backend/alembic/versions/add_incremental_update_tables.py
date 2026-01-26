@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'incremental_update_001'
-down_revision = None  # Replace with actual previous migration
+down_revision = '001'  # Links to 001_create_features_table
 branch_labels = None
 depends_on = None
 

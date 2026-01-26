@@ -384,7 +384,7 @@ async def deliberate(request: DeliberationRequest, db: Session = Depends(get_syn
 
 
 @router.get("/info")
-async def get_info() -> Dict[str, Any]:
+async def get_info(persona_mode: Optional[str] = None) -> Dict[str, Any]:
     """
     War Room MVP 정보 조회
 
@@ -396,11 +396,11 @@ async def get_info() -> Dict[str, Any]:
     try:
         if USE_SKILL_HANDLERS:
             # Skill Handler Mode
-            info = war_room_handler.get_info()
+            info = war_room_handler.get_info(persona_mode=persona_mode)
             info['execution_mode'] = 'skill_handler'
         else:
             # Direct Class Mode
-            info = war_room.get_war_room_info()
+            info = war_room.get_war_room_info(persona_mode=persona_mode)
             info['execution_mode'] = EXECUTION_MODE
             
             # Add HARD_RULES for debugging (direct mode only)

@@ -1,0 +1,42 @@
+src\App.tsx:              <Route path="/war-room" element={<WarRoomPage />} />
+src\components\Layout\Navigation.tsx:                        to="/war-room"
+src\components\Layout\Navigation.tsx:                        className={`nav-link ${isActive('/war-room') ? 'active' : ''}`}
+src\components\Layout\Sidebar.tsx:        { path: '/war-room', icon: MessageSquare, label: 'War Room' },
+src\components\war-room\WarRoom.css:.war-room {
+src\components\war-room\WarRoom.css:.war-room-header {
+src\components\war-room\WarRoom.css:.war-room-header h2 {
+src\components\war-room\WarRoom.css:.war-room-header .subtitle {
+src\components\war-room\WarRoom.css:.war-room-footer {
+src\components\war-room\WarRoom.css:    .war-room-header {
+src\components\war-room\WarRoom.css:    .war-room-header h2 {
+src\components\war-room\WarRoom.css:    .war-room-footer {
+src\components\war-room\WarRoom.tsx:            <div className="war-room">
+src\components\war-room\WarRoom.tsx:                    <div className="war-room-header">
+src\components\war-room\WarRoom.tsx:                    <div className="war-room-footer">
+src\components\war-room\WarRoomCard.css:.war-room-card {
+src\components\war-room\WarRoomCard.css:.war-room-card::before {
+src\components\war-room\WarRoomCard.css:.war-room-card:hover::before {
+src\components\war-room\WarRoomCard.css:.war-room-card.active {
+src\components\war-room\WarRoomCard.css:.war-room-card.completed {
+src\components\war-room\WarRoomCard.css:.war-room-card.pending {
+src\components\war-room\WarRoomCard.css:.war-room-card:hover {
+src\components\war-room\WarRoomCard.css:.war-room-card:hover .expand-icon {
+src\components\war-room\WarRoomCard.tsx:        <div className={`war-room-card ${session.status}`}>
+src\components\war-room\WarRoomList.css:.war-room-list {
+src\components\war-room\WarRoomList.tsx:        queryKey: ['war-room-sessions'],
+src\components\war-room\WarRoomList.tsx:        queryKey: ['war-room-info'],
+src\pages\WarRoomPage.tsx: *   - API: GET /api/war-room-mvp/history (AI Debate 세션)
+src\pages\WarRoomPage.tsx: *   - API: POST /api/war-room-mvp/deliberate (새 토론 시작)
+src\pages\WarRoomPage.tsx:import WarRoomList from '../components/war-room/WarRoomList';
+src\services\warRoomApi.legacy.ts:     * POST /api/war-room/debate
+src\services\warRoomApi.legacy.ts:        const response = await fetch(`${API_BASE_URL}/war-room/debate`, {
+src\services\warRoomApi.legacy.ts:     * GET /api/war-room/sessions
+src\services\warRoomApi.legacy.ts:        const url = `${API_BASE_URL}/war-room/sessions${queryParams.toString() ? `?${queryParams}` : ''}`;
+src\services\warRoomApi.legacy.ts:     * GET /api/war-room/health
+src\services\warRoomApi.legacy.ts:        const response = await fetch(`${API_BASE_URL}/war-room/health`);
+src\services\warRoomApi.ts: * - API: /api/war-room-mvp/*
+src\services\warRoomApi.ts:const API_BASE_URL = '/api/war-room-mvp';
+src\services\warRoomApi.ts:     * POST /api/war-room-mvp/deliberate
+src\services\warRoomApi.ts:     * GET /api/war-room-mvp/history
+src\services\warRoomApi.ts:     * GET /api/war-room-mvp/health
+src\services\warRoomApi.ts:     * GET /api/war-room-mvp/info

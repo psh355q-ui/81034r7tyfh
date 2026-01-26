@@ -407,15 +407,32 @@ class WarRoomMVP:
 
         return "\n".join(summary_lines)
 
-    def get_war_room_info(self) -> Dict[str, Any]:
+    def get_war_room_info(self, persona_mode: Optional[str] = None) -> Dict[str, Any]:
         """Get War Room information"""
-        current_mode = self.persona_router.get_current_mode()
-        weights = self.persona_router.get_weights(current_mode.value)
+        # Always get fresh persona router to reflect mode changes
+        persona_router = get_persona_router()
+        
+        if persona_mode:
+            try:
+                # Use requested mode
+                target_mode = PersonaMode(persona_mode)
+                weights = persona_router.get_weights(target_mode.value)
+                mode_name = target_mode.value
+            except ValueError:
+                # Fallback to current if invalid mode provided
+                current_mode = persona_router.get_current_mode()
+                weights = persona_router.get_weights(current_mode.value)
+                mode_name = current_mode.value
+        else:
+            # Use current global mode
+            current_mode = persona_router.get_current_mode()
+            weights = persona_router.get_weights(current_mode.value)
+            mode_name = current_mode.value
 
         return {
             'name': 'WarRoomMVP',
             'version': '2.1.0 (Hybrid LLM)',
-            'current_mode': current_mode.value,
+            'current_mode': mode_name,
             'architecture': 'two-stage-hybrid',
             'agent_structure': '3+1 Voting System (Hybrid LLM)',
             'llm_strategy': 'Hybrid - Risk: GLM, Trader/Analyst: Gemini',

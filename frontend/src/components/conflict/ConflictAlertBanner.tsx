@@ -32,55 +32,74 @@ export function ConflictAlertBanner({
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // WebSocket connection for real-time conflict events
-    const ws = new WebSocket(WS_URL);
+    // WebSocket connection for real-time conflict events with auto-reconnection
+    let ws: WebSocket | null = null;
+    let reconnectTimer: number;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 10;
 
-    ws.onopen = () => {
-      console.log('[ConflictWS] Connected to conflict event stream');
-      setIsConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[ConflictWS] Message:', data);
-
-        if (data.type === 'CONFLICT_DETECTED') {
-          const conflict: OrderConflict = data.data;
-
-          // Add to conflicts list (keep only maxConflicts)
-          setConflicts((prev) => {
-            const updated = [conflict, ...prev].slice(0, maxConflicts);
-            return updated;
-          });
-
-          // Reset dismissed state when new conflict arrives
-          setIsDismissed(false);
-
-          // Auto-dismiss after delay
-          if (autoDismissMs > 0) {
-            setTimeout(() => {
-              setIsDismissed(true);
-            }, autoDismissMs);
-          }
-        }
-      } catch (error) {
-        console.error('[ConflictWS] Parse error:', error);
+    const connect = () => {
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error('[ConflictWS] Max reconnection attempts reached');
+        setIsConnected(false);
+        return;
       }
+
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        console.log('[ConflictWS] Connected to conflict event stream');
+        setIsConnected(true);
+        reconnectAttempts = 0; // Reset counter on successful connection
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[ConflictWS] Message:', data);
+
+          if (data.type === 'CONFLICT_DETECTED') {
+            const conflict: OrderConflict = data.data;
+
+            // Add to conflicts list (keep only maxConflicts)
+            setConflicts((prev) => {
+              const updated = [conflict, ...prev].slice(0, maxConflicts);
+              return updated;
+            });
+
+            // Reset dismissed state when new conflict arrives
+            setIsDismissed(false);
+
+            // Auto-dismiss after delay
+            if (autoDismissMs > 0) {
+              setTimeout(() => {
+                setIsDismissed(true);
+              }, autoDismissMs);
+            }
+          }
+        } catch (error) {
+          console.error('[ConflictWS] Parse error:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.warn('[ConflictWS] Connection error, will retry...', error);
+        setIsConnected(false);
+      };
+
+      ws.onclose = () => {
+        console.log(`[ConflictWS] Disconnected, reconnecting in 3s... (attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+        setIsConnected(false);
+        reconnectAttempts++;
+        reconnectTimer = setTimeout(connect, 3000); // Reconnect after 3 seconds
+      };
     };
 
-    ws.onerror = (error) => {
-      console.error('[ConflictWS] Error:', error);
-      setIsConnected(false);
-    };
-
-    ws.onclose = () => {
-      console.log('[ConflictWS] Disconnected');
-      setIsConnected(false);
-    };
+    connect();
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
+      clearTimeout(reconnectTimer);
     };
   }, [maxConflicts, autoDismissMs]);
 
@@ -203,9 +222,8 @@ export function ConflictAlertBanner({
                   <div className="flex items-center gap-2">
                     {conflict.strategy && (
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          STRATEGY_COLORS[conflict.strategy.persona_type]
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STRATEGY_COLORS[conflict.strategy.persona_type]
+                          }`}
                       >
                         {PERSONA_NAMES[conflict.strategy.persona_type]}
                       </span>
@@ -213,9 +231,8 @@ export function ConflictAlertBanner({
                     <span className="text-gray-400 text-xs">vs</span>
                     {conflict.conflicting_strategy && (
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          STRATEGY_COLORS[conflict.conflicting_strategy.persona_type]
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STRATEGY_COLORS[conflict.conflicting_strategy.persona_type]
+                          }`}
                       >
                         {PERSONA_NAMES[conflict.conflicting_strategy.persona_type]}
                       </span>

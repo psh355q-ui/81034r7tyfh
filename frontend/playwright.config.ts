@@ -11,6 +11,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  timeout: 90 * 1000, // 90 seconds per test (slow API responses)
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
     ['list']

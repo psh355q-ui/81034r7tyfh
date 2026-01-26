@@ -1673,6 +1673,225 @@ class AITradeDecision(Base):
 
 
 # ====================================
+# Persona-based Trading Models (Phase 3)
+# ====================================
+
+class Persona(Base):
+    """
+    페르소나 모델 - 사용자 투자 성향 정의
+    
+    Phase 3: Persona-based Trading
+    Date: 2026-01-25
+    
+    Persona Types:
+        - CONSERVATIVE: 보수형 (안정성 우선, 배당/채권 중심)
+        - AGGRESSIVE: 공격형 (고수익 추구, 성장주/레버리지 허용)
+        - GROWTH: 성장형 (가치/성장 추구, 펀더멘털 중심)
+        - BALANCED: 밸런스형 (균형 잡힌 포트폴리오, 기본값)
+    
+    Mapping to Persona Router:
+        - CONSERVATIVE ↔ DIVIDEND
+        - AGGRESSIVE ↔ AGGRESSIVE
+        - GROWTH ↔ LONG_TERM
+        - BALANCED ↔ TRADING
+    """
+    __tablename__ = "personas"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False, unique=True)  # CONSERVATIVE, AGGRESSIVE, GROWTH, BALANCED
+    display_name = Column(String(100), nullable=False)  # "보수형", "공격형", "성장형", "밸런스형"
+    description = Column(Text, nullable=False)  # 페르소나 설명
+    
+    # 투자 성향 특성
+    risk_tolerance = Column(String(20), nullable=False)  # VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH
+    investment_horizon = Column(String(20), nullable=False)  # SHORT, MEDIUM, LONG
+    return_expectation = Column(String(20), nullable=False)  # LOW, MODERATE, HIGH, VERY_HIGH
+    
+    # Agent 가중치 (War Room MVP)
+    trader_weight = Column(Numeric(4, 3), nullable=False)  # 기술적 분석 가중치
+    risk_weight = Column(Numeric(4, 3), nullable=False)     # 리스크 관리 가중치
+    analyst_weight = Column(Numeric(4, 3), nullable=False)  # 펀더멘털 분석 가중치
+    
+    # 자산 배분 비율 (기본값)
+    stock_allocation = Column(Numeric(5, 4), nullable=False, default=0.60)  # 주식 비중
+    bond_allocation = Column(Numeric(5, 4), nullable=False, default=0.30)   # 채권 비중
+    cash_allocation = Column(Numeric(5, 4), nullable=False, default=0.10)    # 현금 비중
+    
+    # 리스크 관리 설정
+    max_position_size = Column(Numeric(5, 4), nullable=False, default=0.10)  # 최대 포지션 비중 (10%)
+    max_sector_exposure = Column(Numeric(5, 4), nullable=False, default=0.30)  # 최대 섹터 노출 (30%)
+    stop_loss_pct = Column(Numeric(5, 4), nullable=False, default=0.05)  # 손절가 비율 (5%)
+    
+    # 레버리지 설정
+    leverage_allowed = Column(Boolean, nullable=False, default=False)
+    max_leverage_pct = Column(Numeric(5, 4), nullable=False, default=0.0)  # 최대 레버리지 비중
+    
+    # 기능 활성화
+    yield_trap_detector = Column(Boolean, nullable=False, default=False)
+    dividend_calendar = Column(Boolean, nullable=False, default=False)
+    noise_filter = Column(Boolean, nullable=False, default=False)
+    thesis_violation = Column(Boolean, nullable=False, default=False)
+    
+    # Hard Rules
+    max_agent_disagreement = Column(Numeric(4, 3), nullable=False, default=0.67)  # 최대 에이전트 불일치
+    min_avg_confidence = Column(Numeric(4, 3), nullable=False, default=0.50)      # 최소 평균 확신도
+    
+    # 상태
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_default = Column(Boolean, nullable=False, default=False)
+    
+    # 타임스탬프
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        Index('idx_personas_name', 'name', unique=True),
+        Index('idx_personas_active', 'is_active'),
+        Index('idx_personas_default', 'is_default'),
+    )
+
+    def __repr__(self):
+        return f"<Persona(id={self.id}, name='{self.name}', display_name='{self.display_name}')>"
+
+
+class PortfolioAllocation(Base):
+    """
+    포트폴리오 배분 - 페르소나별 자산 배분 기록
+    
+    Phase 3: Persona-based Trading
+    Date: 2026-01-25
+    
+    페르소나별로 실제 포트폴리오 배분 비율을 추적하고 관리합니다.
+    """
+    __tablename__ = "portfolio_allocations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    persona_id = Column(Integer, ForeignKey('personas.id'), nullable=False)
+    
+    # 배분 정보
+    asset_class = Column(String(20), nullable=False)  # STOCK, BOND, CASH, CRYPTO, COMMODITY, ETF
+    target_allocation = Column(Numeric(5, 4), nullable=False)  # 목표 배분 비율 (0.0 ~ 1.0)
+    current_allocation = Column(Numeric(5, 4), nullable=True)  # 현재 배분 비율
+    deviation = Column(Numeric(5, 4), nullable=True)  # 목표 대비 편차
+    
+    # 리밸런싱 설정
+    rebalance_threshold = Column(Numeric(5, 4), nullable=False, default=0.05)  # 리밸런싱 임계값 (5%)
+    last_rebalanced = Column(DateTime, nullable=True)
+    next_rebalance_date = Column(DateTime, nullable=True)
+    
+    # 메타데이터
+    notes = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSONB, nullable=True)
+    
+    # 타임스탬프
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    persona = relationship("Persona", backref="portfolio_allocations")
+
+    __table_args__ = (
+        Index('idx_allocations_persona', 'persona_id'),
+        Index('idx_allocations_asset_class', 'asset_class'),
+        Index('idx_allocations_rebalance', 'next_rebalance_date'),
+    )
+
+    def __repr__(self):
+        return f"<PortfolioAllocation(id={self.id}, persona_id={self.persona_id}, asset_class='{self.asset_class}', target={self.target_allocation})>"
+
+
+class UserPersonaPreference(Base):
+    """
+    사용자 페르소나 선호도 - 사용자별 페르소나 설정
+    
+    Phase 3: Persona-based Trading
+    Date: 2026-01-25
+    
+    각 사용자가 선택한 페르소나와 개인화된 설정을 저장합니다.
+    """
+    __tablename__ = "user_persona_preferences"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(100), nullable=False, unique=True)  # 사용자 ID (인증 시스템 연동)
+    persona_id = Column(Integer, ForeignKey('personas.id'), nullable=False)
+    
+    # 개인화된 설정 (기본 페르소나 설정 오버라이드)
+    custom_weights = Column(JSONB, nullable=True)  # 사용자 정의 Agent 가중치
+    custom_allocations = Column(JSONB, nullable=True)  # 사용자 정의 자산 배분
+    custom_risk_settings = Column(JSONB, nullable=True)  # 사용자 정의 리스크 설정
+    
+    # 활동 추적
+    last_switched_at = Column(DateTime, nullable=True)
+    switch_count = Column(Integer, nullable=False, default=0)
+    
+    # 타임스탬프
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    persona = relationship("Persona", backref="user_preferences")
+
+    __table_args__ = (
+        Index('idx_user_persona_user', 'user_id', unique=True),
+        Index('idx_user_persona_persona', 'persona_id'),
+    )
+
+    def __repr__(self):
+        return f"<UserPersonaPreference(id={self.id}, user_id='{self.user_id}', persona_id={self.persona_id})>"
+
+
+class UserFCMToken(Base):
+    """
+    사용자 FCM (Firebase Cloud Messaging) 토큰 관리
+    
+    Phase 4 - Real-time Execution: Push Notification Service
+    Date: 2026-01-25
+    
+    Features:
+        - 디바이스별 FCM 토큰 저장
+        - 다중 디바이스 지원 (모바일, 웹)
+        - 토큰 활성화 상태 관리
+        - 자동 생성 UUID 기본키
+    
+    Used By:
+        - backend/api/fcm_router.py: Token registration API
+        - backend/services/push_notification_service.py: Fetch tokens for broadcasts
+        - backend/events/subscribers.py: Event-based notifications
+    """
+    __tablename__ = "user_fcm_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(100), nullable=False, index=True)  # 사용자 ID (인증 시스템 연동)
+    token = Column(String(300), unique=True, nullable=False, index=True)  # FCM 토큰 (최대 255자)
+    device_type = Column(String(50), nullable=True)  # ios, android, web
+    device_id = Column(String(200), nullable=True)  # 디바이스 고유 ID
+    device_name = Column(String(200), nullable=True)  # 사용자 정의 디바이스 이름
+    
+    # 활성화 상태
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    
+    # 타임스탬프
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    updated_at = Column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    last_used_at = Column(DateTime, nullable=True)  # 마지막 알림 전송 시간
+    
+    # 메타데이터
+    app_version = Column(String(50), nullable=True)  # 앱 버전
+    os_version = Column(String(50), nullable=True)  # OS 버전
+    
+    # Indexes
+    __table_args__ = (
+        Index('idx_fcm_user_id', 'user_id'),
+        Index('idx_fcm_token', 'token', unique=True),
+        Index('idx_fcm_active', 'is_active', postgresql_where='is_active = TRUE'),
+        Index('idx_fcm_user_active', 'user_id', 'is_active'),
+    )
+
+    def __repr__(self):
+        return f"<UserFCMToken(id={self.id}, user_id='{self.user_id}', device_type='{self.device_type}', active={self.is_active})>"
+
+
+# ====================================
 # Aliases for backward compatibility
 # ====================================
 # MacroSnapshot은 MacroContextSnapshot의 별칭 (기존 코드 호환성 유지)

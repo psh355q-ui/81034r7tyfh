@@ -781,20 +781,32 @@ backend/
 │   │   └── 📄 sec_edgar_monitor.py
 │   ├── 📄 decision_store.py
 │   ├── 📄 deep_reasoning_store.py
-│   ├── 📂 feature_store/
+│   ├── 📂 feature_store/  ⭐ **2-Layer Cache System (Redis + TimescaleDB)**
 │   │   ├── 📄 __init__.py
 │   │   ├── 📂 ai_factors/
 │   │   │   ├── 📄 __init__.py
 │   │   │   ├── 📄 news_collector.py
 │   │   │   └── 📄 non_standard_risk.py
-│   │   ├── 📄 cache_layer.py
-│   │   ├── 📄 cache_warmer.py
-│   │   ├── 📄 cache_warming.py
-│   │   ├── 📄 features.py
+│   │   ├── 📄 cache_layer.py        # Redis (L1 <5ms) + TimescaleDB (L2 <100ms)
+│   │   ├── 📄 cache_warmer.py       # Pre-load popular tickers
+│   │   ├── 📄 cache_warming.py      # Advanced warming strategies
+│   │   ├── 📄 features.py           # 20+ Technical Indicators (ret_5d, vol_20d, etc.)
 │   │   ├── 📄 management_credibility_feature.py
 │   │   ├── 📄 metrics.py
 │   │   ├── 📄 non_standard_risk_integration.py
-│   │   └── 📄 store.py
+│   │   └── 📄 store.py              # Main FeatureStore class
+│   │
+│   │   ⚡ **Redis Cache Performance**:
+│   │   - Layer 1 (Redis): <5ms latency, 50 connections
+│   │   - Layer 2 (TimescaleDB): <100ms latency, persistent storage
+│   │   - Cache Miss (Compute): ~345 seconds (Yahoo Finance API)
+│   │   - **Speedup**: 69,000x faster with cache hit
+│   │   
+│   │   📊 **Cached Data**:
+│   │   - Technical Features: ret_5d, ret_20d, vol_20d, mom_20d, rsi_14, macd, etc.
+│   │   - Cache Key Format: `feature:{TICKER}:{FEATURE}:{DATE}`
+│   │   - Example: `feature:AAPL:ret_5d:2026-01-26`
+│   │   - TTL: Intraday (5min), Daily (24h)
 │   ├── 📂 features/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📄 credit_regime_factor.py

@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers
 revision = 'add_ai_collective_tables'
-down_revision = 'add_rag_embedding_tables'
+down_revision = 'analytics_001'  # Links to add_analytics_tables (not rag_embedding_001)
 branch_labels = None
 depends_on = None
 

@@ -26,25 +26,58 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv()
 
+# Set timezone to KST (Korea Standard Time)
+os.environ['TZ'] = 'Asia/Seoul'
+try:
+    import time
+    time.tzset()  # Apply timezone change (Unix/Linux)
+except AttributeError:
+    pass  # Windows doesn't have tzset(), but os.environ['TZ'] works for Python's datetime
+
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, JSONResponse
 from pydantic import BaseModel
 
-# Import monitoring and alert components
-from backend.monitoring.metrics_collector import MetricsCollector, PROMETHEUS_AVAILABLE
-from backend.monitoring.alert_manager import AlertManager, AlertLevel, AlertCategory
-from backend.monitoring.health_monitor import (
-    HealthMonitor,
-    HealthStatus,
-    check_disk_space,
-    check_memory_usage,
-    ComponentHealth,
-)
+# Import monitoring and alert components (optional)
+try:
+    from backend.monitoring.metrics_collector import MetricsCollector, PROMETHEUS_AVAILABLE
+    from backend.monitoring.alert_manager import AlertManager, AlertLevel, AlertCategory
+    from backend.monitoring.health_monitor import (
+        HealthMonitor,
+        HealthStatus,
+        check_disk_space,
+        check_memory_usage,
+        ComponentHealth,
+    )
+    MONITORING_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Monitoring module not available: {e}")
+    MONITORING_AVAILABLE = False
+    PROMETHEUS_AVAILABLE = False
+    # Create dummy classes if monitoring is not available
+    class MetricsCollector:
+        pass
+    class AlertManager:
+        pass
+    class HealthMonitor:
+        pass
 
 # Import API key configuration and logger
 from backend.auth import APIKeyConfig
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)  # Suppress delisted/no data errors
+
+# Configure logging to use KST (Korea Standard Time) instead of UTC
+from datetime import timezone, timedelta
+import time as time_module
+
+def kst_time(*args):
+    """Convert time to KST for logging"""
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(kst).timetuple()
+
+logging.Formatter.converter = kst_time
+
 logger = logging.getLogger(__name__)
 api_key_config = APIKeyConfig()
 
@@ -182,6 +215,13 @@ try:
 except ImportError as e:
     GLOBAL_MACRO_AVAILABLE = False
     logger.warning(f"Global Macro router not available: {e}")
+
+try:
+    from backend.api.market_indicators_router import router as market_indicators_router
+    MARKET_INDICATORS_AVAILABLE = True
+except ImportError as e:
+    MARKET_INDICATORS_AVAILABLE = False
+    logger.warning(f"Market Indicators router not available: {e}")
 
 try:
     from backend.api.auto_trade_router import router as auto_trade_router
@@ -391,6 +431,21 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Event Subscriber initialized (Order -> WebSocket bridge)")
     except Exception as e:
         logger.warning(f"⚠️ Failed to initialize Event Subscriber: {e}")
+    
+    # 📱 Initialize Push Notification Service
+    try:
+        from backend.services.push_notification_service import get_push_notification_service
+        from backend.events.subscribers import set_push_notification_service
+        
+        push_service = get_push_notification_service()
+        set_push_notification_service(push_service)
+        
+        if push_service.is_enabled():
+            logger.info("✅ Push Notification Service initialized")
+        else:
+            logger.info("⚠️ Push Notification Service disabled (Firebase not configured)")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to initialize Push Notification Service: {e}")
     else:
         logger.info("⏭️ Embedded News Poller disabled (DISABLE_EMBEDDED_NEWS_POLLER=1)")
 
@@ -454,7 +509,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 try:
     from backend.api.signals_router import manager as trading_signal_manager
-    
+
     @app.websocket("/api/signals/ws")
     async def websocket_signal_endpoint(websocket: WebSocket):
         """
@@ -468,12 +523,50 @@ try:
                 await websocket.receive_text()
         except WebSocketDisconnect:
             trading_signal_manager.disconnect(websocket)
-            
+
     logger.info("WebSocket endpoint mounted at /api/signals/ws")
 except ImportError as e:
     logger.warning(f"Failed to mount WebSocket endpoint: {e}")
 except Exception as e:
     logger.error(f"WebSocket endpoint error: {e}")
+
+# Market Data WebSocket Endpoint
+try:
+    from backend.api.market_data_ws import market_data_ws_manager
+
+    @app.websocket("/api/market-data/ws")
+    async def websocket_market_data_endpoint(websocket: WebSocket):
+        """
+        Real-time market data WebSocket endpoint.
+        Streams real-time quotes for subscribed symbols.
+        """
+        await market_data_ws_manager.connect(websocket)
+        try:
+            while True:
+                # Receive client messages (subscribe/unsubscribe)
+                message = await websocket.receive_json()
+
+                if message['type'] == 'subscribe':
+                    await market_data_ws_manager.subscribe(
+                        websocket,
+                        message['symbols']
+                    )
+                elif message['type'] == 'unsubscribe':
+                    await market_data_ws_manager.unsubscribe(
+                        websocket,
+                        message['symbols']
+                    )
+        except WebSocketDisconnect:
+            market_data_ws_manager.disconnect(websocket)
+        except Exception as e:
+            logger.error(f"[MarketDataWS] WebSocket error: {e}")
+            market_data_ws_manager.disconnect(websocket)
+
+    logger.info("Market Data WebSocket endpoint mounted at /api/market-data/ws")
+except ImportError as e:
+    logger.warning(f"Failed to mount Market Data WebSocket endpoint: {e}")
+except Exception as e:
+    logger.error(f"Market Data WebSocket endpoint error: {e}")
 
 # Register routers conditionally
 if AI_CHAT_AVAILABLE:
@@ -644,6 +737,9 @@ if POSITION_AVAILABLE:
 if GLOBAL_MACRO_AVAILABLE:
     app.include_router(global_macro_router)
     logger.info("Global Macro router registered")
+if MARKET_INDICATORS_AVAILABLE:
+    app.include_router(market_indicators_router)
+    logger.info("Market Indicators router registered")
 if AUTO_TRADE_AVAILABLE:
     app.include_router(auto_trade_router)
     logger.info("Auto Trade router registered")
@@ -728,6 +824,14 @@ try:
     logger.info("Account Partitioning router registered (Core/Income/Satellite wallets)")
 except Exception as e:
     logger.warning(f"Account Partitioning router not available: {e}")
+
+# FCM Token Management - Push Notification Service (Phase 4)
+try:
+    from backend.api.fcm_router import router as fcm_router
+    app.include_router(fcm_router)
+    logger.info("✅ FCM Token Management router registered (Push Notifications)")
+except Exception as e:
+    logger.warning(f"FCM router not available: {e}")
 
 # Multi-Strategy Orchestration - Strategy Management API
 try:
@@ -907,22 +1011,57 @@ async def analyze_ticker(request: AnalyzeRequest, background_tasks: BackgroundTa
         pm_decision = war_room_result.get('pm_decision', {})
 
         # Map actions to standard format
+        # Map actions to standard format
         def normalize_action(action: str) -> str:
-            action_upper = action.upper() if action else "HOLD"
+            action_upper = str(action).upper() if action else "HOLD"
             if action_upper in ["BUY", "SELL", "HOLD"]:
                 return action_upper
             if action_upper == "APPROVE":
                 return "BUY"
             if action_upper == "REJECT":
+                return "HOLD"  # Fix: Reject means do nothing, not sell
+            if "REDUCE" in action_upper:
                 return "SELL"
             return "HOLD"
 
+        # Extract key metrics
+        final_action = normalize_action(pm_decision.get("recommended_action") or pm_decision.get("final_decision"))
+        
+        # Override: If final decision is 'reject', override to HOLD
+        if pm_decision.get("final_decision") == "reject" and final_action == "BUY":
+            final_action = "HOLD"
+            
+        risk_opinion = agents.get("risk", {})
+        
+        # Calculate Position Size (0-100)
+        position_size = 0.0
+        if final_action == "BUY":
+            position_size = float(risk_opinion.get("max_position_pct", 0.05)) * 100
+            
+        # Calculate Price Targets
+        current_price = market_data.get('price_data', {}).get('current_price', 0)
+        stop_loss_pct = float(risk_opinion.get("stop_loss_pct", 0.05))
+        take_profit_pct = float(risk_opinion.get("take_profit_pct", 0.10))
+        
+        stop_loss = current_price * (1 - stop_loss_pct) if current_price else 0
+        target_price = current_price * (1 + take_profit_pct) if current_price else 0
+
+        # Construct flat response matching AIDecision interface
         result = {
             "ticker": request.ticker,
-            "final_decision": {
-                "action": normalize_action(pm_decision.get("final_decision", "HOLD")),
+            "action": final_action,
+            "conviction": war_room_result.get("confidence", 0.5),
+            "position_size": round(position_size, 1),
+            "reasoning": pm_decision.get("reasoning", "No reasoning provided"),
+            "target_price": round(target_price, 2),
+            "stop_loss": round(stop_loss, 2),
+            "risk_factors": pm_decision.get("hard_rules_violations", []) or pm_decision.get("warnings", []),
+            "timestamp": datetime.utcnow().isoformat(),
+
+            "final_decision": { # Keep for backward compatibility if needed, but redundant
+                "action": final_action,
                 "confidence": war_room_result.get("confidence", 0.5),
-                "reasoning": pm_decision.get("reasoning", "No reasoning provided")
+                "reasoning": pm_decision.get("reasoning", "")
             },
             "agents_analysis": {
                 "trader_agent": {
@@ -947,10 +1086,10 @@ async def analyze_ticker(request: AnalyzeRequest, background_tasks: BackgroundTa
                     "latency_seconds": agents.get("analyst", {}).get("latency_seconds", 0)
                 },
                 "pm_agent": {
-                    "action": normalize_action(pm_decision.get("final_decision", "HOLD")),
+                    "action": final_action,
                     "confidence": pm_decision.get("confidence", 0.5),
                     "reasoning": pm_decision.get("reasoning", ""),
-                    "hard_rules_passed": pm_decision.get("hard_rules_passed", []),
+                    "hard_rules_passed": pm_decision.get("hard_rules_passed", True),
                     "hard_rules_violations": pm_decision.get("hard_rules_violations", [])
                 }
             },
@@ -1454,6 +1593,57 @@ async def execute_trade(request: AnalyzeRequest):
             execution_data=execution,
         )
     return execution
+
+
+# ==================== Briefing Endpoints ====================
+
+@app.get("/api/briefing/latest", tags=["Briefing"])
+async def get_latest_briefing():
+    """
+    Get latest daily briefing using enhanced v2.3 structure
+    
+    Returns briefing with:
+    - Market State (Trend/Risk/Confidence)
+    - Actionable Scenarios (IF-THEN-STOP)
+    - Portfolio Impact (KIS Account based)
+    """
+    try:
+        from backend.intelligence.reporter.daily_briefing import DailyBriefingGenerator
+        
+        generator = DailyBriefingGenerator()
+        briefing = await generator.generate_daily_briefing()
+        markdown = generator.to_markdown(briefing)
+        
+        return {
+            "content": markdown,
+            "date": briefing.timestamp.strftime('%Y-%m-%d'),
+            "timestamp": briefing.timestamp.isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate briefing: {e}", exc_info=True)
+        # Return fallback briefing
+        return {
+            "content": f"""# 📊 Daily Market Briefing
+
+**Error**: Could not generate briefing
+
+{str(e)}
+
+Please check backend logs for details.
+""",
+            "date": datetime.now().strftime('%Y-%m-%d'),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@app.post("/api/briefing/generate", tags=["Briefing"])
+async def generate_briefing():
+    """
+    Manually trigger briefing generation (same as GET /briefing/latest)
+    """
+    return await  get_latest_briefing()
+
+
 # MVP War Room (3+1 Agent System) - Phase: MVP Consolidation (2025-12-31)
 try:
     from backend.routers.war_room_mvp_router import router as war_room_mvp_router
