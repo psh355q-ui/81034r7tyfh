@@ -43,36 +43,43 @@ from backend.monitoring.performance_monitor import perf_monitor
 # Persona Router for dynamic weights
 from backend.ai.router.persona_router import PersonaRouter, PersonaMode, get_persona_router
 
+# Meta-Controller V2 for risk management
+from ..meta_controller_v2 import MetaControllerV2
+
 
 class WarRoomMVP:
     """MVP War Room - Two-Stage Agent System"""
-
+    
     def __init__(self):
         """Initialize War Room MVP with Two-Stage Agents"""
         # Initialize Two-Stage agents
         self.trader_agent = TraderAgentMVP()
         self.risk_agent = RiskAgentMVP()
         self.analyst_agent = AnalystAgentMVP()
-
+        
         # Initialize PM agent (final decision maker)
         self.pm_agent = PMAgentMVP()
         print(f"🔍 DEBUG: PM Agent HARD_RULES loaded: max_agent_disagreement = {self.pm_agent.HARD_RULES['max_agent_disagreement']}")
-
+        
         # Initialize execution layer
         self.execution_router = ExecutionRouter()
         self.order_validator = OrderValidator()
-
+        
         # War Room metadata
         self.session_id = datetime.utcnow().isoformat()
         self.decision_history: List[Dict[str, Any]] = []
-
+        
         # Persona Router for dynamic weights
         self.persona_router = get_persona_router()
-
+        
+        # 🆕 Initialize Meta-Controller V2 for risk management
+        self.meta_controller = MetaControllerV2()
+        
         print(f"✅ WarRoomMVP initialized with Two-Stage agents")
         print(f"   - Trader: {self.trader_agent.get_agent_info()['name']}")
         print(f"   - Risk: {self.risk_agent.get_agent_info()['name']}")
         print(f"   - Analyst: {self.analyst_agent.get_agent_info()['name']}")
+        print(f"   - Meta-Controller V2: Integrated for risk management")
 
     async def deliberate(
         self,
@@ -203,16 +210,47 @@ class WarRoomMVP:
             print(f"  ✅ [Analyst Agent] Action: {analyst_opinion['action']} (Score: {analyst_opinion.get('overall_information_score', 0):.1f}, Latency: {latency}s)")
 
         # ================================================================
-        # STEP 2.5: INJECT DYNAMIC WEIGHTS FROM PERSONA ROUTER
+        # STEP 2.5: META-CONTROLLER V2 RISK ASSESSMENT
+        # ================================================================
+        print("\n[STEP 2.5] Meta-Controller V2 Risk Assessment...\n")
+        
+        # Prepare market and portfolio data for Meta-Controller
+        market_data_for_meta = {
+            'vix': market_conditions.get('vix') if market_conditions else None
+        }
+        
+        portfolio_data_for_meta = {
+            'current_value': portfolio_state.get('current_value', 0),
+            'peak_value': portfolio_state.get('peak_value', 0),
+            'positions': portfolio_state.get('positions', [])
+        }
+        
+        # Evaluate market regime using Meta-Controller V2
+        market_regime_result = self.meta_controller.evaluate_market_regime(
+            market_data_for_meta,
+            portfolio_data_for_meta
+        )
+        
+        # Log Meta-Controller results
+        print(f"  → Final Regime: {market_regime_result['final_regime']}")
+        print(f"  → VIX Regime: {market_regime_result['vix_regime']}")
+        print(f"  → Correlation Regime: {market_regime_result['correlation_regime']}")
+        print(f"  → Drawdown Severity: {market_regime_result['drawdown_result']['severity']}")
+        
+        # Store Meta-Controller result for later use
+        meta_controller_result = market_regime_result
+        
+        # ================================================================
+        # STEP 2.6: INJECT DYNAMIC WEIGHTS FROM PERSONA ROUTER
         # ================================================================
         weights = self.persona_router.get_weights(persona_mode)
         persona_config = self.persona_router.get_config(persona_mode)
-
+        
         # Inject weights into each agent's opinion
         trader_opinion['weight'] = weights.get('trader_mvp', 0.35)
         risk_opinion['weight'] = weights.get('risk_mvp', 0.30)
         analyst_opinion['weight'] = weights.get('analyst_mvp', 0.35)
-
+        
         print(f"\n  [Persona Mode] {persona_config.mode.value.upper()}")
         print(f"  [Dynamic Weights] Trader={weights['trader_mvp']:.0%}, Risk={weights['risk_mvp']:.0%}, Analyst={weights['analyst_mvp']:.0%}")
 
@@ -228,7 +266,9 @@ class WarRoomMVP:
             analyst_opinion=analyst_opinion,
             portfolio_state=portfolio_state,
             correlation_data=additional_data.get('correlation_data') if additional_data else None,
-            action_context=action_context
+            action_context=action_context,
+            # 🆕 Pass Meta-Controller V2 results
+            meta_controller_result=meta_controller_result
         )
 
         print(f"  → Final Decision: {pm_decision['final_decision']}")

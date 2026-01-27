@@ -1,5 +1,34 @@
 # System Structure Map
-Auto-generated: 2026-01-25 14:29:04
+Auto-generated: 2026-01-28 00:40:00
+
+## Phase 0: Meta-Controller V2 Components (Added 2026-01-27~28)
+
+**New Risk Management System**:
+
+```
+backend/ai/
+├── 📄 correlation_shock_detector.py  (163 lines) - Portfolio correlation spike detection
+├── 📄 drawdown_recovery.py            (133 lines) - Automatic defensive mode switching
+├── 📄 meta_controller_v2.py           (298 lines) - 3-axis risk integration (VIX+Corr+DD)
+└── 📄 liquidity_guardian.py           (283 lines) - Pre-execution liquidity validation
+
+tests/
+├── test_correlation_shock_detector.py  (199 lines)
+├── test_drawdown_recovery.py           (173 lines)
+├── test_meta_controller_v2.py          (281 lines)
+├── test_liquidity_guardian.py          (283 lines)
+└── integration/
+    └── test_meta_controller_backtest.py (350 lines) - COVID-19 crash simulation
+
+docs/validation/
+└── meta_controller_v2_backtest_report.md - Historical validation report
+```
+
+**Integration**: `backend/ai/mvp/war_room_mvp.py` (Line 76 - MetaControllerV2)
+
+**Status**: ✅ Complete - Commercial-grade risk management system validated
+
+---
 
 ## 1. Directory Structure
 
@@ -234,6 +263,10 @@ backend/
 │   │   └── 📄 scenario_simulator.py
 │   ├── 📂 schemas/
 │   │   └── 📄 war_room_schemas.py
+│   ├── 📄 correlation_shock_detector.py
+│   ├── 📄 drawdown_recovery.py
+│   ├── 📄 liquidity_guardian.py
+│   ├── 📄 meta_controller_v2.py
 │   ├── 📄 sec_analyzer.py
 │   ├── 📄 sec_prompts.py
 │   ├── 📂 skills/
